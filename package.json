@@ -4,15 +4,18 @@
   "private": true,
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "background/*"
   ],
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
     "lint": "turbo lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "gendb:schema": "bunx supabase gen types typescript --project-id lrgaygjiyukdhhdbszjk > ./packages/shared/src/types/database.ts"
   },
   "devDependencies": {
+    "@types/minimatch": "^6.0.0",
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "prettier": "^3.6.2",
