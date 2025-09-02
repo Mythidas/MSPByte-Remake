@@ -5,19 +5,20 @@
   "workspaces": [
     "apps/*",
     "packages/*",
-    "background/*"
+    "libs/*"
   ],
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "gendb:schema": "bunx supabase gen types typescript --project-id lrgaygjiyukdhhdbszjk > ./packages/shared/src/types/database.ts"
+    "gendb:schema": "bunx supabase gen types typescript --project-id lrgaygjiyukdhhdbszjk > ./packages/shared/src/types/database/schema.ts"
   },
   "devDependencies": {
     "@types/minimatch": "^6.0.0",
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
+    "npm-run-all": "^4.1.5",
     "prettier": "^3.6.2",
     "turbo": "^2.5.5",
     "typescript": "5.7.3"
@@ -25,5 +26,13 @@
   "packageManager": "bun@1.1.26",
   "engines": {
     "node": ">=20"
+  },
+  "dependencies": {
+    "@supabase/postgrest-js": "^1.21.3",
+    "@supabase/supabase-js": "^2.56.1",
+    "bullmq": "^5.58.4",
+    "fastify": "^5.5.0",
+    "ioredis": "^5.7.0",
+    "nats": "^2.29.3"
   }
 }

@@ -1,5 +1,4 @@
-import { localEventBus } from "@/lib/utils/LocalEventBus";
-import { AUTH_EVENTS } from "@workspace/events/auth";
+import { localEventBus } from "@workspace/events/bus/Buses";
 import { create } from "zustand";
 
 type User = { id: string; username: string };
@@ -14,10 +13,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   setUser: (user) => set({ user }),
 }));
 
-localEventBus.on(AUTH_EVENTS.LOGIN, (user) => {
+localEventBus.on("auth.login", (user) => {
   useAuthStore.getState().setUser(user);
 });
 
-localEventBus.on(AUTH_EVENTS.LOGOUT, () => {
+localEventBus.on("auth.logout", () => {
   useAuthStore.getState().setUser(null);
 });

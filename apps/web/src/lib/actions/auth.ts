@@ -3,9 +3,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { APIResponse } from "@workspace/shared/types/api";
 import Debug from "@workspace/shared/lib/Debug";
-import { localEventBus } from "@/lib/utils/LocalEventBus";
 import { redirect } from "next/navigation";
-import { AUTH_EVENTS } from "@workspace/events/auth";
+import { localEventBus } from "@workspace/events/bus/Buses";
 
 export async function login(
   email: string,
@@ -23,7 +22,7 @@ export async function login(
       throw error.message;
     }
 
-    localEventBus.emit(AUTH_EVENTS.LOGIN, {
+    localEventBus.emit("auth.login", {
       id: data.user.id,
       username: data.user.email ?? "Unknown",
     });
@@ -77,7 +76,7 @@ export async function signout() {
       throw new Error(error.message);
     }
 
-    localEventBus.emit(AUTH_EVENTS.LOGOUT, null);
+    localEventBus.emit("auth.logout", null);
     redirect("/auth/login");
   } catch (err) {
     return Debug.error({

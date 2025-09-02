@@ -52,6 +52,9 @@ export default function RootNavbar() {
                       <NavigationMenuLink href="/roles">
                         Roles
                       </NavigationMenuLink>
+                      <NavigationMenuLink href="/integrations">
+                        Integrations
+                      </NavigationMenuLink>
                     </li>
                   </ul>
                 </NavigationMenuContent>

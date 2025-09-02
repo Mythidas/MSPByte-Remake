@@ -29,3 +29,15 @@ To use the components in your app, import them from the `ui` package.
 ```tsx
 import { Button } from "@workspace/ui/components/button";
 ```
+
+```graph TD
+A[External MSP Tools] --> B[External Adapters]
+B --> C[Event Bus]
+C --> D[Internal Services]
+D --> E[Database]
+E --> F[Real-time Layer]
+F --> G[Frontend]
+G --> H[User Actions]
+H --> I[API Routes]
+I --> C
+```

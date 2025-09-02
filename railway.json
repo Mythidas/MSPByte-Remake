@@ -1,0 +1,40 @@
+{
+  "services": [
+    {
+      "name": "adapters",
+      "source": {
+        "rootDirectory": "/libs/adapters"
+      },
+      "build": {
+        "command": "bun run build"
+      },
+      "start": {
+        "command": "bun run start"
+      }
+    },
+    {
+      "name": "services",
+      "source": {
+        "rootDirectory": "/libs/services"
+      },
+      "build": {
+        "command": "bun run build"
+      },
+      "start": {
+        "command": "bun run start"
+      }
+    },
+    {
+      "name": "events",
+      "source": {
+        "rootDirectory": "/libs/events"
+      },
+      "build": {
+        "command": "bun run build"
+      },
+      "start": {
+        "command": "bun run start"
+      }
+    }
+  ]
+}

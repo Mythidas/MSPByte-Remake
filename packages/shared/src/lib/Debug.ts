@@ -1,6 +1,13 @@
 import { APIError } from "../types/api.js";
 
 export default class Debug {
+  static log(info: Omit<APIError, "time" | "code">) {
+    const time = new Date();
+    console.info(
+      `[${time.toLocaleTimeString()}][${info.module}][${info.context}] ${info.message}`
+    );
+  }
+
   static error(error: Omit<APIError, "time">) {
     const time = new Date();
     console.error(
