@@ -1,8 +1,18 @@
+import { getRows } from "@workspace/shared/lib/db/orm.js";
 import Debug from "@workspace/shared/lib/Debug";
 import Fastify from "fastify";
 import { IAdapter } from "src/adapter.js";
 import { AutoTaskAdapter } from "src/psa/autotask.js";
 import JobScheduler from "src/scheduler.js";
+import dotenv from "dotenv";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+
+// Compute __dirname equivalent
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+dotenv.config({ path: join(__dirname, "../../../.env.local") });
 
 const fastify = Fastify({ logger: true });
 
@@ -25,6 +35,7 @@ class AdaptersService {
       JobScheduler.start(),
     ]);
 
+    this.startJobProcessing();
     await fastify.listen({ port: 3003, host: "0.0.0.0" });
 
     Debug.log({
@@ -49,9 +60,39 @@ class AdaptersService {
 
   private async startJobProcessing() {
     setInterval(async () => {
-      const jobs = [];
-      const retryJobs = [];
-    });
+      const [jobs, retryJobs] = await Promise.all([
+        getRows("scheduled_jobs", {
+          filters: [["status", "eq", "pending"]],
+        }),
+        getRows("scheduled_jobs", {
+          filters: [["status", "eq", "failed"]],
+        }),
+      ]);
+
+      const allJobs = [
+        ...(jobs.data ? jobs.data.rows : []),
+        ...(retryJobs.data ? retryJobs.data.rows : []),
+      ];
+
+      JobScheduler.claimJobs(allJobs);
+
+      for (const job of allJobs) {
+        switch (job.integration_id) {
+          case "autotask": {
+            this.adapters.get("autotask")?.processJob(job);
+            continue;
+          }
+        }
+      }
+
+      if (allJobs.length) {
+        Debug.log({
+          module: "Adapters",
+          context: "startJobProcessing",
+          message: `Processed ${allJobs.length} jobs [${jobs.data?.total || 0} jobs | ${retryJobs.data?.total || 0} retries]`,
+        });
+      }
+    }, 5000);
   }
 }
 

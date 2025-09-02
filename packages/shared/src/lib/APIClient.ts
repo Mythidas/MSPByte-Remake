@@ -1,9 +1,21 @@
-import { TablesInsert } from "../types/database/schema.js";
-import { createClient } from "./db/client.js";
-import Debug from "./Debug.js";
-import { APIResponse } from "../types/api.js";
+import { createClient } from "@workspace/shared/lib/db/client.js";
+import Debug from "@workspace/shared/lib/Debug.js";
+import Encryption from "@workspace/shared/lib/Encryption.js";
+import { APIResponse } from "@workspace/shared/types/api.js";
+import { TablesInsert } from "@workspace/shared/types/database/index.js";
 
 export default class APIClient {
+  private static readonly SENSITIVE_HEADERS = [
+    "authorization",
+    "cookie",
+    "set-cookie",
+    "api-key",
+    "x-api-key",
+    "x-access-token",
+    "client_secret",
+    "secret",
+  ];
+
   static async fetch<T = any>(
     input: string,
     init: RequestInit,
@@ -34,7 +46,7 @@ export default class APIClient {
         return Debug.error({
           module: module,
           context: "APIClient",
-          message: `HTTP ${response.status}: ${responseText}`,
+          message: `HTTP ${response.status}: ${response.statusText}`,
           code: `HTTP_${response.status}`,
         });
       }
@@ -63,14 +75,34 @@ export default class APIClient {
     }
   }
 
+  private static async sanitizeHeaders(
+    headers: Record<string, string | string[]>
+  ) {
+    const result: Record<string, string> = {};
+    for (const [key, val] of Object.entries(headers)) {
+      if (this.SENSITIVE_HEADERS.includes(key.toLowerCase())) {
+        result[key] = await Encryption.encrypt(
+          typeof val === "string" ? val : val.join(",")
+        );
+      } else {
+        result[key] = Array.isArray(val) ? val.join(",") : val;
+      }
+    }
+    return result;
+  }
+
   private static async logApiCall(log: TablesInsert<"api_logs">) {
     const supabase = createClient();
 
     try {
       await supabase.from("api_logs").insert({
         ...log,
-        headers: log.headers || {},
-        response_headers: log.response_headers || {},
+        headers: await this.sanitizeHeaders(
+          (log.headers || {}) as Record<string, string | string[]>
+        ),
+        response_headers: await this.sanitizeHeaders(
+          (log.response_headers || {}) as Record<string, string | string[]>
+        ),
       });
     } catch (err) {
       console.error(`Failed top log API call: ${err}`);
