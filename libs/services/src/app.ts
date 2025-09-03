@@ -1,9 +1,10 @@
 import Fastify from "fastify";
 import Debug from "@workspace/shared/lib/Debug.js";
-import { NatsConnection, JSONCodec, connect, Subscription } from "nats";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
+import { IProcessor } from "@workspace/services/processors/processor.js";
+import CompanyProcessor from "@workspace/services/processors/companies-processor.js";
 
 // Compute __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -19,27 +20,12 @@ fastify.get("/health", async () => ({
 }));
 
 class ServicesHost {
-  private nats: NatsConnection | undefined;
-  private jc = JSONCodec();
-  private subscription: Subscription | null = null;
+  private processors: IProcessor[] = [];
 
   async start() {
-    this.nats = await connect({ servers: process.env.NATS_URL });
+    this.processors = [new CompanyProcessor()];
 
-    this.subscription = this.nats.subscribe("*.companies.fetched", {
-      callback: (err, msg) => {
-        if (err) {
-          console.log(err);
-          return;
-        }
-
-        try {
-          const eventData = this.jc.decode(msg.data);
-          console.log(eventData);
-        } catch {}
-      },
-    });
-
+    await Promise.all(this.processors.map((p) => p.start()));
     await fastify.listen({ port: 3004, host: "0.0.0.0" });
 
     Debug.log({
@@ -50,6 +36,8 @@ class ServicesHost {
   }
 
   async shutdown() {
+    await Promise.all(this.processors.map((p) => p.stop()));
+
     Debug.log({
       module: "Adapters",
       context: "Host",

@@ -8,8 +8,9 @@ import {
   Tables,
   TablesInsert,
   TablesUpdate,
+  Row,
 } from "../../types/database/index.js";
-import { Database } from "../../types/database/schema.js";
+import { Database } from "../../types/database/import.js";
 import Debug from "../Debug.js";
 import { createClient } from "./client.js";
 import { PostgrestFilterBuilder } from "@supabase/postgrest-js";
@@ -63,13 +64,17 @@ export async function tablesCountGeneric<T extends TableOrView>(
 export async function tablesSelectGeneric<T extends TableOrView>(
   table: T,
   modifyQuery?: (query: QueryBuilder<T>) => void,
-  pagination?: PaginationOptions
+  pagination?: PaginationOptions,
+  selects?: Array<Row<T>>
 ): Promise<APIResponse<DataResponse<Tables<T>>>> {
-  if (pagination) return tablesSelectPaginated(table, pagination, modifyQuery);
+  if (pagination)
+    return tablesSelectPaginated(table, pagination, modifyQuery, selects);
 
   try {
     const supabase = await createClient();
-    let query = supabase.from(table as any).select("*");
+    let query = supabase
+      .from(table as any)
+      .select(selects ? selects.join(",") : "*");
 
     if (modifyQuery) {
       modifyQuery(query as any);
@@ -108,7 +113,8 @@ export async function tablesSelectGeneric<T extends TableOrView>(
 export async function tablesSelectPaginated<T extends TableOrView>(
   table: T,
   pagination: PaginationOptions,
-  modifyQuery?: (query: QueryBuilder<T>) => void
+  modifyQuery?: (query: QueryBuilder<T>) => void,
+  selects?: Array<Row<T>>
 ): Promise<APIResponse<DataResponse<Tables<T>>>> {
   try {
     const supabase = await createClient();
@@ -118,7 +124,7 @@ export async function tablesSelectPaginated<T extends TableOrView>(
 
     let query = supabase
       .from(table as any)
-      .select("*", { count: "exact" }) // includes count in response
+      .select(selects ? selects.join(",") : "*", { count: "exact" }) // includes count in response
       .range(from, to);
 
     if (pagination.filters) {
@@ -244,13 +250,14 @@ export function paginatedFilters<T extends TableOrView>(
 
 export async function tablesSelectSingleGeneric<T extends TableOrView>(
   table: T,
-  modifyQuery?: (query: QueryBuilder<T>) => void
+  modifyQuery?: (query: QueryBuilder<T>) => void,
+  selects?: Array<Row<T>>
 ): Promise<APIResponse<Tables<T>>> {
   try {
     const supabase = await createClient();
     let query = supabase
       .from(table as any)
-      .select("*")
+      .select(selects ? selects.join(",") : "*")
       .limit(1);
 
     if (modifyQuery) {

@@ -1,10 +1,8 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@workspace/shared/lib/db/client.js";
 import Debug from "@workspace/shared/lib/Debug.js";
-import { Tables } from "@workspace/shared/types/database/index.js";
-import { Database } from "@workspace/shared/types/database/schema.js";
-
-type ScheduledJobs = Tables<"scheduled_jobs">;
+import { Database } from "@workspace/shared/types/database/import.js";
+import { ScheduledJobs } from "@workspace/shared/types/database/schema.js";
 
 export default class JobScheduler {
   private static supabase: SupabaseClient<Database>;

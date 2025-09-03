@@ -5,9 +5,9 @@
     "rootDir": "../..",
     "baseUrl": ".",
     "paths": {
-      "@workspace/shared/*": ["../../packages/shared/src/*"]
+      "@workspace/shared/*": ["../../packages/shared/src/*"],
+      "@workspace/services/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["**/*.ts"]
 }

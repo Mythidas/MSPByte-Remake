@@ -16,9 +16,11 @@ import {
   AutoTaskResponse,
 } from "@workspace/shared/types/source/autotask/generic.js";
 import { connect, JSONCodec, NatsConnection } from "nats";
-
-type ScheduledJobs = Tables<"scheduled_jobs">;
-type DataSources = Tables<"data_sources">;
+import {
+  DataSources,
+  ScheduledJobs,
+} from "@workspace/shared/types/database/schema.js";
+import { EventPayload } from "@workspace/shared/types/events/index.js";
 
 export class AutoTaskAdapter implements IAdapter {
   private nats: NatsConnection | undefined;
@@ -80,18 +82,27 @@ export class AutoTaskAdapter implements IAdapter {
       return { error: sites.error };
     }
 
-    const transformed = this.transformCompanies(dataSource, sites.data);
     await this.publishDataEvent("autotask.companies.fetched", {
+      job_id: job.id,
       tenant_id: dataSource.tenant_id,
       integration_id: dataSource.integration_id,
       dataType: "companies",
+      data: sites.data.map((data) => {
+        return {
+          external_id: String(data.id),
+          data_hash: Encryption.sha256(
+            JSON.stringify({
+              ...data,
+              lastActivityDate: undefined,
+              lastTrackedModifiedDateTime: undefined,
+            })
+          ),
+          raw_data: data,
+        };
+      }),
+      total: sites.data.length,
       created_at: new Date().toISOString(),
-      data: transformed,
-      meta: {
-        job_id: job.id,
-        total: transformed.length,
-      },
-    });
+    } as EventPayload<"*.companies.fetched">);
 
     JobScheduler.completeJob(job);
     return { data: undefined };
@@ -133,29 +144,5 @@ export class AutoTaskAdapter implements IAdapter {
     return {
       data: data.items,
     };
-  }
-
-  private transformCompanies(
-    dataSource: DataSources,
-    companies: AutoTaskCompany[]
-  ): TablesInsert<"entities">[] {
-    return companies.map((company) => {
-      return {
-        tenant_id: dataSource.tenant_id,
-        external_id: String(company.id),
-        entity_type: "company",
-        integration_id: dataSource.integration_id,
-        raw_data: company,
-        normalized_data: {
-          external_id: String(company.id),
-          name: company.companyName,
-          address: company.address1,
-          type: company.companyType === 1 ? "customer" : "prospect",
-
-          created_at: company.createDate,
-        },
-        data_hash: "",
-      };
-    });
   }
 }

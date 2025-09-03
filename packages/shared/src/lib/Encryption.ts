@@ -43,7 +43,7 @@ export default class Encryption {
     );
   }
 
-  static sha256 = async (s: string) =>
+  static sha256 = (s: string) =>
     crypto.createHash("sha256").update(s).digest("hex");
-  static genKey = async () => crypto.randomBytes(32).toString("hex");
+  static genKey = () => crypto.randomBytes(32).toString("hex");
 }

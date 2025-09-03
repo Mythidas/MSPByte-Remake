@@ -16,5 +16,11 @@
     "skipLibCheck": true,
     "strict": true,
     "target": "ES2022"
-  }
+  },
+  "exclude": [
+    "packages/shared/src/types/database/import.js",
+    "packages/shared/types/database/import.js",
+    "node_modules",
+    "dist"
+  ]
 }

@@ -24,42 +24,46 @@ export async function getRow<T extends TableOrView>(
   table: T,
   config?: GetRowConfig<T>
 ) {
-  return tablesSelectSingleGeneric(table, (query) => {
-    if (config && config.filters) {
-      for (const filter of config.filters) {
-        if (!filter) continue;
+  return tablesSelectSingleGeneric(
+    table,
+    (query) => {
+      if (config && config.filters) {
+        for (const filter of config.filters) {
+          if (!filter) continue;
 
-        let [col, op, val] = filter;
-        if (op === "in" && Array.isArray(val)) {
-          val = `(${val.join(",")})`;
+          let [col, op, val] = filter;
+          if (op === "in" && Array.isArray(val)) {
+            val = `(${val.join(",")})`;
+          }
+
+          query = query.filter(col as string, op, val);
         }
-
-        query = query.filter(col as string, op, val);
       }
-    }
 
-    if (config && config.ors) {
-      for (const or of config.ors) {
-        if (!or) continue;
+      if (config && config.ors) {
+        for (const or of config.ors) {
+          if (!or) continue;
 
-        let [first, second] = or;
-        if (!first || !second) continue;
+          let [first, second] = or;
+          if (!first || !second) continue;
 
-        query = query.or(
-          `${first[0]}.${first[1]}.${first[2]},${second[0]}.${second[1]}.${second[2]}`
-        );
+          query = query.or(
+            `${first[0]}.${first[1]}.${first[2]},${second[0]}.${second[1]}.${second[2]}`
+          );
+        }
       }
-    }
 
-    if (config && config.sorting) {
-      for (const sorting of config.sorting) {
-        if (!sorting) continue;
-        const [col, dir] = sorting;
+      if (config && config.sorting) {
+        for (const sorting of config.sorting) {
+          if (!sorting) continue;
+          const [col, dir] = sorting;
 
-        query = query.order(col as string, { ascending: dir === "asc" });
+          query = query.order(col as string, { ascending: dir === "asc" });
+        }
       }
-    }
-  });
+    },
+    config?.selects
+  );
 }
 
 export async function getRows<T extends TableOrView>(
@@ -104,7 +108,8 @@ export async function getRows<T extends TableOrView>(
         }
       }
     },
-    config?.pagination
+    config?.pagination,
+    config?.selects
   );
 }
 

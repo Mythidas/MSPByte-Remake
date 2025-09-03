@@ -1,4 +1,4 @@
-import { Database } from "./schema.js";
+import { Database } from "./import.js";
 
 // types.ts
 export type Table = keyof Database["public"]["Tables"];
@@ -16,10 +16,20 @@ export type Tables<T extends TableOrView> =
         : never
       : never;
 
+export type Row<T extends TableOrView> =
+  T extends keyof Database["public"]["Tables"]
+    ? Database["public"]["Tables"][T] extends { Row: infer R }
+      ? keyof R
+      : undefined
+    : T extends keyof Database["public"]["Views"]
+      ? Database["public"]["Views"][T] extends { Row: infer R }
+        ? keyof R
+        : undefined
+      : undefined;
 export type RowFilter<T extends TableOrView> =
   T extends keyof Database["public"]["Tables"]
     ? Database["public"]["Tables"][T] extends { Row: infer R }
-      ? [column: keyof R, operator: Operations, value: any] | undefined
+      ? [column: Row<T>, operator: Operations, value: any] | undefined
       : undefined
     : T extends keyof Database["public"]["Views"]
       ? Database["public"]["Views"][T] extends { Row: infer R }
@@ -112,6 +122,7 @@ export type PaginationOptions = {
 export type GetRowConfig<T extends TableOrView> = {
   filters?: Array<RowFilter<T> | undefined>;
   ors?: Array<[RowFilter<T>, RowFilter<T>] | undefined>;
+  selects?: Array<Row<T>>;
   sorting?: Array<RowSort<T> | undefined>;
   pagination?: PaginationOptions;
 };

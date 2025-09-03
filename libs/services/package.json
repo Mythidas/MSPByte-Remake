@@ -4,7 +4,11 @@
   "type": "module",
   "private": true,
   "exports": {
-    "./services/*": "./src/*.ts"
+    "./*": "./src/*",
+    "./processors/*": "./src/processors/*",
+    "./validators/*": "./src/validators/*",
+    "./normalizers/*": "./src/normalizers/*",
+    "./hashers/*": "./src/hashers/*"
   },
   "scripts": {
     "dev": "tsx watch src/app.ts",
