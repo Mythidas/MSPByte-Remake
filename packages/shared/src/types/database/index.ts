@@ -29,21 +29,29 @@ export type Row<T extends TableOrView> =
 export type RowFilter<T extends TableOrView> =
   T extends keyof Database["public"]["Tables"]
     ? Database["public"]["Tables"][T] extends { Row: infer R }
-      ? [column: Row<T>, operator: Operations, value: any] | undefined
+      ?
+          | [column: Row<T> | (string & {}), operator: Operations, value: any]
+          | undefined
       : undefined
     : T extends keyof Database["public"]["Views"]
       ? Database["public"]["Views"][T] extends { Row: infer R }
-        ? [column: keyof R, operator: Operations, value: any] | undefined
+        ?
+            | [
+                column: keyof R | (string & {}),
+                operator: Operations,
+                value: any,
+              ]
+            | undefined
         : undefined
       : undefined;
 export type RowSort<T extends TableOrView> =
   T extends keyof Database["public"]["Tables"]
     ? Database["public"]["Tables"][T] extends { Row: infer R }
-      ? [column: keyof R, order: "asc" | "desc"] | undefined
+      ? [column: keyof R | (string & {}), order: "asc" | "desc"] | undefined
       : undefined
     : T extends keyof Database["public"]["Views"]
       ? Database["public"]["Views"][T] extends { Row: infer R }
-        ? [column: keyof R, order: "asc" | "desc"] | undefined
+        ? [column: keyof R | (string & {}), order: "asc" | "desc"] | undefined
         : undefined
       : undefined;
 

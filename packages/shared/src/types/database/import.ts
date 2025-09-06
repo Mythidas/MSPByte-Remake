@@ -61,10 +61,9 @@ export type Database = {
       }
       data_sources: {
         Row: {
-          config: Json | null
+          config: Json
           created_at: string
           credential_expiration_at: string
-          credentials: Json
           id: string
           integration_id: string
           last_sync_at: string | null
@@ -73,10 +72,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          config?: Json | null
+          config: Json
           created_at?: string
           credential_expiration_at: string
-          credentials: Json
           id?: string
           integration_id: string
           last_sync_at?: string | null
@@ -85,10 +83,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          config?: Json | null
+          config?: Json
           created_at?: string
           credential_expiration_at?: string
-          credentials?: Json
           id?: string
           integration_id?: string
           last_sync_at?: string | null
@@ -337,29 +334,29 @@ export type Database = {
       }
       roles: {
         Row: {
-          access: Json
           created_at: string
           description: string
           id: string
           name: string
+          rights: Json
           tenant_id: string | null
           updated_at: string
         }
         Insert: {
-          access?: Json
           created_at?: string
           description: string
           id?: string
           name: string
+          rights?: Json
           tenant_id?: string | null
           updated_at?: string
         }
         Update: {
-          access?: Json
           created_at?: string
           description?: string
           id?: string
           name?: string
+          rights?: Json
           tenant_id?: string | null
           updated_at?: string
         }
@@ -460,9 +457,9 @@ export type Database = {
           created_at: string
           id: string
           metadata: Json | null
-          name: string
           psa_company_id: string
           psa_integration_id: string
+          slug: string
           status: string
           tenant_id: string
           updated_at: string
@@ -471,9 +468,9 @@ export type Database = {
           created_at?: string
           id?: string
           metadata?: Json | null
-          name: string
           psa_company_id: string
           psa_integration_id: string
+          slug?: string
           status: string
           tenant_id: string
           updated_at?: string
@@ -482,14 +479,21 @@ export type Database = {
           created_at?: string
           id?: string
           metadata?: Json | null
-          name?: string
           psa_company_id?: string
           psa_integration_id?: string
+          slug?: string
           status?: string
           tenant_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "sites_psa_integration_id_fkey"
+            columns: ["psa_integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sites_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -607,7 +611,18 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      gen_random_suuid: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      has_access: {
+        Args: { access: string; module: string }
+        Returns: boolean
+      }
+      is_tenant: {
+        Args: { id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

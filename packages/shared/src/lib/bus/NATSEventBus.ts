@@ -4,8 +4,8 @@ import {
   EventPayload,
   Events,
 } from "@workspace/shared/types/events/index";
-import { IEventBus, MessageHandler } from "./EventBus.js";
 import Debug from "@workspace/shared/lib/Debug";
+import { MessageHandler, IEventBus } from "@workspace/shared/lib/bus/EventBus";
 
 export class SubBus<E extends EventNames> {
   listeners: MessageHandler<E>[] = [];

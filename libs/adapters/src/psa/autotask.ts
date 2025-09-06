@@ -1,26 +1,16 @@
 import Debug from "@workspace/shared/lib/Debug.js";
-import APIClient from "@workspace/shared/lib/APIClient";
-import { APIResponse } from "@workspace/shared/types/api.js";
 import { IAdapter } from "src/adapter.js";
-import {
-  Tables,
-  TablesInsert,
-} from "@workspace/shared/types/database/index.js";
 import { getRow } from "@workspace/shared/lib/db/orm.js";
 import Encryption from "@workspace/shared/lib/Encryption.js";
 import JobScheduler from "src/scheduler.js";
-import { AutoTaskCompany } from "@workspace/shared/types/source/autotask/company.js";
-import {
-  AutoTaskConfig,
-  AutoTaskSearch,
-  AutoTaskResponse,
-} from "@workspace/shared/types/source/autotask/generic.js";
 import { connect, JSONCodec, NatsConnection } from "nats";
 import {
   DataSources,
   ScheduledJobs,
 } from "@workspace/shared/types/database/schema.js";
 import { EventPayload } from "@workspace/shared/types/events/index.js";
+import AutoTaskConnector from "@workspace/shared/lib/connectors/AutoTaskConnector.js";
+import { AutoTaskConfig } from "@workspace/shared/types/source/autotask/generic.js";
 
 export class AutoTaskAdapter implements IAdapter {
   private nats: NatsConnection | undefined;
@@ -76,7 +66,20 @@ export class AutoTaskAdapter implements IAdapter {
   }
 
   private async syncCompanies(job: ScheduledJobs, dataSource: DataSources) {
-    const sites = await this.getExtCompanies(dataSource);
+    const connector = new AutoTaskConnector(
+      dataSource.config as AutoTaskConfig
+    );
+    const health = await connector.checkHealth();
+    if (!health) {
+      return Debug.error({
+        module: "AutoTaskAdapter",
+        context: "syncCompanies",
+        message: `Connector failed health check: ${dataSource.id}`,
+        code: "CONNECTOR_FAILURE",
+      });
+    }
+
+    const sites = await connector.getCompanies();
     if (sites.error) {
       JobScheduler.failJob(job, sites.error.message);
       return { error: sites.error };
@@ -110,39 +113,5 @@ export class AutoTaskAdapter implements IAdapter {
 
   private async publishDataEvent(subject: string, data: any) {
     this.nats?.publish(subject, this.jc.encode(data));
-  }
-
-  // AutoTask Actions
-  private async getExtCompanies(
-    dataSource: DataSources
-  ): Promise<APIResponse<AutoTaskCompany[]>> {
-    const config = dataSource.config as AutoTaskConfig;
-    const search: AutoTaskSearch<AutoTaskCompany> = {
-      filter: [{ field: "isActive", op: "eq", value: true }],
-    };
-
-    const secret = (await Encryption.decrypt(config.client_secret)) || "failed";
-    const { data, error } = await APIClient.fetch<
-      AutoTaskResponse<AutoTaskCompany>
-    >(
-      `https://${config.server}/ATServicesRest/V1.0/Companies/query?search=${JSON.stringify(search)}`,
-      {
-        method: "GET",
-        headers: {
-          UserName: config.client_id,
-          Secret: secret,
-          ApiIntegrationCode: config.tracker_id,
-        },
-      },
-      "AutoTaskAdapter"
-    );
-
-    if (error) {
-      return { error };
-    }
-
-    return {
-      data: data.items,
-    };
   }
 }

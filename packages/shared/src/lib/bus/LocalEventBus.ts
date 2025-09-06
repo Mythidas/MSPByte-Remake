@@ -1,9 +1,9 @@
+import { MessageHandler, IEventBus } from "@workspace/shared/lib/bus/EventBus";
 import {
   EventNames,
   EventPayload,
   Events,
 } from "@workspace/shared/types/events/index";
-import { IEventBus, MessageHandler } from "./EventBus.js";
 
 export class SubBus<E extends EventNames> {
   private listeners: MessageHandler<E>[] = [];
@@ -27,12 +27,11 @@ export class LocalEventBus implements IEventBus {
   };
 
   constructor() {
-    this.buses = Object.fromEntries(
-      (Object.keys({} as Events) as EventNames[]).map((name) => [
-        name,
-        new SubBus<typeof name>(),
-      ])
-    ) as { [K in EventNames]: SubBus<K> };
+    this.buses = {
+      "auth.login": new SubBus(),
+      "auth.logout": new SubBus(),
+      "*.companies.fetched": new SubBus(),
+    };
   }
 
   on<K extends EventNames>(event: K, listener: MessageHandler<K>) {
