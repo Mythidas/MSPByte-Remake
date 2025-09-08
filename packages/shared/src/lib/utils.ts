@@ -2,7 +2,8 @@ export function pascalCase(str: string) {
   return str.substring(0, 1).toUpperCase() + str.substring(1);
 }
 
-export function prettyText(input: string): string {
+export function prettyText(input?: string | null): string {
+  if (!input) return "";
   return input
     .replace(/[_-]+/g, " ") // Replace underscores and dashes with spaces
     .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize first letter of each word

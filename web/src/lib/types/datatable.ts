@@ -1,7 +1,8 @@
 export interface DataTableColumn<T> {
-  key: string;
+  key: keyof T | (string & {});
   label: string;
   sortable?: boolean;
+  searchable?: boolean;
   filterable?: boolean;
   width?: string;
   render?: (value: string, row: T) => React.ReactNode;
@@ -98,6 +99,9 @@ export interface DataTableProps<T = string> {
   eventTable?: string;
 
   // Customization
+  enableSearch?: boolean;
+  searchPlaceholder?: string;
+  searchableColumns?: (keyof T | (string & {}))[];
   enableSelection?: boolean;
   enableRefresh?: boolean;
   enableExport?: boolean;

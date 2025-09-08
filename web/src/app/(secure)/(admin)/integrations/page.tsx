@@ -231,7 +231,7 @@ export default function IntegrationsPage() {
                   className={!canEnable ? "cursor-not-allowed" : ""}
                 >
                   {canEnable ? (
-                    <Link href={`/integrations/${integration.id}/setup`}>
+                    <Link href={`/integrations/${integration.id}`}>
                       <Plus className="w-4 h-4 mr-1" />
                       Connect
                     </Link>

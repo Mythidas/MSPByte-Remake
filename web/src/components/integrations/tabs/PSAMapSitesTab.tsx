@@ -126,9 +126,6 @@ export default function PSAMapSitesTab({ integration }: Props) {
       const handleCreateSites = async () => {
         setIsCreatingSites(true);
 
-        // Store original state for potential rollback
-        const originalEntities = [...localEntities];
-
         try {
           const sitesToCreate = currentEntities
             .filter((entity) => selectedEntities.has(entity.id))
@@ -137,8 +134,11 @@ export default function PSAMapSitesTab({ integration }: Props) {
                 ({
                   tenant_id: entity.tenant_id,
                   psa_company_id: entity.external_id,
+                  psa_parent_company_id: (entity.normalized_data as Company)
+                    .external_parent_id,
                   psa_integration_id: entity.integration_id,
                   status: "active" as const,
+                  name: (entity.normalized_data as Company).name,
                 }) as TablesInsert<"sites">
             );
 

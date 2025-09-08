@@ -102,13 +102,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "data_sources_site_id_fkey"
-            columns: ["site_id"]
-            isOneToOne: false
-            referencedRelation: "sites"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "data_sources_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -163,13 +156,6 @@ export type Database = {
             columns: ["integration_id"]
             isOneToOne: false
             referencedRelation: "integrations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "entities_site_id_fkey"
-            columns: ["site_id"]
-            isOneToOne: false
-            referencedRelation: "sites"
             referencedColumns: ["id"]
           },
           {
@@ -457,8 +443,10 @@ export type Database = {
           created_at: string
           id: string
           metadata: Json | null
+          name: string
           psa_company_id: string
           psa_integration_id: string
+          psa_parent_company_id: string
           slug: string
           status: string
           tenant_id: string
@@ -468,8 +456,10 @@ export type Database = {
           created_at?: string
           id?: string
           metadata?: Json | null
+          name: string
           psa_company_id: string
           psa_integration_id: string
+          psa_parent_company_id: string
           slug?: string
           status: string
           tenant_id: string
@@ -479,21 +469,16 @@ export type Database = {
           created_at?: string
           id?: string
           metadata?: Json | null
+          name?: string
           psa_company_id?: string
           psa_integration_id?: string
+          psa_parent_company_id?: string
           slug?: string
           status?: string
           tenant_id?: string
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "sites_psa_integration_id_fkey"
-            columns: ["psa_integration_id"]
-            isOneToOne: false
-            referencedRelation: "integrations"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "sites_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -577,6 +562,33 @@ export type Database = {
       }
     }
     Views: {
+      sites_view: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          metadata: Json | null
+          name: string | null
+          parent_id: string | null
+          parent_name: string | null
+          parent_slug: string | null
+          psa_company_id: string | null
+          psa_integration_id: string | null
+          psa_parent_company_id: string | null
+          slug: string | null
+          status: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sites_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users_with_role: {
         Row: {
           created_at: string | null
@@ -612,7 +624,7 @@ export type Database = {
     }
     Functions: {
       gen_random_suuid: {
-        Args: Record<PropertyKey, never>
+        Args: { length?: number }
         Returns: string
       }
       has_access: {

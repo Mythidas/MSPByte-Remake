@@ -12,7 +12,7 @@ import {
 } from "../../types/database/index.js";
 import { Database } from "../../types/database/import.js";
 import Debug from "../Debug.js";
-import { createClient } from "./client.js";
+import { createPrivelagedClient } from "./client.js";
 import { PostgrestFilterBuilder } from "@supabase/postgrest-js";
 
 type RowType<T extends TableOrView> =
@@ -33,7 +33,7 @@ export async function tablesCountGeneric<T extends TableOrView>(
   modifyQuery?: (query: QueryBuilder<T>) => void
 ): Promise<APIResponse<number>> {
   try {
-    const supabase = await createClient();
+    const supabase = await createPrivelagedClient();
 
     let query = supabase
       .from(table as any)
@@ -71,7 +71,7 @@ export async function tablesSelectGeneric<T extends TableOrView>(
     return tablesSelectPaginated(table, pagination, modifyQuery, selects);
 
   try {
-    const supabase = await createClient();
+    const supabase = await createPrivelagedClient();
     let query = supabase
       .from(table as any)
       .select(selects ? selects.join(",") : "*");
@@ -117,7 +117,7 @@ export async function tablesSelectPaginated<T extends TableOrView>(
   selects?: Array<Row<T>>
 ): Promise<APIResponse<DataResponse<Tables<T>>>> {
   try {
-    const supabase = await createClient();
+    const supabase = await createPrivelagedClient();
 
     const from = pagination.page * pagination.size;
     const to = from + pagination.size - 1;
@@ -254,7 +254,7 @@ export async function tablesSelectSingleGeneric<T extends TableOrView>(
   selects?: Array<Row<T>>
 ): Promise<APIResponse<Tables<T>>> {
   try {
-    const supabase = await createClient();
+    const supabase = await createPrivelagedClient();
     let query = supabase
       .from(table as any)
       .select(selects ? selects.join(",") : "*")
@@ -286,7 +286,7 @@ export async function tablesInsertGeneric<T extends Table>(
   modifyQuery?: (query: QueryBuilder<T>) => void
 ): Promise<APIResponse<Tables<T>[]>> {
   try {
-    const supabase = await createClient();
+    const supabase = await createPrivelagedClient();
     let query = supabase.from(table as any);
 
     if (modifyQuery) {
@@ -315,7 +315,7 @@ export async function tablesUpdateGeneric<T extends Table>(
   row: TablesUpdate<T>
 ): Promise<APIResponse<Tables<T>>> {
   try {
-    const supabase = await createClient();
+    const supabase = await createPrivelagedClient();
     const { data, error } = await supabase
       .from(table as any)
       .update(row as any)
@@ -344,7 +344,7 @@ export async function tablesUpsertGeneric<T extends Table>(
   modifyQuery?: (query: QueryBuilder<T>) => void
 ): Promise<APIResponse<Tables<T>[]>> {
   try {
-    const supabase = await createClient();
+    const supabase = await createPrivelagedClient();
     let query = supabase.from(table as any).upsert(rows as any);
 
     if (modifyQuery) {
@@ -372,7 +372,7 @@ export async function tablesDeleteGeneric<T extends Table>(
   modifyQuery?: (query: QueryBuilder<T>) => void
 ): Promise<APIResponse<null>> {
   try {
-    const supabase = await createClient();
+    const supabase = await createPrivelagedClient();
     let query = supabase.from(table as any).delete();
 
     if (modifyQuery) {

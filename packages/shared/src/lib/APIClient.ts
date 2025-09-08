@@ -1,4 +1,4 @@
-import { createClient } from "@workspace/shared/lib/db/client";
+import { createPrivelagedClient } from "@workspace/shared/lib/db/client";
 import Debug from "@workspace/shared/lib/Debug";
 import Encryption from "@workspace/shared/lib/Encryption";
 import { APIResponse } from "@workspace/shared/types/api";
@@ -92,7 +92,7 @@ export default class APIClient {
   }
 
   private static async logApiCall(log: TablesInsert<"api_logs">) {
-    const supabase = createClient();
+    const supabase = createPrivelagedClient();
 
     try {
       await supabase.from("api_logs").insert({

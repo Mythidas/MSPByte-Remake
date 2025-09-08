@@ -1,7 +1,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import CompanyNormalizer from "@workspace/services/normalizers/companies-normalizer.js";
 import { IProcessor } from "@workspace/services/processors/processor.js";
-import { createClient } from "@workspace/shared/lib/db/client.js";
+import { createPrivelagedClient } from "@workspace/shared/lib/db/client.js";
 import { getRows } from "@workspace/shared/lib/db/orm.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import { Database } from "@workspace/shared/types/database/import.js";
@@ -23,7 +23,8 @@ export default class CompanyProcessor implements IProcessor {
   private supabase: SupabaseClient<Database>;
 
   constructor() {
-    this.supabase = createClient() as unknown as SupabaseClient<Database>;
+    this.supabase =
+      createPrivelagedClient() as unknown as SupabaseClient<Database>;
   }
 
   async start(): Promise<void> {

@@ -5,15 +5,16 @@ import {
   DataTableFetchParams,
   DataTableFetchResult,
 } from "@/lib/types/datatable";
+import { TableOrView } from "@workspace/shared/types/database";
 
 export default async function fetchTableData<T>(
-  tableName: string,
+  tableName: TableOrView,
   params: DataTableFetchParams
 ): Promise<DataTableFetchResult<T>> {
   try {
     const supabase = await createClient();
 
-    let query = supabase.from(tableName).select("*", { count: "exact" });
+    let query = supabase.from(tableName as any).select("*", { count: "exact" });
 
     // Apply filters
     for (const filter of params.filters) {
@@ -86,7 +87,6 @@ export default async function fetchTableData<T>(
     if (error) {
       return { data: [], count: 0, error: error.message };
     }
-
     return { data: (data as T[]) || [], count: count || 0 };
   } catch (error) {
     return {

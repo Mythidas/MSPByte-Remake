@@ -6,7 +6,7 @@ import {
   AutoTaskConfig,
   AutoTaskSearch,
   AutoTaskResponse,
-} from "@workspace/shared/types/source/autotask/generic";
+} from "@workspace/shared/types/source/autotask/index.js";
 
 export default class AutoTaskConnector {
   constructor(private config: AutoTaskConfig) {}

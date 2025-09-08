@@ -9,15 +9,7 @@ import React, {
   Suspense,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  RefreshCw,
-  X,
-  MoreHorizontal,
-  Eye,
-} from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import {
   DataTableProps,
   DataTablePagination,
@@ -31,46 +23,55 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import { createClient } from "@/lib/supabase/client";
 import {
   ColumnDef,
   useReactTable,
   getCoreRowModel,
-  flexRender,
   RowSelectionState,
 } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { DataTableFilters } from "@/components/DataTable/DataTableFilters";
+import DataTableToolbar from "@/components/DataTable/DataTableToolbar";
+import DataTableSearch from "@/components/DataTable/DataTableSearch";
+import DataTableActiveFilters from "@/components/DataTable/DataTableActiveFilters";
+import DataTableBody from "@/components/DataTable/DataTableBody";
+import DataTableFooter from "@/components/DataTable/DataTableFooter";
 
-export function DataTable<T extends Record<string, any>>(
-  props: DataTableProps<T>
-) {
-  return (
-    <Suspense fallback={<DataTableFallback />}>
-      <DataTableUrlProvider {...props} />
-    </Suspense>
-  );
+// Helper function to safely get nested property values
+function getNestedValue(obj: any, path: string): any {
+  if (!path || !obj) return obj;
+
+  // Handle array notation and dot notation
+  const keys = path.split(/[\.\[\]]/).filter(Boolean);
+
+  let current = obj;
+  for (const key of keys) {
+    if (current == null) return undefined;
+    current = current[key];
+  }
+
+  return current;
 }
 
+// Helper function to convert value to searchable string
+function valueToSearchString(value: any): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value.toLowerCase();
+  if (typeof value === "number") return value.toString();
+  if (typeof value === "boolean") return value.toString();
+  if (Array.isArray(value)) return value.join(" ").toLowerCase();
+  if (typeof value === "object") {
+    // For objects, search through all string values
+    return Object.values(value)
+      .filter((v) => typeof v === "string" || typeof v === "number")
+      .join(" ")
+      .toLowerCase();
+  }
+  return String(value).toLowerCase();
+}
+
+// DataTable Fallback Component
 function DataTableFallback() {
   return (
     <div className="space-y-4">
@@ -129,6 +130,17 @@ function DataTableFallback() {
   );
 }
 
+// Main DataTable Component
+export function DataTable<T extends Record<string, any>>(
+  props: DataTableProps<T>
+) {
+  return (
+    <Suspense fallback={<DataTableFallback />}>
+      <DataTableUrlProvider {...props} />
+    </Suspense>
+  );
+}
+
 export function DataTableUrlProvider<T extends Record<string, any>>(
   props: DataTableProps<T>
 ) {
@@ -148,6 +160,9 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
     enableRefresh = true,
     enableExport = true,
     enableColumnToggle = true,
+    enableSearch = true,
+    searchPlaceholder = "Search...",
+    searchableColumns,
     className,
     emptyMessage = "No data found",
     loadingComponent,
@@ -168,6 +183,7 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const [pagination, setPagination] = useState<DataTablePagination>({
     page: 1,
     pageSize: initialPageSize,
@@ -177,18 +193,47 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
   const [sorts, setSorts] = useState<DataTableSort[]>(initialSort);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
-    new Set(columns.map((col) => col.key))
+    new Set(columns.map((col) => col.key as string))
   );
   const [activeView, setActiveView] = useState<string | null>(null);
   const [pendingUrlState, setPendingUrlState] = useState<object | null>(null);
+
+  // Determine which columns are searchable
+  const searchColumns = useMemo(() => {
+    if (searchableColumns) {
+      return columns.filter((col) => searchableColumns.includes(col.key));
+    }
+    // Default to text-based columns if not specified
+    return columns.filter(
+      (col) =>
+        !col.searchable === false && // Allow explicit opt-out
+        col.key !== "id" && // Usually not useful to search IDs
+        col.key !== "actions" // Don't search action columns
+    );
+  }, [columns, searchableColumns]);
+
+  // Filter data based on search term (client-side for now)
+  const searchFilteredData = useMemo(() => {
+    if (!searchTerm.trim() || !enableSearch) return data;
+
+    const lowerSearchTerm = searchTerm.toLowerCase();
+
+    return data.filter((row) => {
+      return searchColumns.some((column) => {
+        const value = getNestedValue(row, column.key as string);
+        const searchString = valueToSearchString(value);
+        return searchString.includes(lowerSearchTerm);
+      });
+    });
+  }, [data, searchTerm, searchColumns, enableSearch]);
 
   // Get selected rows based on current row selection state
   const selectedRows = useMemo(() => {
     return Object.keys(rowSelection)
       .filter((index) => rowSelection[index])
-      .map((index) => data[parseInt(index)])
+      .map((index) => searchFilteredData[parseInt(index)])
       .filter((i) => !!i);
-  }, [rowSelection, data]);
+  }, [rowSelection, searchFilteredData]);
 
   // Call onSelectionChange when selection changes
   useEffect(() => {
@@ -203,6 +248,7 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
         pageSize: number;
         filters: DataTableFilter[];
         sorts: DataTableSort[];
+        search: string;
         view: string;
       }>
     ) => {
@@ -227,7 +273,7 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
 
     router.push(`?${params.toString()}`, { scroll: false });
 
-    // Clear after applying so it doesn’t loop
+    // Clear after applying so it doesn't loop
     setPendingUrlState(null);
   }, [pendingUrlState, urlStateKey, searchParams, router]);
 
@@ -255,12 +301,14 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
 
         if (state.filters) updates.filters = state.filters;
         if (state.sorts) updates.sorts = state.sorts;
+        if (state.search) updates.searchTerm = state.search;
         if (state.view) updates.activeView = state.view;
 
         // Apply all updates at once
         if (updates.pagination) setPagination(updates.pagination);
         if (updates.filters) setFilters(updates.filters);
         if (updates.sorts) setSorts(updates.sorts);
+        if (updates.searchTerm) setSearchTerm(updates.searchTerm);
         if (updates.activeView) setActiveView(updates.activeView);
       } catch (e) {
         console.warn("Failed to parse URL state:", e);
@@ -277,6 +325,7 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
       pageSize: number;
       filters: DataTableFilter[];
       sorts: DataTableSort[];
+      search?: string;
     }) => {
       // Create a unique key for this fetch request
       const fetchKey = JSON.stringify(params);
@@ -298,8 +347,9 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
         params.filters.length !== filters.length ||
         JSON.stringify(params.filters) !== JSON.stringify(filters);
       const isNewSort = JSON.stringify(params.sorts) !== JSON.stringify(sorts);
+      const isNewSearch = params.search !== searchTerm;
 
-      if (isInitialLoadRef.current || isNewFilter || isNewSort) {
+      if (isInitialLoadRef.current || isNewFilter || isNewSort || isNewSearch) {
         setLoading(true);
       }
 
@@ -320,7 +370,7 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
         setLoading(false);
       }
     },
-    [fetcher, filters, sorts]
+    [fetcher, filters, sorts, searchTerm]
   );
 
   // Memoized fetch parameters to prevent unnecessary re-renders
@@ -330,8 +380,9 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
       pageSize: pagination.pageSize,
       filters,
       sorts,
+      search: searchTerm,
     }),
-    [pagination.page, pagination.pageSize, filters, sorts]
+    [pagination.page, pagination.pageSize, filters, sorts, searchTerm]
   );
 
   // Single effect for data fetching with debouncing
@@ -362,7 +413,17 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
   // Reset row selection when data changes (new page, filters, etc.)
   useEffect(() => {
     setRowSelection({});
-  }, [filters, sorts, pagination.page]);
+  }, [filters, sorts, pagination.page, searchTerm]);
+
+  // Handle search changes with URL state
+  const handleSearchChange = useCallback(
+    (term: string) => {
+      setSearchTerm(term);
+      setPagination((prev) => ({ ...prev, page: 1 }));
+      updateUrlState({ search: term, page: 1 });
+    },
+    [updateUrlState]
+  );
 
   // Realtime subscription
   useEffect(() => {
@@ -418,11 +479,11 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
 
     cols.push(
       ...columns
-        .filter((col) => visibleColumns.has(col.key))
+        .filter((col) => visibleColumns.has(col.key as string))
         .map(
           (col): ColumnDef<T> => ({
-            id: col.key,
-            accessorKey: col.key,
+            id: col.key as string,
+            accessorFn: (row) => getNestedValue(row, col.key as string),
             header: col.label,
             cell: ({ row, getValue }) => {
               const value = getValue();
@@ -471,7 +532,7 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
 
   // Memoized table instance
   const table = useReactTable({
-    data,
+    data: searchFilteredData,
     columns: tableColumns,
     getCoreRowModel: getCoreRowModel(),
     manualPagination: true,
@@ -574,15 +635,15 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
     async (format: "csv" | "tsv") => {
       const separator = format === "csv" ? "," : "\t";
       const headers = columns
-        .filter((col) => visibleColumns.has(col.key))
+        .filter((col) => visibleColumns.has(col.key as string))
         .map((col) => col.label)
         .join(separator);
 
-      const rows = data.map((row) =>
+      const exportRows = searchFilteredData.map((row) =>
         columns
-          .filter((col) => visibleColumns.has(col.key))
+          .filter((col) => visibleColumns.has(col.key as string))
           .map((col) => {
-            const value = row[col.key];
+            const value = getNestedValue(row, col.key as string);
             const exportValue = col.exportTransform
               ? col.exportTransform(value, row)
               : value;
@@ -595,7 +656,7 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
           .join(separator)
       );
 
-      const content = [headers, ...rows].join("\n");
+      const content = [headers, ...exportRows].join("\n");
       const blob = new Blob([content], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -604,7 +665,7 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
       a.click();
       URL.revokeObjectURL(url);
     },
-    [columns, visibleColumns, data]
+    [columns, visibleColumns, searchFilteredData]
   );
 
   // Pagination handlers
@@ -624,8 +685,6 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
     [updateUrlState]
   );
 
-  const totalPages = Math.ceil(pagination.total / pagination.pageSize);
-
   // Manual refresh function
   const handleRefresh = useCallback(() => {
     // Force a refresh by clearing the last fetch key
@@ -636,310 +695,65 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Toolbar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {views.length > 0 && (
-            <Select
-              value={activeView || ""}
-              onValueChange={(value) => {
-                const view = views.find((v) => v.id === value);
-                if (view) applyView(view);
-              }}
-            >
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Select view" />
-              </SelectTrigger>
-              <SelectContent>
-                {views.map((view) => (
-                  <SelectItem key={view.id} value={view.id}>
-                    {view.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+      <DataTableToolbar
+        views={views}
+        activeView={activeView}
+        applyView={applyView}
+        columns={columns}
+        addFilter={addFilter}
+        enableRefresh={enableRefresh}
+        loading={loading}
+        handleRefresh={handleRefresh}
+        enableSelection={enableSelection}
+        selectedRows={selectedRows}
+        actions={actions}
+        enableExport={enableExport}
+        exportData={exportData}
+        enableColumnToggle={enableColumnToggle}
+        visibleColumns={visibleColumns}
+        setVisibleColumns={setVisibleColumns}
+      />
 
-          <DataTableFilters columns={columns} onAddFilter={addFilter} />
-
-          {enableRefresh && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={loading}
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-              />
-            </Button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {enableSelection && selectedRows.length > 0 && actions.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  Actions ({selectedRows.length})
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {actions.map((action) => (
-                  <DropdownMenuItem
-                    key={action.id}
-                    onClick={() => action.onClick(selectedRows)}
-                    disabled={action.disabled?.(selectedRows)}
-                  >
-                    {action.icon && <span className="mr-2">{action.icon}</span>}
-                    {action.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-
-          {enableExport && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Download className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => exportData("csv")}>
-                  Export CSV
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => exportData("tsv")}>
-                  Export TSV
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-
-          {enableColumnToggle && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Eye className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {columns.map((column) => (
-                  <DropdownMenuCheckboxItem
-                    key={column.key}
-                    checked={visibleColumns.has(column.key)}
-                    onCheckedChange={(checked) => {
-                      setVisibleColumns((prev) => {
-                        const newVisible = new Set(prev);
-                        if (checked) {
-                          newVisible.add(column.key);
-                        } else {
-                          newVisible.delete(column.key);
-                        }
-                        return newVisible;
-                      });
-                    }}
-                  >
-                    {column.label}
-                  </DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
-      </div>
+      {/* Search */}
+      <DataTableSearch
+        enableSearch={enableSearch}
+        searchPlaceholder={searchPlaceholder}
+        searchTerm={searchTerm}
+        handleSearchChange={handleSearchChange}
+      />
 
       {/* Active Filters */}
-      {filters.length > 0 && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium">Filters:</span>
-          {filters.map((filter, index) => (
-            <Button
-              key={index}
-              variant="secondary"
-              className="gap-1 h-fit !px-2 !py-1"
-              onClick={() => removeFilter(index)}
-            >
-              {filter.column} {filter.operator} {String(filter.value)}
-              <X className="h-3 w-3 cursor-pointer" />
-            </Button>
-          ))}
-          <Button variant="ghost" size="sm" onClick={clearFilters}>
-            Clear all
-          </Button>
-        </div>
-      )}
+      <DataTableActiveFilters
+        filters={filters}
+        searchTerm={searchTerm}
+        removeFilter={removeFilter}
+        clearFilters={clearFilters}
+        handleSearchChange={handleSearchChange}
+      />
 
-      {/* Table */}
-      <div className="border rounded-md">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  const column = columns.find((col) => col.key === header.id);
-                  const currentSort = sorts.find(
-                    (sort) => sort.column === header.id
-                  );
+      {/* Table Body */}
+      <DataTableBody
+        table={table}
+        loading={loading}
+        error={error}
+        tableColumns={tableColumns}
+        loadingComponent={loadingComponent}
+        emptyMessage={emptyMessage}
+        onRowClick={onRowClick}
+        columns={columns}
+        sorts={sorts}
+        handleSort={handleSort}
+      />
 
-                  return (
-                    <TableHead
-                      key={header.id}
-                      className={
-                        column?.sortable ? "cursor-pointer select-none" : ""
-                      }
-                      onClick={() => {
-                        if (column?.sortable) {
-                          handleSort(header.id);
-                        }
-                      }}
-                    >
-                      {header.isPlaceholder ? null : (
-                        <div className="flex items-center gap-2">
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                          {currentSort && (
-                            <span className="text-xs">
-                              {currentSort.direction === "desc" ? "↓" : "↑"}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell
-                  colSpan={tableColumns.length}
-                  className="text-center py-8"
-                >
-                  {loadingComponent || (
-                    <div className="flex items-center justify-center gap-2">
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Loading...
-                    </div>
-                  )}
-                </TableCell>
-              </TableRow>
-            ) : error ? (
-              <TableRow>
-                <TableCell
-                  colSpan={tableColumns.length}
-                  className="text-center text-red-500 py-8"
-                >
-                  Error: {error}
-                </TableCell>
-              </TableRow>
-            ) : table.getRowModel().rows.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={tableColumns.length}
-                  className="text-center py-8"
-                >
-                  {emptyMessage}
-                </TableCell>
-              </TableRow>
-            ) : (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  className={onRowClick ? "cursor-pointer" : ""}
-                  onClick={(e) => {
-                    // Don't trigger row click if clicking on checkbox or action buttons
-                    if (
-                      e.target instanceof HTMLElement &&
-                      (e.target.closest("[data-checkbox]") ||
-                        e.target.closest("[data-action]"))
-                    ) {
-                      return;
-                    }
-                    onRowClick?.(row.original);
-                  }}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      data-checkbox={
-                        cell.column.id === "select" ? true : undefined
-                      }
-                      data-action={
-                        cell.column.id === "actions" ? true : undefined
-                      }
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Pagination */}
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-muted-foreground">
-          Showing {(pagination.page - 1) * pagination.pageSize + 1} to{" "}
-          {Math.min(pagination.page * pagination.pageSize, pagination.total)} of{" "}
-          {pagination.total} results
-          {selectedRows.length > 0 && (
-            <span className="ml-2">({selectedRows.length} selected)</span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Select
-            value={pagination.pageSize.toString()}
-            onValueChange={(value) => changePageSize(Number(value))}
-          >
-            <SelectTrigger className="w-20">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[10, 20, 50, 100].map((size) => (
-                <SelectItem key={size} value={size.toString()}>
-                  {size}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => goToPage(pagination.page - 1)}
-            disabled={pagination.page === 1 || loading}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-
-          <span className="text-sm">
-            Page {pagination.page} of {totalPages}
-          </span>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => goToPage(pagination.page + 1)}
-            disabled={pagination.page >= totalPages || loading}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+      {/* Footer */}
+      <DataTableFooter
+        pagination={pagination}
+        selectedRows={selectedRows}
+        searchTerm={searchTerm}
+        changePageSize={changePageSize}
+        goToPage={goToPage}
+        loading={loading}
+      />
     </div>
   );
 }

@@ -1,15 +1,15 @@
 import { SupabaseClient } from "@supabase/supabase-js";
-import { createClient } from "@workspace/shared/lib/db/client.js";
+import { createPrivelagedClient } from "@workspace/shared/lib/db/client.js";
 import Debug from "@workspace/shared/lib/Debug.js";
-import { Database } from "@workspace/shared/types/database/import.js";
-import { ScheduledJobs } from "@workspace/shared/types/database/schema.js";
+import { Database, Tables } from "@workspace/shared/types/database/import.js";
 
 export default class JobScheduler {
   private static supabase: SupabaseClient<Database>;
   private static isRunning = false;
 
   static async start() {
-    this.supabase = createClient() as unknown as SupabaseClient<Database>;
+    this.supabase =
+      createPrivelagedClient() as unknown as SupabaseClient<Database>;
     this.isRunning = true;
     this.scheduleLoop();
 
@@ -30,7 +30,7 @@ export default class JobScheduler {
     });
   }
 
-  static async completeJob(job: ScheduledJobs) {
+  static async completeJob(job: Tables<"scheduled_jobs">) {
     await this.supabase
       .from("scheduled_jobs")
       .update({
@@ -40,7 +40,7 @@ export default class JobScheduler {
       .eq("id", job.id);
   }
 
-  static async failJob(job: ScheduledJobs, error: string) {
+  static async failJob(job: Tables<"scheduled_jobs">, error: string) {
     const status =
       job.attempts && job.attempts_max && job.attempts >= job.attempts_max
         ? "invalid"
@@ -60,7 +60,7 @@ export default class JobScheduler {
       .eq("id", job.id);
   }
 
-  static async claimJobs(jobs: ScheduledJobs[]) {
+  static async claimJobs(jobs: Tables<"scheduled_jobs">[]) {
     await this.supabase
       .from("scheduled_jobs")
       .update({
