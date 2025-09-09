@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/form";
 import { useMemo, useState } from "react";
 import { SubmitButton } from "@/components/SubmitButton";
-import PSAMapSitesTab from "@/components/integrations/tabs/PSAMapSitesTab";
+import PSAMapSitesTab from "@/modules/integrations/shared/components/PSAMapSitesTab";
 import AutoTaskConnector from "@workspace/shared/lib/connectors/AutoTaskConnector";
 import { AutoTaskConfig } from "@workspace/shared/types/source/autotask/generic";
 import { toast } from "sonner";

@@ -3,7 +3,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 
 export type LazyLoadOptions<T> = {
   fetcher: () => Promise<T> | T;
-  render: (data: T | null | undefined) => React.ReactNode;
+  render: (data: T) => React.ReactNode;
   skeleton?: () => React.ReactNode;
   error?: () => React.ReactNode;
   deps?: unknown[];
@@ -77,7 +77,9 @@ export function useLazyLoad<T>({
       content: error ? error() : <div>Error loading data.</div>,
       trigger,
     } as const;
-  if (data || isLoaded.current)
+  else if (!data) {
+    return { content: skeleton(), trigger } as const;
+  } else {
     return { content: render(data), trigger } as const;
-  return { content: skeleton(), trigger } as const;
+  }
 }

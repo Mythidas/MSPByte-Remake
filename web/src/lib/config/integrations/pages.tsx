@@ -1,5 +1,5 @@
-import AutoTaskPage from "@/components/integrations/pages/AutoTaskPage";
-import SophosPartnerPage from "@/components/integrations/pages/SophosPartnerPage";
+import AutoTaskPage from "@/modules/integrations/autotask/components/AutoTaskPage";
+import SophosPartnerPage from "@/modules/integrations/sophos-partner/components/SophosPartnerPage";
 import { Tables } from "@workspace/shared/types/database";
 import { ReactNode } from "react";
 

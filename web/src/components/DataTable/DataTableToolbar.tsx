@@ -65,7 +65,7 @@ export default function DataTableToolbar<T extends Record<string, any>>({
               if (view) applyView(view);
             }}
           >
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-60">
               <SelectValue placeholder="Select view" />
             </SelectTrigger>
             <SelectContent>

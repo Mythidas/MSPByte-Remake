@@ -134,7 +134,7 @@ export default function RootNavbar() {
             <DropdownMenuTrigger asChild>
               {user ? (
                 <Button variant="ghost" size="sm" className="h-9 px-3">
-                  {user.username}
+                  {user.email}
                 </Button>
               ) : (
                 <Skeleton className="w-24 h-9 rounded-md" />

@@ -3,12 +3,13 @@
 import { useEffect } from "react";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { getCurrentUser } from "@/lib/actions/auth";
+import { Tables } from "@workspace/shared/types/database";
 
 export function AuthProvider({
   initialUser,
   children,
 }: {
-  initialUser?: { id: string; username: string };
+  initialUser?: Tables<"users_with_role">;
   children: React.ReactNode;
 }) {
   const { setUser } = useAuthStore((s) => s);
@@ -17,8 +18,7 @@ export function AuthProvider({
     if (initialUser) setUser(initialUser);
     else
       getCurrentUser().then((u) => {
-        if (u.data)
-          setUser({ id: u.data.id, username: u.data.email || "Unknown" });
+        if (u.data) setUser(u.data);
       });
   }, [initialUser]);
 

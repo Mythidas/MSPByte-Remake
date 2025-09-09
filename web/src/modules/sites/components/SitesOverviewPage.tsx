@@ -196,41 +196,6 @@ export default function SiteOverviewPage({ site }: Props) {
       .sort((a, b) => b.count - a.count);
   }, [entities]);
 
-  const coverageAnalysis = useMemo(() => {
-    // Find endpoints that exist in multiple systems
-    const endpointSources = new Map<string, string[]>();
-
-    entities
-      .filter((e) => e.entity_type === "endpoint")
-      .forEach((entity) => {
-        // Use a normalized identifier - you might need to adjust this based on your data structure
-        const normalized_data = entity.normalized_data as any;
-        const identifier = normalized_data.name || entity.external_id;
-        if (!endpointSources.has(identifier)) {
-          endpointSources.set(identifier, []);
-        }
-        endpointSources.get(identifier)!.push(entity.integration_id);
-      });
-
-    const fullCoverage = Array.from(endpointSources.values()).filter(
-      (sources) => sources.length >= 2
-    ).length;
-    const partialCoverage = Array.from(endpointSources.values()).filter(
-      (sources) => sources.length === 1
-    ).length;
-    const totalEndpoints = endpointSources.size;
-
-    return {
-      totalEndpoints,
-      fullCoverage,
-      partialCoverage,
-      coveragePercentage:
-        totalEndpoints > 0
-          ? Math.round((fullCoverage / totalEndpoints) * 100)
-          : 0,
-    };
-  }, [entities]);
-
   const { content } = useLazyLoad({
     fetcher: async () => {
       // Fetch all data for the site overview
@@ -307,7 +272,10 @@ export default function SiteOverviewPage({ site }: Props) {
         return {
           id: entity.id,
           type: config.label,
-          name: (entity.normalized_data as any)?.name || entity.external_id,
+          name:
+            (entity.normalized_data as any)?.name ||
+            (entity.normalized_data as any)?.hostname ||
+            entity.external_id,
           integration: meta?.name || entity.integration_id,
           updated: entity.updated_at,
           icon: config.icon,
@@ -379,21 +347,6 @@ export default function SiteOverviewPage({ site }: Props) {
                 <div className="text-2xl font-bold">{entityStats.length}</div>
                 <p className="text-xs text-muted-foreground">
                   Different data categories
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Coverage</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {coverageAnalysis.coveragePercentage}%
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Cross-platform monitoring
                 </p>
               </CardContent>
             </Card>
@@ -510,56 +463,6 @@ export default function SiteOverviewPage({ site }: Props) {
 
           {/* Coverage Analysis & Recent Activity */}
           <div className="grid gap-6 md:grid-cols-2">
-            {/* Coverage Analysis */}
-            {coverageAnalysis.totalEndpoints > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5" />
-                    Asset Coverage Analysis
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                        <span className="text-sm font-medium">
-                          Full Coverage
-                        </span>
-                      </div>
-                      <span className="text-lg font-bold text-green-600">
-                        {coverageAnalysis.fullCoverage}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <AlertCircle className="h-4 w-4 text-yellow-600" />
-                        <span className="text-sm font-medium">
-                          Partial Coverage
-                        </span>
-                      </div>
-                      <span className="text-lg font-bold text-yellow-600">
-                        {coverageAnalysis.partialCoverage}
-                      </span>
-                    </div>
-
-                    <div className="pt-2">
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>Overall Coverage</span>
-                        <span>{coverageAnalysis.coveragePercentage}%</span>
-                      </div>
-                      <Progress
-                        value={coverageAnalysis.coveragePercentage}
-                        className="h-2"
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
             {/* Recent Activity */}
             <Card>
               <CardHeader>

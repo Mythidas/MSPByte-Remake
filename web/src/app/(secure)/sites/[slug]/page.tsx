@@ -1,6 +1,6 @@
 "use client";
 
-import SiteOverviewPage from "@/components/domains/sites/SitesOverviewPage";
+import SiteOverviewPage from "@/modules/sites/components/SitesOverviewPage";
 import { useSiteStore } from "@/lib/stores/site-store";
 
 export default function SitePage() {

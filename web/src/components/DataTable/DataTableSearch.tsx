@@ -21,6 +21,7 @@ export default function DataTableSearch({
       onSearch={handleSearchChange}
       className="max-w-sm"
       defaultValue={searchTerm}
+      delay={1000}
     />
   );
 }

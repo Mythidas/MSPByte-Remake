@@ -1,4 +1,6 @@
-export interface DataTableColumn<T> {
+import { PaginationOptions } from "@workspace/shared/types/database";
+
+export type DataTableColumn<T> = {
   key: keyof T | (string & {});
   label: string;
   sortable?: boolean;
@@ -16,9 +18,9 @@ export interface DataTableColumn<T> {
     | "boolean"
     | "multiselect";
   filterOptions?: Array<{ label: string; value: string }>;
-}
+};
 
-export interface DataTableFilter {
+export type DataTableFilter = {
   column: string;
   operator:
     | "eq"
@@ -34,51 +36,46 @@ export interface DataTableFilter {
     | "jsonb_path";
   value: string;
   jsonbPath?: string;
-}
+};
 
-export interface DataTableSort {
+export type DataTableSort = {
   column: string;
   direction: "asc" | "desc";
   jsonbPath?: string;
-}
+};
 
-export interface DataTablePagination {
+export type DataTablePagination = {
   page: number;
   pageSize: number;
   total: number;
-}
+};
 
-export interface DataTableView {
+export type DataTableView = {
   id: string;
   name: string;
   filters: DataTableFilter[];
   sorts?: DataTableSort[];
   columns?: string[]; // Specific columns to show
-}
+};
 
-export interface DataTableAction<T = string> {
+export type DataTableAction<T = string> = {
   id: string;
   label: string;
   icon?: React.ReactNode;
   variant?: "default" | "destructive" | "outline";
   disabled?: (rows: T[]) => boolean;
   onClick: (rows: T[]) => Promise<void> | void;
-}
+};
 
-export interface DataTableFetchResult<T = string> {
+export type DataTableFetchResult<T = string> = {
   data: T[];
   count: number;
   error?: string;
-}
+};
 
-export interface DataTableFetchParams {
-  page: number;
-  pageSize: number;
-  filters: DataTableFilter[];
-  sorts: DataTableSort[];
-}
+export type DataTableFetchParams = PaginationOptions;
 
-export interface DataTableProps<T = string> {
+export type DataTableProps<T = string> = {
   // Core props
   columns: DataTableColumn<T>[];
   fetcher: (params: DataTableFetchParams) => Promise<DataTableFetchResult<T>>;
@@ -112,8 +109,9 @@ export interface DataTableProps<T = string> {
   className?: string;
   emptyMessage?: string;
   loadingComponent?: React.ReactNode;
+  bodyHeight?: string;
 
   // Callbacks
   onRowClick?: (row: T) => void;
   onSelectionChange?: (selectedRows: T[]) => void;
-}
+};

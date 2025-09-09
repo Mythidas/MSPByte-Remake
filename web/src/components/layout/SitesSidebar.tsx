@@ -16,6 +16,7 @@ import {
   Key,
   DollarSign,
   LucideProps,
+  Computer,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -185,6 +186,13 @@ export default function SitesSidebar({ site, children }: Props) {
         label: "Overview",
         href: (slug) => `/sites/${slug}`,
         alwaysShow: true,
+      },
+      {
+        id: "assets",
+        icon: Computer,
+        label: "Assets",
+        href: (slug) => `/sites/${slug}/assets`,
+        integrations: ["sophos-partner"],
       },
     ];
 
@@ -463,7 +471,7 @@ export default function SitesSidebar({ site, children }: Props) {
             </SidebarMenu>
           </SidebarContent>
         </Sidebar>
-        <div className="flex flex-col relative size-full gap-4 p-6 overflow-hidden">
+        <div className="flex flex-col relative size-full gap-4 p-6">
           {children}
         </div>
       </div>

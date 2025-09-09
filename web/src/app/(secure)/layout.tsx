@@ -13,14 +13,7 @@ export default async function Layout({ children }: Props) {
 
   return (
     <SidebarProvider>
-      <AuthProvider
-        initialUser={
-          user.data && {
-            id: user.data.id,
-            username: user.data.email || "Uknown",
-          }
-        }
-      >
+      <AuthProvider initialUser={user.data}>
         <div className="flex flex-col size-full">
           <RootNavbar />
           <div className="flex flex-col size-full">{children}</div>

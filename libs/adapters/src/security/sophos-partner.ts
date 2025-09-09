@@ -1,15 +1,18 @@
 import Debug from "@workspace/shared/lib/Debug.js";
 import { IAdapter } from "src/adapter.js";
 import { getRow } from "@workspace/shared/lib/db/orm.js";
-import Encryption from "@workspace/shared/lib/Encryption.js";
-import JobScheduler from "src/scheduler.js";
 import { connect, JSONCodec, NatsConnection } from "nats";
-import { EventPayload } from "@workspace/shared/types/events/index.js";
-import AutoTaskConnector from "@workspace/shared/lib/connectors/AutoTaskConnector.js";
 import { Tables } from "@workspace/shared/types/database/import.js";
-import { AutoTaskConfig } from "@workspace/shared/types/source/autotask/index.js";
+import SophosPartnerConnector from "@workspace/shared/lib/connectors/SophosPartnerConnector.js";
+import {
+  SophosPartnerConfig,
+  SophosTenantConfig,
+} from "@workspace/shared/types/source/sophos-partner/index.js";
+import JobScheduler from "src/scheduler.js";
+import Encryption from "@workspace/shared/lib/Encryption.js";
+import { EventPayload } from "@workspace/shared/types/events/index.js";
 
-export class AutoTaskAdapter implements IAdapter {
+export class SophosPartnerAdapter implements IAdapter {
   private nats: NatsConnection | undefined;
   private jc = JSONCodec();
 
@@ -17,7 +20,7 @@ export class AutoTaskAdapter implements IAdapter {
     this.nats = await connect({ servers: process.env.NATS_URL });
     Debug.log({
       module: "Adapters",
-      context: "AutoTaskAdapter",
+      context: "SophosPartnerAdapter",
       message: "Adapter started",
     });
   }
@@ -25,7 +28,7 @@ export class AutoTaskAdapter implements IAdapter {
   async stop(): Promise<void> {
     Debug.log({
       module: "Adapters",
-      context: "AutoTaskAdapter",
+      context: "SophosPartnerAdapter",
       message: "Adapter stopped",
     });
   }
@@ -37,7 +40,7 @@ export class AutoTaskAdapter implements IAdapter {
   async processJob(job: Tables<"scheduled_jobs">) {
     Debug.log({
       module: "Adapters",
-      context: "AutoTaskAdapter",
+      context: "SophosPartnerAdapter",
       message: `Processing Job: ${job.id}`,
     });
 
@@ -49,63 +52,82 @@ export class AutoTaskAdapter implements IAdapter {
     }
 
     switch (job.action) {
-      case "sync.companies": {
-        return await this.syncCompanies(job, data);
+      case "sync.endpoints": {
+        return await this.syncEndpoints(job, data);
       }
     }
 
     return Debug.error({
-      module: "AutoTaskAdapter",
+      module: "SophosPartnerAdapter",
       context: "processJob",
       message: `Unknown Job action: ${job.action}`,
       code: "UNKNOWN_ACTION",
     });
   }
 
-  private async syncCompanies(
+  private async syncEndpoints(
     job: Tables<"scheduled_jobs">,
     dataSource: Tables<"data_sources">
   ) {
-    const connector = new AutoTaskConnector(
-      dataSource.config as AutoTaskConfig
+    const { data: tenantDataSource } = await getRow("data_sources", {
+      filters: [
+        ["integration_id", "eq", dataSource.integration_id],
+        ["site_id", "is", null],
+      ],
+    });
+    if (!tenantDataSource) {
+      return Debug.error({
+        module: "SophosPartnerAdapter",
+        context: "syncEndpoints",
+        message: `No Tenant Data Source found for SophosPartner`,
+        code: "DATA_FAILURE",
+      });
+    }
+
+    const connector = new SophosPartnerConnector(
+      tenantDataSource.config as SophosPartnerConfig
     );
     const health = await connector.checkHealth();
     if (!health) {
       return Debug.error({
-        module: "AutoTaskAdapter",
-        context: "syncCompanies",
+        module: "SophosPartnerAdapter",
+        context: "syncEndpoints",
         message: `Connector failed health check: ${dataSource.id}`,
         code: "CONNECTOR_FAILURE",
       });
     }
 
-    const sites = await connector.getCompanies();
-    if (sites.error) {
-      JobScheduler.failJob(job, sites.error.message);
-      return { error: sites.error };
+    const endpoints = await connector.getEndpoints(
+      dataSource.external_id || "",
+      dataSource.config as SophosTenantConfig
+    );
+
+    if (endpoints.error) {
+      JobScheduler.failJob(job, endpoints.error.message);
+      return { error: endpoints.error };
     }
 
-    await this.publishDataEvent("autotask.companies.fetched", {
+    await this.publishDataEvent("sophos-partner.endpoints.fetched", {
       job_id: job.id,
       tenant_id: dataSource.tenant_id,
       integration_id: dataSource.integration_id,
-      dataType: "companies",
-      data: sites.data.map((data) => {
+      site_id: dataSource.site_id,
+      dataType: "endpoints",
+      data: endpoints.data.map((data) => {
         return {
           external_id: String(data.id),
           data_hash: Encryption.sha256(
             JSON.stringify({
               ...data,
-              lastActivityDate: undefined,
-              lastTrackedModifiedDateTime: undefined,
+              lastSeenAt: undefined,
             })
           ),
           raw_data: data,
         };
       }),
-      total: sites.data.length,
+      total: endpoints.data.length,
       created_at: new Date().toISOString(),
-    } as EventPayload<"*.companies.fetched">);
+    } as EventPayload<"*.endpoints.fetched">);
 
     JobScheduler.completeJob(job, dataSource);
     return { data: undefined };

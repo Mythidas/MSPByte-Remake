@@ -37,20 +37,18 @@ import DataTableSearch from "@/components/DataTable/DataTableSearch";
 import DataTableActiveFilters from "@/components/DataTable/DataTableActiveFilters";
 import DataTableBody from "@/components/DataTable/DataTableBody";
 import DataTableFooter from "@/components/DataTable/DataTableFooter";
+import useDataTableUrlState from "@/lib/hooks/useDataTableUrlState";
+import { Filters } from "@workspace/shared/types/database";
 
 // Helper function to safely get nested property values
 function getNestedValue(obj: any, path: string): any {
   if (!path || !obj) return obj;
-
-  // Handle array notation and dot notation
   const keys = path.split(/[\.\[\]]/).filter(Boolean);
-
   let current = obj;
   for (const key of keys) {
     if (current == null) return undefined;
     current = current[key];
   }
-
   return current;
 }
 
@@ -62,7 +60,6 @@ function valueToSearchString(value: any): string {
   if (typeof value === "boolean") return value.toString();
   if (Array.isArray(value)) return value.join(" ").toLowerCase();
   if (typeof value === "object") {
-    // For objects, search through all string values
     return Object.values(value)
       .filter((v) => typeof v === "string" || typeof v === "number")
       .join(" ")
@@ -136,12 +133,13 @@ export function DataTable<T extends Record<string, any>>(
 ) {
   return (
     <Suspense fallback={<DataTableFallback />}>
-      <DataTableUrlProvider {...props} />
+      <DataTableContent {...props} />
     </Suspense>
   );
 }
 
-export function DataTableUrlProvider<T extends Record<string, any>>(
+// Core DataTable Logic Component
+function DataTableContent<T extends Record<string, any>>(
   props: DataTableProps<T>
 ) {
   const {
@@ -166,214 +164,70 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
     className,
     emptyMessage = "No data found",
     loadingComponent,
+    bodyHeight,
     onRowClick,
     onSelectionChange,
   } = props;
 
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const supabase = createClient();
 
-  // Refs for preventing unnecessary re-renders
-  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastFetchParamsRef = useRef<string>("");
-  const isInitialLoadRef = useRef(true);
+  // URL state management
+  const {
+    isInitialized,
+    pagination,
+    setPagination,
+    filters,
+    setFilters,
+    sorts,
+    setSorts,
+    searchTerm,
+    setSearchTerm,
+    activeView,
+    setActiveView,
+    updateUrlState,
+  } = useDataTableUrlState(
+    useUrlState,
+    urlStateKey,
+    initialFilters,
+    initialSort,
+    initialPageSize
+  );
 
-  // State
+  // Data and UI state
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [pagination, setPagination] = useState<DataTablePagination>({
-    page: 1,
-    pageSize: initialPageSize,
-    total: 0,
-  });
-  const [filters, setFilters] = useState<DataTableFilter[]>(initialFilters);
-  const [sorts, setSorts] = useState<DataTableSort[]>(initialSort);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
     new Set(columns.map((col) => col.key as string))
   );
-  const [activeView, setActiveView] = useState<string | null>(null);
-  const [pendingUrlState, setPendingUrlState] = useState<object | null>(null);
+
+  // Local search state to handle immediate UI updates
+  const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm || "");
+
+  // Refs for preventing unnecessary re-renders and duplicate fetches
+  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastFetchParamsRef = useRef<string>("");
+  const isFetchingRef = useRef(false);
+
+  // Sync local search state with URL state when URL state changes
+  useEffect(() => {
+    setLocalSearchTerm(searchTerm || "");
+  }, [searchTerm]);
 
   // Determine which columns are searchable
   const searchColumns = useMemo(() => {
     if (searchableColumns) {
       return columns.filter((col) => searchableColumns.includes(col.key));
     }
-    // Default to text-based columns if not specified
     return columns.filter(
       (col) =>
-        !col.searchable === false && // Allow explicit opt-out
-        col.key !== "id" && // Usually not useful to search IDs
-        col.key !== "actions" // Don't search action columns
+        !col.searchable === false && col.key !== "id" && col.key !== "actions"
     );
   }, [columns, searchableColumns]);
 
-  // Filter data based on search term (client-side for now)
-  const searchFilteredData = useMemo(() => {
-    if (!searchTerm.trim() || !enableSearch) return data;
-
-    const lowerSearchTerm = searchTerm.toLowerCase();
-
-    return data.filter((row) => {
-      return searchColumns.some((column) => {
-        const value = getNestedValue(row, column.key as string);
-        const searchString = valueToSearchString(value);
-        return searchString.includes(lowerSearchTerm);
-      });
-    });
-  }, [data, searchTerm, searchColumns, enableSearch]);
-
-  // Get selected rows based on current row selection state
-  const selectedRows = useMemo(() => {
-    return Object.keys(rowSelection)
-      .filter((index) => rowSelection[index])
-      .map((index) => searchFilteredData[parseInt(index)])
-      .filter((i) => !!i);
-  }, [rowSelection, searchFilteredData]);
-
-  // Call onSelectionChange when selection changes
-  useEffect(() => {
-    onSelectionChange?.(selectedRows);
-  }, [selectedRows, onSelectionChange]);
-
-  // URL state management with debouncing
-  const updateUrlState = useCallback(
-    (
-      newState: Partial<{
-        page: number;
-        pageSize: number;
-        filters: DataTableFilter[];
-        sorts: DataTableSort[];
-        search: string;
-        view: string;
-      }>
-    ) => {
-      if (!useUrlState) return;
-      setPendingUrlState((prev) => ({ ...prev, ...newState }));
-    },
-    [useUrlState]
-  );
-
-  useEffect(() => {
-    if (!pendingUrlState) return;
-
-    const params = new URLSearchParams(searchParams.toString());
-    const stateKey = urlStateKey;
-
-    const currentState = params.get(stateKey)
-      ? JSON.parse(decodeURIComponent(params.get(stateKey)!))
-      : {};
-
-    const updatedState = { ...currentState, ...pendingUrlState };
-    params.set(stateKey, encodeURIComponent(JSON.stringify(updatedState)));
-
-    router.push(`?${params.toString()}`, { scroll: false });
-
-    // Clear after applying so it doesn't loop
-    setPendingUrlState(null);
-  }, [pendingUrlState, urlStateKey, searchParams, router]);
-
-  // Initialize from URL state (only once)
-  useEffect(() => {
-    if (!useUrlState || !isInitialLoadRef.current) return;
-
-    const params = new URLSearchParams(searchParams.toString());
-    const stateParam = params.get(urlStateKey);
-
-    if (stateParam) {
-      try {
-        const state = JSON.parse(decodeURIComponent(stateParam));
-
-        // Batch all state updates to prevent multiple re-renders
-        const updates: any = {};
-
-        if (state.page || state.pageSize) {
-          updates.pagination = {
-            page: state.page || 1,
-            pageSize: state.pageSize || initialPageSize,
-            total: 0,
-          };
-        }
-
-        if (state.filters) updates.filters = state.filters;
-        if (state.sorts) updates.sorts = state.sorts;
-        if (state.search) updates.searchTerm = state.search;
-        if (state.view) updates.activeView = state.view;
-
-        // Apply all updates at once
-        if (updates.pagination) setPagination(updates.pagination);
-        if (updates.filters) setFilters(updates.filters);
-        if (updates.sorts) setSorts(updates.sorts);
-        if (updates.searchTerm) setSearchTerm(updates.searchTerm);
-        if (updates.activeView) setActiveView(updates.activeView);
-      } catch (e) {
-        console.warn("Failed to parse URL state:", e);
-      }
-    }
-
-    isInitialLoadRef.current = false;
-  }, [useUrlState, urlStateKey, searchParams, initialPageSize]);
-
-  // Debounced fetch function to prevent multiple rapid calls
-  const debouncedFetch = useCallback(
-    async (params: {
-      page: number;
-      pageSize: number;
-      filters: DataTableFilter[];
-      sorts: DataTableSort[];
-      search?: string;
-    }) => {
-      // Create a unique key for this fetch request
-      const fetchKey = JSON.stringify(params);
-
-      // If this is the same as the last fetch, skip it
-      if (fetchKey === lastFetchParamsRef.current) {
-        return;
-      }
-
-      lastFetchParamsRef.current = fetchKey;
-
-      // Clear any pending fetch
-      if (fetchTimeoutRef.current) {
-        clearTimeout(fetchTimeoutRef.current);
-      }
-
-      // Only show loading for initial load or when data changes significantly
-      const isNewFilter =
-        params.filters.length !== filters.length ||
-        JSON.stringify(params.filters) !== JSON.stringify(filters);
-      const isNewSort = JSON.stringify(params.sorts) !== JSON.stringify(sorts);
-      const isNewSearch = params.search !== searchTerm;
-
-      if (isInitialLoadRef.current || isNewFilter || isNewSort || isNewSearch) {
-        setLoading(true);
-      }
-
-      setError(null);
-
-      try {
-        const result = await fetcher(params);
-
-        if (result.error) {
-          setError(result.error);
-        } else {
-          setData(result.data);
-          setPagination((prev) => ({ ...prev, total: result.count }));
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch data");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [fetcher, filters, sorts, searchTerm]
-  );
-
-  // Memoized fetch parameters to prevent unnecessary re-renders
+  // Stable fetch parameters - key optimization #1
   const fetchParams = useMemo(
     () => ({
       page: pagination.page,
@@ -385,49 +239,137 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
     [pagination.page, pagination.pageSize, filters, sorts, searchTerm]
   );
 
-  // Single effect for data fetching with debouncing
+  // Improved debounced fetch function with duplicate prevention
+  const debouncedFetch = useCallback(
+    async (params: typeof fetchParams) => {
+      const fetchKey = JSON.stringify(params);
+
+      // Prevent duplicate fetches - key optimization #3
+      if (fetchKey === lastFetchParamsRef.current || isFetchingRef.current) {
+        return;
+      }
+
+      lastFetchParamsRef.current = fetchKey;
+      isFetchingRef.current = true;
+
+      // Clear any pending fetch
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+      }
+
+      // Only show loading for filter/sort/search changes, not pagination
+      const isPageChangeOnly =
+        data.length > 0 &&
+        lastFetchParamsRef.current &&
+        JSON.stringify({ ...params, page: 1 }) ===
+          JSON.stringify({
+            ...JSON.parse(lastFetchParamsRef.current),
+            page: 1,
+          });
+
+      if (!isPageChangeOnly) {
+        setLoading(true);
+      }
+      setError(null);
+
+      try {
+        const result = await fetcher({
+          filters: Object.fromEntries(
+            params.filters.map((filter) => [
+              filter.column,
+              { op: filter.operator, value: filter.value },
+            ])
+          ) as Filters,
+          sorting: Object.fromEntries(
+            params.sorts.map((sort) => [sort.column, sort.direction])
+          ),
+          page: params.page,
+          size: params.pageSize,
+          globalFields: columns
+            .filter((col) => col.searchable)
+            .map((col) => col.key as string),
+          globalSearch: searchTerm,
+        });
+
+        if (result.error) {
+          setError(result.error);
+        } else {
+          setData(result.data);
+          setPagination((prev) => ({ ...prev, total: result.count }));
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch data");
+      } finally {
+        setLoading(false);
+        isFetchingRef.current = false;
+      }
+    },
+    [fetcher, setPagination, data.length, columns, searchTerm]
+  );
+
+  // Only fetch after initialization is complete - key optimization #3
   useEffect(() => {
+    if (!isInitialized) return;
+
     // Clear any pending timeout
     if (fetchTimeoutRef.current) {
       clearTimeout(fetchTimeoutRef.current);
     }
 
-    // For initial load, fetch immediately
-    if (isInitialLoadRef.current) {
-      debouncedFetch(fetchParams);
-      return;
-    }
-
-    // For subsequent updates, debounce to prevent rapid API calls
+    // Debounce subsequent updates
     fetchTimeoutRef.current = setTimeout(() => {
       debouncedFetch(fetchParams);
-    }, 150); // Small delay to batch rapid changes
+    }, 150);
 
     return () => {
       if (fetchTimeoutRef.current) {
         clearTimeout(fetchTimeoutRef.current);
       }
     };
-  }, [fetchParams, debouncedFetch]);
+  }, [isInitialized, fetchParams, debouncedFetch]);
 
-  // Reset row selection when data changes (new page, filters, etc.)
+  // Get selected rows
+  const selectedRows = useMemo(() => {
+    return Object.keys(rowSelection)
+      .filter((index) => rowSelection[index])
+      .map((index) => data[parseInt(index)])
+      .filter((i) => !!i);
+  }, [rowSelection, data]);
+
+  // Call onSelectionChange when selection changes
+  useEffect(() => {
+    onSelectionChange?.(selectedRows);
+  }, [selectedRows, onSelectionChange]);
+
+  // Reset row selection when data changes
   useEffect(() => {
     setRowSelection({});
   }, [filters, sorts, pagination.page, searchTerm]);
 
-  // Handle search changes with URL state
+  // Handle search changes with URL state - FIXED VERSION
   const handleSearchChange = useCallback(
     (term: string) => {
-      setSearchTerm(term);
-      setPagination((prev) => ({ ...prev, page: 1 }));
-      updateUrlState({ search: term, page: 1 });
+      // Update local state immediately for responsive UI
+      setLocalSearchTerm(term);
+
+      // Clear existing timeout
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+
+      // Debounce the actual search and URL update
+      searchTimeoutRef.current = setTimeout(() => {
+        setSearchTerm(term);
+        setPagination((prev) => ({ ...prev, page: 1 }));
+        updateUrlState({ search: term, page: 1 });
+      }, 300); // 300ms debounce for search
     },
-    [updateUrlState]
+    [setSearchTerm, setPagination, updateUrlState]
   );
 
   // Realtime subscription
   useEffect(() => {
-    if (!eventChannel || !eventTable) return;
+    if (!eventChannel || !eventTable || !isInitialized) return;
 
     const channel = supabase
       .channel(eventChannel)
@@ -435,7 +377,8 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
         "postgres_changes",
         { event: "*", schema: "public", table: eventTable },
         () => {
-          // For realtime updates, fetch immediately without debouncing
+          // Force refresh by clearing the last fetch key
+          lastFetchParamsRef.current = "";
           debouncedFetch(fetchParams);
         }
       )
@@ -444,9 +387,16 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [eventChannel, eventTable, supabase, debouncedFetch, fetchParams]);
+  }, [
+    eventChannel,
+    eventTable,
+    supabase,
+    debouncedFetch,
+    fetchParams,
+    isInitialized,
+  ]);
 
-  // Memoized table columns to prevent recreation on every render
+  // Memoized table columns
   const tableColumns = useMemo((): ColumnDef<T>[] => {
     const cols: ColumnDef<T>[] = [];
 
@@ -530,9 +480,9 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
     return cols;
   }, [columns, visibleColumns, enableSelection, actions]);
 
-  // Memoized table instance
+  // Table instance
   const table = useReactTable({
-    data: searchFilteredData,
+    data: data,
     columns: tableColumns,
     getCoreRowModel: getCoreRowModel(),
     manualPagination: true,
@@ -549,7 +499,7 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
     },
   });
 
-  // Optimized filter management functions
+  // Filter management functions
   const addFilter = useCallback(
     (filter: DataTableFilter) => {
       setFilters((prev) => {
@@ -559,7 +509,7 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
         return newFilters;
       });
     },
-    [updateUrlState]
+    [setFilters, updateUrlState, setPagination]
   );
 
   const removeFilter = useCallback(
@@ -571,19 +521,18 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
         return newFilters;
       });
     },
-    [updateUrlState]
+    [setFilters, updateUrlState, setPagination]
   );
 
   const clearFilters = useCallback(() => {
     setFilters([]);
     setPagination((prev) => ({ ...prev, page: 1 }));
     updateUrlState({ filters: [], page: 1 });
-  }, [updateUrlState]);
+  }, [setFilters, updateUrlState, setPagination]);
 
   // View management
   const applyView = useCallback(
     (view: DataTableView) => {
-      // Batch all state updates
       setFilters(view.filters);
       if (view.sorts) setSorts(view.sorts);
       if (view.columns) {
@@ -598,7 +547,7 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
         view: view.id,
       });
     },
-    [updateUrlState]
+    [setFilters, setSorts, setActiveView, setPagination, updateUrlState]
   );
 
   // Sorting handlers
@@ -627,7 +576,7 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
         return newSorts;
       });
     },
-    [updateUrlState]
+    [setSorts, updateUrlState, setPagination]
   );
 
   // Export functionality
@@ -639,7 +588,7 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
         .map((col) => col.label)
         .join(separator);
 
-      const exportRows = searchFilteredData.map((row) =>
+      const exportRows = data.map((row) =>
         columns
           .filter((col) => visibleColumns.has(col.key as string))
           .map((col) => {
@@ -665,7 +614,7 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
       a.click();
       URL.revokeObjectURL(url);
     },
-    [columns, visibleColumns, searchFilteredData]
+    [columns, visibleColumns, data]
   );
 
   // Pagination handlers
@@ -674,7 +623,7 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
       setPagination((prev) => ({ ...prev, page }));
       updateUrlState({ page });
     },
-    [updateUrlState]
+    [setPagination, updateUrlState]
   );
 
   const changePageSize = useCallback(
@@ -682,18 +631,29 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
       setPagination((prev) => ({ ...prev, pageSize, page: 1 }));
       updateUrlState({ pageSize, page: 1 });
     },
-    [updateUrlState]
+    [setPagination, updateUrlState]
   );
 
   // Manual refresh function
   const handleRefresh = useCallback(() => {
-    // Force a refresh by clearing the last fetch key
     lastFetchParamsRef.current = "";
     debouncedFetch(fetchParams);
   }, [debouncedFetch, fetchParams]);
 
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+      }
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
   return (
-    <div className={`space-y-4 ${className}`}>
+    <div className={`flex flex-col size-full space-y-4 ${className}`}>
       {/* Toolbar */}
       <DataTableToolbar
         views={views}
@@ -718,14 +678,14 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
       <DataTableSearch
         enableSearch={enableSearch}
         searchPlaceholder={searchPlaceholder}
-        searchTerm={searchTerm}
+        searchTerm={localSearchTerm} // Use local search term for immediate UI response
         handleSearchChange={handleSearchChange}
       />
 
       {/* Active Filters */}
       <DataTableActiveFilters
         filters={filters}
-        searchTerm={searchTerm}
+        searchTerm={searchTerm} // Use actual search term for filter display
         removeFilter={removeFilter}
         clearFilters={clearFilters}
         handleSearchChange={handleSearchChange}
@@ -743,6 +703,7 @@ export function DataTableUrlProvider<T extends Record<string, any>>(
         columns={columns}
         sorts={sorts}
         handleSort={handleSort}
+        height={bodyHeight}
       />
 
       {/* Footer */}

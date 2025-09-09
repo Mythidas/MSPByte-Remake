@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { IProcessor } from "@workspace/services/processors/processor.js";
 import CompanyProcessor from "@workspace/services/processors/companies-processor.js";
+import EndpointProcessor from "@workspace/services/processors/endpoints-processor.js";
 
 // Compute __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -23,7 +24,7 @@ class ServicesHost {
   private processors: IProcessor[] = [];
 
   async start() {
-    this.processors = [new CompanyProcessor()];
+    this.processors = [new CompanyProcessor(), new EndpointProcessor()];
 
     await Promise.all(this.processors.map((p) => p.start()));
     await fastify.listen({ port: 3004, host: "0.0.0.0" });

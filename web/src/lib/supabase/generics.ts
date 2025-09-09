@@ -119,7 +119,7 @@ export async function tablesSelectPaginated<T extends TableOrView>(
   try {
     const supabase = await createClient();
 
-    const from = pagination.page * pagination.size;
+    const from = (pagination.page - 1) * pagination.size;
     const to = from + pagination.size - 1;
 
     let query = supabase
@@ -129,13 +129,6 @@ export async function tablesSelectPaginated<T extends TableOrView>(
 
     if (pagination.filters) {
       paginatedFilters(query as any, pagination.filters, pagination.filterMap);
-    }
-
-    if (pagination.globalFields && pagination.globalSearch) {
-      const value = `%${pagination.globalSearch}%`;
-      query = query.or(
-        pagination.globalFields.map((col) => `${col}.ilike.${value}`).join(",")
-      );
     }
 
     if (pagination.sorting && Object.entries(pagination.sorting).length) {
@@ -148,6 +141,18 @@ export async function tablesSelectPaginated<T extends TableOrView>(
 
     if (modifyQuery) {
       modifyQuery(query as any);
+    }
+
+    if (pagination.globalFields && pagination.globalSearch) {
+      const value = `%${pagination.globalSearch}%`;
+      query = query.or(
+        pagination.globalFields
+          .map((col) => {
+            const column = pagination.filterMap?.[col] || col;
+            return `${column}.ilike.${value}`;
+          })
+          .join(",")
+      );
     }
 
     const { data, count, error } = await query;

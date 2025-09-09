@@ -30,7 +30,10 @@ export default class JobScheduler {
     });
   }
 
-  static async completeJob(job: Tables<"scheduled_jobs">) {
+  static async completeJob(
+    job: Tables<"scheduled_jobs">,
+    dataSource: Tables<"data_sources">
+  ) {
     await this.supabase
       .from("scheduled_jobs")
       .update({
@@ -38,15 +41,19 @@ export default class JobScheduler {
         updated_at: new Date().toISOString(),
       })
       .eq("id", job.id);
+
+    await this.supabase
+      .from("data_sources")
+      .update({
+        last_sync_at: new Date().toISOString(),
+      })
+      .eq("id", dataSource.id);
   }
 
   static async failJob(job: Tables<"scheduled_jobs">, error: string) {
-    const status =
-      job.attempts && job.attempts_max && job.attempts >= job.attempts_max
-        ? "invalid"
-        : "failed";
     const attempts = job.attempts ? job.attempts + 1 : 1;
     const attemptsMax = job.attempts_max || 3;
+    const status = attempts >= attemptsMax ? "invalid" : "failed";
 
     await this.supabase
       .from("scheduled_jobs")

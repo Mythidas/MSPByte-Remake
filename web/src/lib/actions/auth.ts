@@ -5,6 +5,8 @@ import { APIResponse } from "@workspace/shared/types/api";
 import Debug from "@workspace/shared/lib/Debug";
 import { redirect } from "next/navigation";
 import { localEventBus } from "@workspace/shared/lib/bus/Buses";
+import { getRow } from "@/lib/supabase/orm";
+import { Tables } from "@workspace/shared/types/database";
 
 export async function login(
   email: string,
@@ -12,7 +14,6 @@ export async function login(
 ): Promise<APIResponse<null>> {
   try {
     const supabase = await createClient();
-
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -22,10 +23,6 @@ export async function login(
       throw error.message;
     }
 
-    localEventBus.emit("auth.login", {
-      id: data.user.id,
-      username: data.user.email ?? "Unknown",
-    });
     return {
       data: null,
     };
@@ -89,7 +86,7 @@ export async function signout() {
 }
 
 export async function getCurrentUser(): Promise<
-  APIResponse<{ id: string; email?: string }>
+  APIResponse<Tables<"users_with_role">>
 > {
   try {
     const supabase = await createClient();
@@ -99,8 +96,16 @@ export async function getCurrentUser(): Promise<
       throw error.message;
     }
 
+    const { data: user, error: userError } = await getRow("users_with_role", {
+      filters: [["id", "eq", data.user.id]],
+    });
+
+    if (userError) {
+      throw userError.message;
+    }
+
     return {
-      data: data.user,
+      data: user,
     };
   } catch (err) {
     return Debug.error({

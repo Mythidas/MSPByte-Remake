@@ -1,8 +1,9 @@
-export type DataEventTemplate = {
+export type DataEventTemplate<T> = {
   job_id: string;
   tenant_id: string;
   integration_id: string;
-  dataType: "companies";
+  site_id?: string;
+  dataType: T;
   data: {
     external_id: string;
     data_hash: string;

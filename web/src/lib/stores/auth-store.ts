@@ -1,7 +1,8 @@
 import { localEventBus } from "@workspace/shared/lib/bus/Buses";
+import { Tables } from "@workspace/shared/types/database";
 import { create } from "zustand";
 
-type User = { id: string; username: string };
+type User = Tables<"users_with_role">;
 
 interface AuthState {
   user: User | null;

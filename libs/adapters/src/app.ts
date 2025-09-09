@@ -7,6 +7,7 @@ import JobScheduler from "src/scheduler.js";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
+import { SophosPartnerAdapter } from "src/security/sophos-partner.js";
 
 // Compute __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -27,6 +28,7 @@ class AdaptersService {
 
   constructor() {
     this.adapters.set("autotask", new AutoTaskAdapter());
+    this.adapters.set("sophos-partner", new SophosPartnerAdapter());
   }
 
   async start() {
@@ -80,6 +82,10 @@ class AdaptersService {
         switch (job.integration_id) {
           case "autotask": {
             this.adapters.get("autotask")?.processJob(job);
+            continue;
+          }
+          case "sophos-partner": {
+            this.adapters.get("sophos-partner")?.processJob(job);
             continue;
           }
         }

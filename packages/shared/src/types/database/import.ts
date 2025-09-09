@@ -64,6 +64,7 @@ export type Database = {
           config: Json
           created_at: string
           credential_expiration_at: string
+          external_id: string | null
           id: string
           integration_id: string
           last_sync_at: string | null
@@ -75,6 +76,7 @@ export type Database = {
           config: Json
           created_at?: string
           credential_expiration_at: string
+          external_id?: string | null
           id?: string
           integration_id: string
           last_sync_at?: string | null
@@ -86,6 +88,7 @@ export type Database = {
           config?: Json
           created_at?: string
           credential_expiration_at?: string
+          external_id?: string | null
           id?: string
           integration_id?: string
           last_sync_at?: string | null
@@ -288,6 +291,7 @@ export type Database = {
           is_active: boolean | null
           name: string
           product_url: string | null
+          supported_types: string[]
           updated_at: string
         }
         Insert: {
@@ -301,6 +305,7 @@ export type Database = {
           is_active?: boolean | null
           name: string
           product_url?: string | null
+          supported_types?: string[]
           updated_at?: string
         }
         Update: {
@@ -314,6 +319,7 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           product_url?: string | null
+          supported_types?: string[]
           updated_at?: string
         }
         Relationships: []

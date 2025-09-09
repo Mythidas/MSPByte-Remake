@@ -202,7 +202,10 @@ export function DataTableFilters<T>({
                 </SelectTrigger>
                 <SelectContent>
                   {filterableColumns.map((column) => (
-                    <SelectItem key={column.key} value={column.key}>
+                    <SelectItem
+                      key={column.key as string}
+                      value={column.key as string}
+                    >
                       {column.label}
                     </SelectItem>
                   ))}
