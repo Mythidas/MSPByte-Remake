@@ -181,6 +181,9 @@ export default function SophosPartnerAssets({ site }: Props) {
           online: "raw_data->>online",
           health: "raw_data->health->>overall",
           tamper_protection: "raw_data->>tamperProtectionEnabled",
+          last_seen_at: "raw_data->>lastSeenAt",
+          isolation: "raw_data->isolation->>status",
+          protection: "raw_data->packages->protection->>name",
         },
       },
     });
@@ -194,7 +197,6 @@ export default function SophosPartnerAssets({ site }: Props) {
       label: "Hostname",
       sortable: false,
       searchable: true,
-      jsonbPath: "hostname",
       render: (_, row) => {
         const endpoint = row.raw_data as SophosPartnerEndpoint;
         const DeviceIcon = getDeviceIcon(endpoint);
@@ -216,7 +218,6 @@ export default function SophosPartnerAssets({ site }: Props) {
       key: "online",
       label: "Status",
       sortable: true,
-      jsonbPath: "online",
       filterable: true,
       filterType: "select",
       filterOptions: [
@@ -248,7 +249,6 @@ export default function SophosPartnerAssets({ site }: Props) {
       key: "health",
       label: "Health",
       sortable: true,
-      jsonbPath: "health.overall",
       filterable: true,
       filterType: "select",
       filterOptions: [
@@ -271,7 +271,6 @@ export default function SophosPartnerAssets({ site }: Props) {
       key: "tamper_protection",
       label: "Tamper Protection",
       sortable: true,
-      jsonbPath: "tamperProtectionEnabled",
       filterable: true,
       filterType: "select",
       filterOptions: [
@@ -301,10 +300,9 @@ export default function SophosPartnerAssets({ site }: Props) {
       },
     },
     {
-      key: "raw_data",
+      key: "isolation",
       label: "Isolation",
       sortable: true,
-      jsonbPath: "isolation.status",
       filterable: true,
       filterType: "select",
       filterOptions: [
@@ -335,7 +333,7 @@ export default function SophosPartnerAssets({ site }: Props) {
       },
     },
     {
-      key: "raw_data",
+      key: "protection",
       label: "Protection",
       sortable: false,
       render: (_, row) => {
@@ -362,10 +360,9 @@ export default function SophosPartnerAssets({ site }: Props) {
       },
     },
     {
-      key: "raw_data",
+      key: "last_seen_at",
       label: "Last Seen",
       sortable: true,
-      jsonbPath: "lastSeenAt",
       render: (_, row) => {
         const endpoint = row.raw_data as SophosPartnerEndpoint;
         return (
@@ -409,41 +406,6 @@ export default function SophosPartnerAssets({ site }: Props) {
           value: "false",
         },
       ],
-    },
-  ];
-
-  // Actions for bulk operations
-  const actions: DataTableAction<Tables<"entities">>[] = [
-    {
-      id: "enable_tamper",
-      label: "Enable Tamper Protection",
-      icon: <Shield className="h-4 w-4" />,
-      disabled: (rows) => rows.length === 0,
-      onClick: async (rows) => {
-        console.log("Enable tamper protection for", rows.length, "devices");
-        // Implementation would call Sophos API
-      },
-    },
-    {
-      id: "isolate",
-      label: "Isolate Devices",
-      icon: <Lock className="h-4 w-4" />,
-      variant: "destructive",
-      disabled: (rows) => rows.length === 0,
-      onClick: async (rows) => {
-        console.log("Isolate", rows.length, "devices");
-        // Implementation would call Sophos API
-      },
-    },
-    {
-      id: "scan",
-      label: "Run Scan",
-      icon: <Activity className="h-4 w-4" />,
-      disabled: (rows) => rows.length === 0,
-      onClick: async (rows) => {
-        console.log("Run scan on", rows.length, "devices");
-        // Implementation would call Sophos API
-      },
     },
   ];
 
@@ -613,7 +575,6 @@ export default function SophosPartnerAssets({ site }: Props) {
         columns={columns}
         fetcher={fetcher}
         views={views}
-        actions={actions}
         initialSort={[{ column: "hostname", direction: "asc" }]}
         enableRefresh={true}
         enableColumnToggle={true}

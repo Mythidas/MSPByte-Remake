@@ -61,7 +61,9 @@ const columns: DataTableColumn<Data>[] = [
 
 export default function Page() {
   const fetcher = async (params: DataTableFetchParams) => {
-    return await fetchTableData<Data>("sites_view", params);
+    return await fetchTableData("sites_view", {
+      pagination: params,
+    });
   };
 
   return (

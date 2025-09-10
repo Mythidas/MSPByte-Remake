@@ -1,5 +1,6 @@
 "use server";
 
+import { saveDataSourceConfig } from "@/lib/actions/data-source";
 import { insertRows, updateRow } from "@/lib/supabase/orm";
 import SophosPartnerConnector from "@workspace/shared/lib/connectors/SophosPartnerConnector";
 import Debug from "@workspace/shared/lib/Debug";
@@ -23,12 +24,8 @@ const sanitizeData = async (
 };
 
 export async function saveSophoPartnerConfig({
-  tenantId,
-  integrationId,
-  dataSourceId,
   config,
-  schema,
-  data,
+  ...props
 }: {
   tenantId: string;
   integrationId: string;
@@ -40,47 +37,10 @@ export async function saveSophoPartnerConfig({
   try {
     const connector = new SophosPartnerConnector(config);
     if (!(await connector.checkHealth())) {
-      throw "Connect health check failed";
+      throw "Connector health check failed";
     }
 
-    const sanitized = await sanitizeData(schema, data);
-
-    if (!dataSourceId) {
-      const result = await insertRows("data_sources", {
-        rows: [
-          {
-            tenant_id: tenantId,
-            integration_id: integrationId,
-            config: { ...sanitized, expiration: undefined },
-            credential_expiration_at: data["expiration"] as string,
-          },
-        ],
-      });
-
-      if (result.error) {
-        throw `Insert Error: ${result.error.message}`;
-      }
-
-      return {
-        data: "Created",
-      };
-    } else {
-      const result = await updateRow("data_sources", {
-        id: dataSourceId,
-        row: {
-          config: { ...sanitized, expiration: undefined },
-          credential_expiration_at: data["expiration"] as string,
-        },
-      });
-
-      if (result.error) {
-        throw `Update Error: ${result.error.message}`;
-      }
-
-      return {
-        data: "Updated",
-      };
-    }
+    return await saveDataSourceConfig(props);
   } catch (err) {
     return Debug.error({
       module: "SophosPartnerActions",

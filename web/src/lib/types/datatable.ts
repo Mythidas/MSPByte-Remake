@@ -9,7 +9,6 @@ export type DataTableColumn<T> = {
   width?: string;
   render?: (value: string, row: T) => React.ReactNode;
   exportTransform?: (value: string, row: T) => string;
-  jsonbPath?: string; // For JSONB column mapping
   filterType?:
     | "text"
     | "select"

@@ -67,7 +67,9 @@ const actions: DataTableAction<Data>[] = [
 
 export default function Roles() {
   const fetcher = async (params: DataTableFetchParams) => {
-    return await fetchTableData<Data>("roles", params);
+    return await fetchTableData("roles", {
+      pagination: params,
+    });
   };
 
   return (

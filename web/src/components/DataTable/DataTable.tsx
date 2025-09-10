@@ -8,11 +8,9 @@ import React, {
   useRef,
   Suspense,
 } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import { MoreHorizontal } from "lucide-react";
 import {
   DataTableProps,
-  DataTablePagination,
   DataTableFilter,
   DataTableSort,
   DataTableView,
@@ -50,22 +48,6 @@ function getNestedValue(obj: any, path: string): any {
     current = current[key];
   }
   return current;
-}
-
-// Helper function to convert value to searchable string
-function valueToSearchString(value: any): string {
-  if (value == null) return "";
-  if (typeof value === "string") return value.toLowerCase();
-  if (typeof value === "number") return value.toString();
-  if (typeof value === "boolean") return value.toString();
-  if (Array.isArray(value)) return value.join(" ").toLowerCase();
-  if (typeof value === "object") {
-    return Object.values(value)
-      .filter((v) => typeof v === "string" || typeof v === "number")
-      .join(" ")
-      .toLowerCase();
-  }
-  return String(value).toLowerCase();
 }
 
 // DataTable Fallback Component

@@ -69,6 +69,7 @@ export type Database = {
           integration_id: string
           last_sync_at: string | null
           site_id: string | null
+          status: string
           tenant_id: string
           updated_at: string
         }
@@ -81,6 +82,7 @@ export type Database = {
           integration_id: string
           last_sync_at?: string | null
           site_id?: string | null
+          status?: string
           tenant_id: string
           updated_at?: string
         }
@@ -93,6 +95,7 @@ export type Database = {
           integration_id?: string
           last_sync_at?: string | null
           site_id?: string | null
+          status?: string
           tenant_id?: string
           updated_at?: string
         }

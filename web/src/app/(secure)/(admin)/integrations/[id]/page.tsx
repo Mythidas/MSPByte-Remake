@@ -66,7 +66,7 @@ export default async function Page({ ...props }: Props) {
               <img
                 src={integration.icon_url || ""}
                 alt={integration.name}
-                className="w-16 rounded-lg object-cover p-1 bg-gradient-to-br from-primary to-input shadow-2xl"
+                className="w-16 rounded-lg object-cover p-1 bg-gradient-to-br from-input/40 to-input shadow-2xl"
               />
               <div className="flex flex-col gap-2">
                 <span className="text-xl">{integration.name}</span>

@@ -42,6 +42,7 @@ import { useLazyLoad } from "@/lib/hooks/useLazyLoad";
 import { getRows } from "@/lib/supabase/orm";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { prettyText } from "@workspace/shared/lib/utils";
 
 type NavItem = {
   id: string;
@@ -380,7 +381,7 @@ export default function SitesSidebar({ site, children }: Props) {
 
               {/* Integration Health Section */}
               {integrationHealth.length > 0 && (
-                <>
+                <div className="mt-auto">
                   <Separator className="my-4" />
                   <div className="px-2">
                     <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
@@ -402,7 +403,9 @@ export default function SitesSidebar({ site, children }: Props) {
                               )}
                             />
                             <integration.icon className="h-3 w-3 mr-1" />
-                            <span className="truncate">{integration.name}</span>
+                            <span className="truncate">
+                              {prettyText(integration.name)}
+                            </span>
                           </div>
                           <span className="text-muted-foreground">
                             {formatLastSync(integration.lastSync!)}
@@ -411,24 +414,8 @@ export default function SitesSidebar({ site, children }: Props) {
                       ))}
                     </div>
                   </div>
-                </>
+                </div>
               )}
-
-              {/* Settings */}
-              <div className="mt-auto pt-4">
-                <Separator className="mb-2" />
-                <Link
-                  href={`/sites/${site.slug}/settings`}
-                  className={cn(
-                    "flex gap-2 w-full items-center",
-                    currentView === "settings" &&
-                      "bg-primary text-primary-foreground"
-                  )}
-                >
-                  <Settings className="h-4 w-4" />
-                  Site Settings
-                </Link>
-              </div>
             </SidebarContent>
           </Sidebar>
 
