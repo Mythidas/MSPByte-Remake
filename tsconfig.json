@@ -1,0 +1,14 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./web"
+    },
+    {
+      "path": "./packages/typescript-config"
+    },
+    {
+      "path": "./packages/eslint-config"
+    }
+  ]
+}
