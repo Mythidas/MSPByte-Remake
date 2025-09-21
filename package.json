@@ -11,7 +11,8 @@
     "build": "turbo build",
     "dev": "turbo dev",
     "lint": "turbo lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "gendb:schema": "bunx supabase gen types typescript --project-id lrgaygjiyukdhhdbszjk > ./packages/shared/src/types/database/import.ts"
   },
   "devDependencies": {
     "@workspace/eslint-config": "workspace:*",
@@ -23,5 +24,8 @@
   "packageManager": "bun@1.1.26",
   "engines": {
     "node": ">=20"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4"
   }
 }

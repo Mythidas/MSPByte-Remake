@@ -1,0 +1,10 @@
+{
+  "name": "@workspace/shared",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "exports": {
+    "./types/*": "./src/types/*.ts",
+    "./lib/*": "./src/lib/*.ts"
+  }
+}
