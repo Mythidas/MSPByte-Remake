@@ -12,7 +12,7 @@
     "dev": "turbo dev",
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "gendb:schema": "bunx supabase gen types typescript --project-id lrgaygjiyukdhhdbszjk > ./packages/shared/src/types/database/import.ts"
+    "gendb:schema": "bunx supabase gen types typescript --project-id lrgaygjiyukdhhdbszjk --schema public,views > ./packages/shared/src/types/database/import.ts"
   },
   "devDependencies": {
     "@workspace/eslint-config": "workspace:*",
@@ -26,6 +26,8 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.57.4"
+    "@supabase/supabase-js": "^2.57.4",
+    "dotenv": "^17.2.2",
+    "nats": "^2.29.3"
   }
 }

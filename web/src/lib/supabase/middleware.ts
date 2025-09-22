@@ -65,8 +65,8 @@ export const handleAuth = async (request: NextRequest) => {
     }
 
     return response;
-  } catch {
-    console.error("[Middleware] Failed to check auth");
+  } catch (err) {
+    console.error(`[Middleware] Failed to check auth: ${err}`);
 
     const url = request.nextUrl.clone();
     url.pathname = "/landing-page";

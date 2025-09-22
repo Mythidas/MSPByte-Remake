@@ -655,6 +655,121 @@ export type Database = {
       [_ in never]: never
     }
   }
+  views: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      microsoft365_identities_view: {
+        Row: {
+          account_enabled: boolean | null
+          created_at: string | null
+          department: string | null
+          display_name: string | null
+          email: string | null
+          enabled_policies_applied: number | null
+          entity_type: string | null
+          external_id: string | null
+          group_count: number | null
+          group_ids: string[] | null
+          group_names: string[] | null
+          group_types: string[] | null
+          has_conditional_access: boolean | null
+          has_security_defaults: boolean | null
+          highest_mfa_coverage: string | null
+          id: string | null
+          job_title: string | null
+          last_active: string | null
+          last_sign_in_at: string | null
+          license_count: number | null
+          license_display_names: string[] | null
+          license_ids: string[] | null
+          license_names: string[] | null
+          license_sku_ids: string[] | null
+          mfa_enforcement_method: string | null
+          mfa_method_count: number | null
+          normalized_data: Json | null
+          office_location: string | null
+          policy_count: number | null
+          policy_ids: string[] | null
+          policy_names: string[] | null
+          policy_states: string[] | null
+          policy_types: string[] | null
+          role_count: number | null
+          role_ids: string[] | null
+          role_names: string[] | null
+          role_types: string[] | null
+          site_id: string | null
+          total_policies_applied: number | null
+          total_relationships: number | null
+          updated_at: string | null
+          user_principal_name: string | null
+          user_type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entities_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entities_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites_view"
+            referencedColumns: ["parent_id"]
+          },
+        ]
+      }
+      sites_view: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          metadata: Json | null
+          name: string | null
+          parent_id: string | null
+          parent_name: string | null
+          parent_slug: string | null
+          psa_company_id: string | null
+          psa_integration_id: string | null
+          psa_parent_company_id: string | null
+          slug: string | null
+          status: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+      users_view: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string | null
+          last_activity_at: string | null
+          name: string | null
+          role_description: string | null
+          role_id: string | null
+          role_name: string | null
+          role_rights: Json | null
+          status: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
@@ -776,6 +891,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
+    Enums: {},
+  },
+  views: {
     Enums: {},
   },
 } as const

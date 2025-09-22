@@ -2,71 +2,60 @@ import { Database } from "@workspace/shared/types/database/import";
 
 // types.ts
 export type Table = keyof Database["public"]["Tables"];
-export type TableOrView =
-  | keyof Database["public"]["Tables"]
-  | keyof Database["public"]["Views"];
-export type Tables<T extends TableOrView> =
-  T extends keyof Database["public"]["Tables"]
-    ? Database["public"]["Tables"][T] extends { Row: infer R }
+export type View = keyof Database["views"]["Views"];
+export type TableOrView = Table | View;
+export type Tables<T extends TableOrView> = T extends Table
+  ? Database["public"]["Tables"][T] extends { Row: infer R }
+    ? R
+    : never
+  : T extends View
+    ? Database["views"]["Views"][T] extends { Row: infer R }
       ? R
       : never
-    : T extends keyof Database["public"]["Views"]
-      ? Database["public"]["Views"][T] extends { Row: infer R }
-        ? R
-        : never
-      : never;
+    : never;
 
-export type Row<T extends TableOrView> =
-  T extends keyof Database["public"]["Tables"]
-    ? Database["public"]["Tables"][T] extends { Row: infer R }
+export type Row<T extends TableOrView> = T extends Table
+  ? Database["public"]["Tables"][T] extends { Row: infer R }
+    ? keyof R
+    : undefined
+  : T extends View
+    ? Database["views"]["Views"][T] extends { Row: infer R }
       ? keyof R
       : undefined
-    : T extends keyof Database["public"]["Views"]
-      ? Database["public"]["Views"][T] extends { Row: infer R }
-        ? keyof R
-        : undefined
-      : undefined;
-export type RowFilter<T extends TableOrView> =
-  T extends keyof Database["public"]["Tables"]
-    ? Database["public"]["Tables"][T] extends { Row: infer R }
+    : undefined;
+export type RowFilter<T extends TableOrView> = T extends Table
+  ? Database["public"]["Tables"][T] extends { Row: infer R }
+    ?
+        | [column: Row<T> | (string & {}), operator: Operations, value: any]
+        | undefined
+    : undefined
+  : T extends View
+    ? Database["views"]["Views"][T] extends { Row: infer R }
       ?
-          | [column: Row<T> | (string & {}), operator: Operations, value: any]
+          | [column: keyof R | (string & {}), operator: Operations, value: any]
           | undefined
       : undefined
-    : T extends keyof Database["public"]["Views"]
-      ? Database["public"]["Views"][T] extends { Row: infer R }
-        ?
-            | [
-                column: keyof R | (string & {}),
-                operator: Operations,
-                value: any,
-              ]
-            | undefined
-        : undefined
-      : undefined;
-export type RowSort<T extends TableOrView> =
-  T extends keyof Database["public"]["Tables"]
-    ? Database["public"]["Tables"][T] extends { Row: infer R }
+    : undefined;
+export type RowSort<T extends TableOrView> = T extends Table
+  ? Database["public"]["Tables"][T] extends { Row: infer R }
+    ? [column: keyof R | (string & {}), order: "asc" | "desc"] | undefined
+    : undefined
+  : T extends View
+    ? Database["views"]["Views"][T] extends { Row: infer R }
       ? [column: keyof R | (string & {}), order: "asc" | "desc"] | undefined
       : undefined
-    : T extends keyof Database["public"]["Views"]
-      ? Database["public"]["Views"][T] extends { Row: infer R }
-        ? [column: keyof R | (string & {}), order: "asc" | "desc"] | undefined
-        : undefined
-      : undefined;
+    : undefined;
 
-export type TablesInsert<T extends Table> =
-  T extends keyof Database["public"]["Tables"]
-    ? Database["public"]["Tables"][T] extends { Insert: infer R }
-      ? R
-      : never
-    : never;
-export type TablesUpdate<T extends Table> =
-  T extends keyof Database["public"]["Tables"]
-    ? Database["public"]["Tables"][T] extends { Update: infer R }
-      ? R
-      : never
-    : never;
+export type TablesInsert<T extends Table> = T extends Table
+  ? Database["public"]["Tables"][T] extends { Insert: infer R }
+    ? R
+    : never
+  : never;
+export type TablesUpdate<T extends Table> = T extends Table
+  ? Database["public"]["Tables"][T] extends { Update: infer R }
+    ? R
+    : never
+  : never;
 
 export type Operations =
   | "eq" // equal to (e.g., column=eq.value)
