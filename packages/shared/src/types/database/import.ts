@@ -59,6 +59,42 @@ export type Database = {
         }
         Relationships: []
       }
+      data_source_to_site: {
+        Row: {
+          created_at: string
+          date_source_id: string
+          id: string
+          site_id: string
+        }
+        Insert: {
+          created_at?: string
+          date_source_id: string
+          id?: string
+          site_id: string
+        }
+        Update: {
+          created_at?: string
+          date_source_id?: string
+          id?: string
+          site_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_source_to_site_date_source_id_fkey"
+            columns: ["date_source_id"]
+            isOneToOne: false
+            referencedRelation: "data_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_source_to_site_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_sources: {
         Row: {
           config: Json
@@ -660,6 +696,24 @@ export type Database = {
       [_ in never]: never
     }
     Views: {
+      integrations_view: {
+        Row: {
+          category: string | null
+          color: string | null
+          config_schema: Json | null
+          created_at: string | null
+          data_sources_count: number | null
+          description: string | null
+          icon_url: string | null
+          id: string | null
+          is_active: boolean | null
+          name: string | null
+          product_url: string | null
+          supported_types: string[] | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
       microsoft365_identities_view: {
         Row: {
           account_enabled: boolean | null

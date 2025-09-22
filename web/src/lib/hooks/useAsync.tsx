@@ -1,0 +1,198 @@
+import { useEffect, useRef, useState, useCallback } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
+
+// Types for the async data hook
+export interface AsyncState<T> {
+  data: T | null;
+  loading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+}
+
+export interface UseAsyncDataOptions<T, R = T> {
+  // Dependencies array - refetch when these change
+  deps?: any[];
+  // Transform function to process data before returning
+  transform?: (data: T) => R;
+  // Refetch interval in milliseconds
+  refetchInterval?: number;
+  // Initial data
+  initialData?: R | null;
+  // Whether to fetch immediately on mount
+  immediate?: boolean;
+}
+
+export interface UseAsyncRenderOptions {
+  // Custom loading component
+  LoadingComponent?: React.ComponentType;
+  // Custom error component that receives error message as prop
+  ErrorComponent?: React.ComponentType<{ error: string }>;
+  // Custom wrapper component
+  WrapperComponent?: React.ComponentType<{ children: React.ReactNode }>;
+}
+
+/**
+ * Hook for managing async data fetching with loading states, error handling, and optional polling
+ */
+export function useAsyncData<T, R = T>(
+  fetchFn: () => Promise<T>,
+  options: UseAsyncDataOptions<T, R> = {}
+): AsyncState<R> {
+  const {
+    deps = [],
+    transform,
+    refetchInterval,
+    initialData = null,
+    immediate = true,
+  } = options;
+
+  const [data, setData] = useState<R | null>(initialData);
+  const [loading, setLoading] = useState(immediate);
+  const [error, setError] = useState<string | null>(null);
+
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const mountedRef = useRef(true);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+
+  const fetchData = useCallback(async () => {
+    if (!mountedRef.current) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const result = await fetchFn();
+
+      if (!mountedRef.current) return;
+
+      const finalData = transform ? transform(result) : (result as unknown as R);
+      setData(finalData);
+    } catch (err) {
+      if (!mountedRef.current) return;
+
+      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
+      setError(errorMessage);
+      setData(null);
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false);
+      }
+    }
+  }, [fetchFn, transform]);
+
+  // Effect for initial fetch and dependency changes
+  useEffect(() => {
+    if (immediate) {
+      fetchData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [immediate, ...deps]);
+
+  // Effect for setting up polling interval
+  useEffect(() => {
+    if (refetchInterval && refetchInterval > 0) {
+      intervalRef.current = setInterval(fetchData, refetchInterval);
+
+      return () => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      };
+    }
+  }, [refetchInterval, fetchData]);
+
+  return {
+    data,
+    loading,
+    error,
+    refetch: fetchData,
+  };
+}
+
+/**
+ * Hook for rendering async data with automatic loading and error states
+ */
+export function useAsyncRender<T>(
+  asyncState: AsyncState<T>,
+  renderSuccess: (data: T) => React.ReactNode,
+  options: UseAsyncRenderOptions = {}
+): React.ReactNode {
+  const {
+    LoadingComponent = DefaultLoadingComponent,
+    ErrorComponent = DefaultErrorComponent,
+    WrapperComponent,
+  } = options;
+
+  const { data, loading, error } = asyncState;
+
+  let content: React.ReactNode;
+
+  if (loading) {
+    content = <LoadingComponent />;
+  } else if (error) {
+    content = <ErrorComponent error={error} />;
+  } else if (data !== null) {
+    content = renderSuccess(data);
+  } else {
+    content = <ErrorComponent error="No data available" />;
+  }
+
+  if (WrapperComponent) {
+    return <WrapperComponent>{content}</WrapperComponent>;
+  }
+
+  return content;
+}
+
+// Default components
+function DefaultLoadingComponent() {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-4">
+        <Skeleton className="h-12 w-12 rounded-lg" />
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+      </div>
+      <Skeleton className="h-32 w-full" />
+    </div>
+  );
+}
+
+function DefaultErrorComponent({ error }: { error: string }) {
+  return (
+    <Alert variant="destructive">
+      <AlertCircle className="h-4 w-4" />
+      <AlertDescription>{error}</AlertDescription>
+    </Alert>
+  );
+}
+
+// Utility function for creating custom loading components
+export function createLoadingComponent(content: React.ReactNode): React.ComponentType {
+  return function CustomLoadingComponent() {
+    return <>{content}</>;
+  };
+}
+
+// Utility function for creating custom error components
+export function createErrorComponent(
+  render: (error: string) => React.ReactNode
+): React.ComponentType<{ error: string }> {
+  return function CustomErrorComponent({ error }) {
+    return <>{render(error)}</>;
+  };
+}

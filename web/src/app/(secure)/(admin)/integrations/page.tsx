@@ -14,6 +14,7 @@ import {
 } from "@/lib/types/datatable";
 import { DataTable } from "@/components/table/DataTable";
 import Image from "next/image";
+import Link from "next/link";
 
 // Use the integrations_view which includes data_sources_count
 type IntegrationView = {
@@ -44,7 +45,10 @@ const columns: DataTableColumn<IntegrationWithStatus>[] = [
     sortable: true,
     searchable: true,
     render: (value, row) => (
-      <div className="flex items-center gap-3">
+      <Link
+        className="flex items-center gap-3 hover:cursor-pointer hover:text-primary"
+        href={`/integrations/${row.id}`}
+      >
         {row.icon_url ? (
           <div className="h-8 w-8 rounded-md bg-muted p-1 flex items-center justify-center">
             <Image
@@ -61,7 +65,7 @@ const columns: DataTableColumn<IntegrationWithStatus>[] = [
           </div>
         )}
         <span className="font-medium">{value}</span>
-      </div>
+      </Link>
     ),
   },
   {
