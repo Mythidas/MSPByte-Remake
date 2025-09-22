@@ -50,8 +50,8 @@ const OPERATORS = [
   },
   { value: "ilike", label: "Contains", supportedTypes: ["text"] },
   { value: "in", label: "In list", supportedTypes: ["text", "number"] },
-  { value: "is", label: "Is null", supportedTypes: ["all"] },
-  { value: "not.is", label: "Is not null", supportedTypes: ["all"] },
+  { value: "is", label: "Is null", supportedTypes: ["text", "number", "date"] },
+  { value: "not.is", label: "Is not null", supportedTypes: ["text", "number", "date"] },
 ] as const;
 
 export function DataTableFilters<T>({
@@ -131,8 +131,7 @@ export function DataTableFilters<T>({
     const columnType = getColumnType(columnKey);
     return OPERATORS.filter(
       (op) =>
-        op.supportedTypes.includes("all") ||
-        op.supportedTypes.includes(columnType)
+        (op.supportedTypes as readonly string[]).includes(columnType)
     );
   };
 
