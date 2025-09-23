@@ -8,17 +8,11 @@ import {
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import INTEGRATION_PAGES from "@/config/integration-pages";
 import { getRow } from "@/lib/supabase/orm";
 import { AlertCircleIcon } from "lucide-react";
+import INTEGRATION_PAGES from "@/config/integration-pages";
+import { LazyTabs, LazyTabsContent } from "@/components/ui/lazy-tabs";
+import { TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -76,7 +70,11 @@ export default async function Page({ params }: Props) {
       </div>
 
       <div className="flex flex-col bg-card rounded shadow p-4 gap-4 size-full overflow-hidden">
-        <Tabs defaultValue="0">
+        <LazyTabs
+          id={`integration-${integration.id}`}
+          defaultValue="0"
+          urlParam="step"
+        >
           <TabsList>
             {config.steps.map((step, index) => {
               return (
@@ -88,12 +86,12 @@ export default async function Page({ params }: Props) {
           </TabsList>
           {config.steps.map((step, index) => {
             return (
-              <TabsContent key={index} value={`${index}`}>
+              <LazyTabsContent key={index} value={`${index}`}>
                 {step.render({ integration })}
-              </TabsContent>
+              </LazyTabsContent>
             );
           })}
-        </Tabs>
+        </LazyTabs>
       </div>
     </div>
   );

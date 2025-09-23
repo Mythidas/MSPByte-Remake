@@ -1,3 +1,5 @@
+import AutoTaskConnectStep from "@/modules/integrations/autotask/AutoTaskConnectStep";
+import AutoTaskMapSitesStep from "@/modules/integrations/autotask/AutoTaskMapSitesStep";
 import Microsoft365ConnectStep from "@/modules/integrations/microsoft-365/Microsoft365ConnectStep";
 import { Tables } from "@workspace/shared/types/database";
 import { ReactNode } from "react";
@@ -7,7 +9,7 @@ type RenderConfig = {
 };
 
 export type IntegrationConfig = {
-  fullDescription: string;
+  fullDescription: ReactNode;
   steps: {
     name: string;
     description: string;
@@ -16,6 +18,21 @@ export type IntegrationConfig = {
 };
 
 const INTEGRATION_PAGES: Record<string, IntegrationConfig> = {
+  autotask: {
+    fullDescription: "",
+    steps: [
+      {
+        name: "Connect",
+        description: "Link AutoTask instance through API User Credentials",
+        render: (props) => <AutoTaskConnectStep {...props} />,
+      },
+      {
+        name: "Map Sites",
+        description: "Map Sites sycned from AutoTask instance",
+        render: (props) => <AutoTaskMapSitesStep {...props} />,
+      },
+    ],
+  },
   "microsoft-365": {
     fullDescription: "Microsoft integration provides blah blah blah",
     steps: [

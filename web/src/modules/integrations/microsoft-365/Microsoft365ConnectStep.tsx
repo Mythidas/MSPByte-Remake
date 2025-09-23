@@ -3,17 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { Tables } from "@workspace/shared/types/database";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,15 +28,8 @@ import {
 } from "lucide-react";
 import { getRows, deleteRows } from "@/lib/supabase/orm";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Microsoft365DataSourceConfig } from "@/lib/types/data-sources";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Microsoft365DataSourceConfig } from "@workspace/shared/types/database/data-sources";
 import Microsoft365ConnectDialog from "@/modules/integrations/microsoft-365/Microsoft365ConnectDialog";
 import Microsoft365ConnectEditDialog from "@/modules/integrations/microsoft-365/Microsoft365ConnectEditDialog";
 import Display from "@/components/Display";
@@ -102,11 +87,9 @@ type DataSource = Tables<"data_sources"> & {
   config: Microsoft365DataSourceConfig;
 };
 
-type Site = Tables<"sites">;
-
 export default function Microsoft365ConnectStep({ integration }: Props) {
   const [connections, setConnections] = useState<DataSource[]>([]);
-  const [sites, setSites] = useState<Site[]>([]);
+  const [sites, setSites] = useState<Tables<"sites">[]>([]);
   const [dataSourcesToSites, setDataSourcesToSites] = useState<
     Tables<"data_source_to_site">[]
   >([]);
@@ -345,9 +328,9 @@ function ConnectionCard({
   allSites,
 }: {
   connection: DataSource;
-  sites: Site[];
+  sites: Tables<"sites">[];
   onUpdate: () => void;
-  allSites: Site[];
+  allSites: Tables<"sites">[];
 }) {
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -443,7 +426,7 @@ function SiteCard({
   site,
   connection,
 }: {
-  site: Site;
+  site: Tables<"sites">;
   connection?: DataSource;
 }) {
   return (

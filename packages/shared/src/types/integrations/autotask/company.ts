@@ -1,0 +1,65 @@
+import { AutoTaskUserDefinedField } from "@workspace/shared/types/integrations/autotask";
+
+export type AutoTaskCompany = {
+  id: number;
+  additionalAddressInformation: string;
+  address1: string;
+  address2: string;
+  alternatePhone1: string;
+  alternatePhone2: string;
+  apiVendorID: number;
+  assetValue: number;
+  billToCompanyLocationID: number;
+  billToAdditionalAddressInformation: string;
+  billingAddress1: string;
+  billingAddress2: string;
+  billToAddressToUse: number;
+  billToAttention: string;
+  billToCity: string;
+  billToCountryID: number;
+  billToState: string;
+  billToZipCode: string;
+  city: string;
+  classification: number;
+  companyCategoryID: number;
+  companyName: string;
+  companyNumber: string;
+  companyType: number;
+  competitorID: number;
+  countryID: number;
+  createDate: string; // ISO date string
+  createdByResourceID: number;
+  currencyID: number;
+  fax: string;
+  impersonatorCreatorResourceID: number;
+  invoiceEmailMessageID: number;
+  invoiceMethod: number;
+  invoiceNonContractItemsToParentCompany: boolean;
+  invoiceTemplateID: number;
+  isActive: boolean;
+  isClientPortalActive: boolean;
+  isEnabledForComanaged: boolean;
+  isSample: boolean;
+  isTaskFireActive: boolean;
+  isTaxExempt: boolean;
+  lastActivityDate: string; // ISO date string
+  lastTrackedModifiedDateTime: string; // ISO date string
+  marketSegmentID: number;
+  ownerResourceID: number;
+  parentCompanyID: number;
+  phone: string;
+  postalCode: string;
+  purchaseOrderTemplateID: number;
+  quoteEmailMessageID: number;
+  quoteTemplateID: number;
+  sicCode: string;
+  state: string;
+  stockMarket: string;
+  stockSymbol: string;
+  surveyCompanyRating: number;
+  taxID: string;
+  taxRegionID: number;
+  territoryID: number;
+  webAddress: string;
+  userDefinedFields: AutoTaskUserDefinedField[];
+};

@@ -1,0 +1,48 @@
+import APIClient from "@workspace/shared/lib/APIClient";
+import Encryption from "@workspace/shared/lib/Encryption";
+import { APIResponse } from "@workspace/shared/types/api";
+import {
+  AutoTaskDataSourceConfig,
+  AutoTaskResponse,
+  AutoTaskSearch,
+} from "@workspace/shared/types/integrations/autotask";
+import { AutoTaskCompany } from "@workspace/shared/types/integrations/autotask/company";
+
+export default class AutoTaskConnector {
+  constructor(private config: AutoTaskDataSourceConfig) {}
+
+  async checkHealth(): Promise<boolean> {
+    return true;
+  }
+
+  async getCompanies(): Promise<APIResponse<AutoTaskCompany[]>> {
+    const search: AutoTaskSearch<AutoTaskCompany> = {
+      filter: [{ field: "isActive", op: "eq", value: true }],
+    };
+
+    const secret =
+      (await Encryption.decrypt(this.config.client_secret)) || "failed";
+    const { data, error } = await APIClient.fetch<
+      AutoTaskResponse<AutoTaskCompany>
+    >(
+      `https://${this.config.server}/ATServicesRest/V1.0/Companies/query?search=${JSON.stringify(search)}`,
+      {
+        method: "GET",
+        headers: {
+          UserName: this.config.client_id,
+          Secret: secret,
+          ApiIntegrationCode: this.config.tracker_id,
+        },
+      },
+      "AutoTaskAdapter"
+    );
+
+    if (error) {
+      return { error };
+    }
+
+    return {
+      data: data.items,
+    };
+  }
+}

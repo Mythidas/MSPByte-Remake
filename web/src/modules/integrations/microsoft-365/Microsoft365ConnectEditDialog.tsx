@@ -30,7 +30,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { Tables } from "@workspace/shared/types/database";
-import { Microsoft365DataSourceConfig } from "@/lib/types/data-sources";
+import { Microsoft365DataSourceConfig } from "@workspace/shared/types/database/data-sources";
 import { insertRows, deleteRows, updateRow } from "@/lib/supabase/orm";
 import { SearchBar } from "@/components/SearchBar";
 import Link from "next/link";
@@ -342,7 +342,7 @@ export default function Microsoft365ConnectEditDialog({
                       );
 
                       return (
-                        <Display className="justify-between">
+                        <Display key={domain.name} className="justify-between">
                           <div>{domain.name}</div>
                           <Select
                             defaultValue={mapping?.site_id || "-"}
@@ -358,7 +358,7 @@ export default function Microsoft365ConnectEditDialog({
                             <SelectContent>
                               <SelectItem value="-">None</SelectItem>
                               {mappedSites.map((site) => (
-                                <SelectItem value={site.id}>
+                                <SelectItem key={site.id} value={site.id}>
                                   {site.name}
                                 </SelectItem>
                               ))}
