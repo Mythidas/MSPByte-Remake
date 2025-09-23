@@ -26,6 +26,7 @@
     "node": ">=20"
   },
   "dependencies": {
+    "@radix-ui/react-select": "^2.2.6",
     "@supabase/supabase-js": "^2.57.4",
     "dotenv": "^17.2.2",
     "nats": "^2.29.3"

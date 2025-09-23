@@ -15,7 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import INTEGRATION_PAGES from "@/config/integration-pages";
 import { getRow } from "@/lib/supabase/orm";
 import { AlertCircleIcon } from "lucide-react";
@@ -54,10 +54,14 @@ export default async function Page({ params }: Props) {
         </BreadcrumbList>
       </Breadcrumb>
 
-      <div className="flex w-full justify-between">
+      <div className="flex shrink w-full justify-between">
         <div className="flex gap-2">
           <div className={`p-1 bg-linear-to-br from-card to-primary/40 shadow`}>
-            <img src={integration.icon_url || ""} width={60} />
+            <img
+              src={integration.icon_url || ""}
+              width={60}
+              alt={`${integration.name} icon`}
+            />
           </div>
 
           <div className="flex flex-col justify-between">
@@ -71,29 +75,24 @@ export default async function Page({ params }: Props) {
         <Button variant="destructive">Disable</Button>
       </div>
 
-      <div className="flex flex-col bg-card rounded shadow p-4 gap-4 size-full">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-xl">Instructions</h1>
-          <div>
-            {config.steps.map((step, index) => {
-              return (
-                <div key={step.name} className="flex gap-2 items-center">
-                  <div className="flex bg-blue-500 rounded-full w-8 h-8 items-center justify-center">
-                    {index + 1}
-                  </div>
-                  <span>{step.description}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
+      <div className="flex flex-col bg-card rounded shadow p-4 gap-4 size-full overflow-hidden">
         <Tabs defaultValue="0">
           <TabsList>
             {config.steps.map((step, index) => {
-              return <TabsTrigger value={`${index}`}>{step.name}</TabsTrigger>;
+              return (
+                <TabsTrigger key={index} value={`${index}`}>
+                  {step.name}
+                </TabsTrigger>
+              );
             })}
           </TabsList>
+          {config.steps.map((step, index) => {
+            return (
+              <TabsContent key={index} value={`${index}`}>
+                {step.render({ integration })}
+              </TabsContent>
+            );
+          })}
         </Tabs>
       </div>
     </div>

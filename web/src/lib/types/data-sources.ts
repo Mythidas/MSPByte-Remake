@@ -2,7 +2,6 @@ export type Microsoft365DataSourceConfig = {
   name: string;
   tenant_id: string;
   tenant_name: string;
-  connected_sites: string[];
   domain_mappings: {
     domain: string;
     site_id: string;

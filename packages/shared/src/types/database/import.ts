@@ -62,26 +62,26 @@ export type Database = {
       data_source_to_site: {
         Row: {
           created_at: string
-          date_source_id: string
+          data_source_id: string
           id: string
           site_id: string
         }
         Insert: {
           created_at?: string
-          date_source_id: string
+          data_source_id: string
           id?: string
           site_id: string
         }
         Update: {
           created_at?: string
-          date_source_id?: string
+          data_source_id?: string
           id?: string
           site_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "data_source_to_site_date_source_id_fkey"
-            columns: ["date_source_id"]
+            columns: ["data_source_id"]
             isOneToOne: false
             referencedRelation: "data_sources"
             referencedColumns: ["id"]
