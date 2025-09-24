@@ -76,6 +76,9 @@ export type DataTableProps<T = string> = {
   views?: DataTableView[];
   actions?: DataTableAction<T>[];
 
+  // Caching
+  cacheKey?: string; // Enable caching with this key
+
   // Event listening
   eventChannel?: string; // Supabase realtime channel
   eventTable?: string;

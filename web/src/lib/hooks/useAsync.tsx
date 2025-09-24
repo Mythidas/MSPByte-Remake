@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
@@ -73,7 +73,7 @@ export function useAsyncData<T, R = T>(
     };
   }, [abortOnUnmount]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!mountedRef.current) return;
 
     // Create new AbortController for this request
@@ -116,7 +116,7 @@ export function useAsyncData<T, R = T>(
         setLoading(false);
       }
     }
-  };
+  }, [abortOnUnmount, fetchFn, transform]);
 
   // Effect for initial fetch and dependency changes
   useEffect(() => {
@@ -139,7 +139,7 @@ export function useAsyncData<T, R = T>(
         }
       };
     }
-  }, [refetchInterval]);
+  }, [refetchInterval, fetchData]);
 
   return {
     data,

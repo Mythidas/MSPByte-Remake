@@ -1,7 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useGlobalCache, generateCacheKey, getFunctionHash } from "@/lib/stores/global-cache";
+import { useCallback, useEffect, useRef } from "react";
+import {
+  useGlobalCache,
+  generateCacheKey,
+  getFunctionHash,
+} from "@/lib/stores/global-cache";
 
 // Extended options for cached async data
 export interface UseAsyncDataCachedOptions<T, R = T> {
@@ -64,7 +68,8 @@ export function useAsyncDataCached<T, R = T>(
 
   // Generate cache key
   const functionHash = getFunctionHash(fetchFn);
-  const cacheKey = customCacheKey || generateCacheKey(functionHash, deps, namespace);
+  const cacheKey =
+    customCacheKey || generateCacheKey(functionHash, deps, namespace);
 
   // Get cached entry
   const cachedEntry = enableCache ? cache.get<R>(cacheKey) : undefined;
@@ -84,68 +89,82 @@ export function useAsyncDataCached<T, R = T>(
     };
   }, [abortOnUnmount]);
 
-  const fetchData = async (isRefetch = false) => {
-    if (!mountedRef.current) return;
-
-    // If we have cached data and this is not a refetch, return cached data
-    const existingEntry = enableCache ? cache.get<R>(cacheKey) : undefined;
-
-    // Don't fetch if already loading (prevents double requests)
-    if (existingEntry?.loading && !isRefetch) {
-      return;
-    }
-
-    // If we have stale data and staleWhileRevalidate is enabled, don't show loading
-    const hasStaleData = existingEntry?.data !== null && existingEntry?.data !== undefined;
-    const shouldShowLoading = !staleWhileRevalidate || !hasStaleData || isRefetch;
-
-    if (enableCache && shouldShowLoading) {
-      cache.setLoading(cacheKey, true);
-    }
-
-    // Create new AbortController for this request
-    if (abortOnUnmount) {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      abortControllerRef.current = new AbortController();
-    }
-
-    try {
-      if (enableCache) {
-        cache.setError(cacheKey, null);
-      }
-
-      const signal = abortOnUnmount
-        ? abortControllerRef.current?.signal
-        : undefined;
-      const result = await fetchFn(signal);
-
+  const fetchData = useCallback(
+    async (isRefetch = false) => {
       if (!mountedRef.current) return;
 
-      const finalData = transform
-        ? transform(result)
-        : (result as unknown as R);
+      // If we have cached data and this is not a refetch, return cached data
+      const existingEntry = enableCache ? cache.get<R>(cacheKey) : undefined;
 
-      if (enableCache) {
-        cache.set(cacheKey, finalData, ttl);
-      }
-    } catch (err) {
-      if (!mountedRef.current) return;
-
-      // Don't set error state if request was aborted
-      if (err instanceof Error && err.name === "AbortError") {
+      // Don't fetch if already loading (prevents double requests)
+      if (existingEntry?.loading && !isRefetch) {
         return;
       }
 
-      const errorMessage =
-        err instanceof Error ? err.message : "An unknown error occurred";
+      // If we have stale data and staleWhileRevalidate is enabled, don't show loading
+      const hasStaleData =
+        existingEntry?.data !== null && existingEntry?.data !== undefined;
+      const shouldShowLoading =
+        !staleWhileRevalidate || !hasStaleData || isRefetch;
 
-      if (enableCache) {
-        cache.setError(cacheKey, errorMessage);
+      if (enableCache && shouldShowLoading) {
+        cache.setLoading(cacheKey, true);
       }
-    }
-  };
+
+      // Create new AbortController for this request
+      if (abortOnUnmount) {
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+      }
+
+      try {
+        if (enableCache) {
+          cache.setError(cacheKey, null);
+        }
+
+        const signal = abortOnUnmount
+          ? abortControllerRef.current?.signal
+          : undefined;
+        const result = await fetchFn(signal);
+
+        if (!mountedRef.current) return;
+
+        const finalData = transform
+          ? transform(result)
+          : (result as unknown as R);
+
+        if (enableCache) {
+          cache.set(cacheKey, finalData, ttl);
+        }
+      } catch (err) {
+        if (!mountedRef.current) return;
+
+        // Don't set error state if request was aborted
+        if (err instanceof Error && err.name === "AbortError") {
+          return;
+        }
+
+        const errorMessage =
+          err instanceof Error ? err.message : "An unknown error occurred";
+
+        if (enableCache) {
+          cache.setError(cacheKey, errorMessage);
+        }
+      }
+    },
+    [
+      abortOnUnmount,
+      cache,
+      cacheKey,
+      enableCache,
+      fetchFn,
+      staleWhileRevalidate,
+      transform,
+      ttl,
+    ]
+  );
 
   // Effect for initial fetch and dependency changes
   useEffect(() => {
@@ -167,11 +186,13 @@ export function useAsyncDataCached<T, R = T>(
         }
       };
     }
-  }, [refetchInterval, cacheKey]);
+  }, [fetchData, refetchInterval, cacheKey]);
 
   // Determine current state
-  const currentData = enableCache && cachedEntry ? cachedEntry.data : initialData;
-  const currentLoading = enableCache && cachedEntry ? cachedEntry.loading : false;
+  const currentData =
+    enableCache && cachedEntry ? cachedEntry.data : initialData;
+  const currentLoading =
+    enableCache && cachedEntry ? cachedEntry.loading : false;
   const currentError = enableCache && cachedEntry ? cachedEntry.error : null;
   const isFromCache = enableCache && !!cachedEntry;
 
@@ -199,10 +220,10 @@ export function useCacheClear() {
   return {
     clearAll: cache.clearAll,
     clearByPattern: (pattern: string) => {
-      const keys = Object.keys(cache.cache).filter(key =>
+      const keys = Object.keys(cache.cache).filter((key) =>
         key.includes(pattern)
       );
-      keys.forEach(key => cache.clear(key));
+      keys.forEach((key) => cache.clear(key));
     },
     cleanup: cache.cleanup,
   };

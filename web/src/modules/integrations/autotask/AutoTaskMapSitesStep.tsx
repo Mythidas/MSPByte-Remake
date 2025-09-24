@@ -10,10 +10,7 @@ import {
   DataTableFetchParams,
   DataTableFetchResult,
 } from "@/lib/types/datatable";
-import {
-  AutoTaskCompany,
-  AutoTaskCompanyView,
-} from "@/modules/integrations/autotask/types";
+import { Tables } from "@workspace/shared/types/database";
 import { ExternalLinkIcon } from "lucide-react";
 import { useMemo } from "react";
 import { toast } from "sonner";
@@ -27,7 +24,7 @@ type Props = {
 
 export default function AutoTaskMapSitesStep({ integration }: Props) {
   // Define columns
-  const columns: DataTableColumn<AutoTaskCompany>[] = useMemo(
+  const columns: DataTableColumn<Tables<"autotask_companies_view">>[] = useMemo(
     () => [
       {
         key: "name",
@@ -44,24 +41,24 @@ export default function AutoTaskMapSitesStep({ integration }: Props) {
         render: (value) => <span className="font-mono text-sm">{value}</span>,
       },
       {
-        key: "isLinked",
+        key: "is_linked",
         label: "Status",
         sortable: true,
         render: (_, row) => (
-          <Badge variant={row.isLinked ? "default" : "secondary"}>
-            {row.isLinked ? "Linked" : "Unlinked"}
+          <Badge variant={row.is_linked ? "default" : "secondary"}>
+            {row.is_linked ? "Linked" : "Unlinked"}
           </Badge>
         ),
       },
       {
-        key: "linkedSiteName",
+        key: "linked_site_name",
         label: "Linked Site",
         sortable: true,
         render: (_, row) => {
-          if (row.isLinked && row.linkedSiteName) {
+          if (row.is_linked && row.linked_site_name) {
             return (
               <div className="flex items-center gap-2">
-                <span>{row.linkedSiteName}</span>
+                <span>{row.linked_site_name}</span>
                 <ExternalLinkIcon className="w-3 h-3 text-muted-foreground" />
               </div>
             );
@@ -103,17 +100,17 @@ export default function AutoTaskMapSitesStep({ integration }: Props) {
   );
 
   // Define actions
-  const actions: DataTableAction<AutoTaskCompany>[] = useMemo(
+  const actions: DataTableAction<Tables<"autotask_companies_view">>[] = useMemo(
     () => [
       {
         id: "map-sites",
         label: "Map to Sites",
         variant: "default",
         disabled: (rows) => {
-          return rows.length === 0 || rows.some((row) => row.isLinked);
+          return rows.length === 0 || rows.some((row) => row.is_linked);
         },
         onClick: async (rows) => {
-          const unlinkedCompanies = rows.filter((row) => !row.isLinked);
+          const unlinkedCompanies = rows.filter((row) => !row.is_linked);
 
           if (unlinkedCompanies.length === 0) {
             toast.error("No unlinked companies selected");
@@ -124,7 +121,7 @@ export default function AutoTaskMapSitesStep({ integration }: Props) {
             // Prepare site records for insertion
             const siteRecords = unlinkedCompanies.map((company) => ({
               name: company.name || "Unknown Company",
-              psa_company_id: company.external_id,
+              psa_company_id: company.external_id!,
               psa_integration_id: "", // Default empty
               psa_parent_company_id: "", // Default empty
               status: "active",
@@ -161,7 +158,7 @@ export default function AutoTaskMapSitesStep({ integration }: Props) {
   // Data fetcher function - much simpler with the view!
   const fetcher = async (
     params: DataTableFetchParams
-  ): Promise<DataTableFetchResult<AutoTaskCompany>> => {
+  ): Promise<DataTableFetchResult<Tables<"autotask_companies_view">>> => {
     try {
       // Prepare filters for the view
       const filters: any[] = [["integration_id", "eq", integration.id]];
@@ -199,26 +196,8 @@ export default function AutoTaskMapSitesStep({ integration }: Props) {
         };
       }
 
-      // Transform from view format to component format (camelCase naming)
-      const companies: AutoTaskCompany[] = response.data.rows.map(
-        (row: AutoTaskCompanyView) => ({
-          id: row.id,
-          external_id: row.external_id,
-          integration_id: row.integration_id,
-          tenant_id: row.tenant_id,
-          name: row.name,
-          created_at: row.created_at,
-          updated_at: row.updated_at,
-          isLinked: row.is_linked,
-          linkedSiteId: row.linked_site_id,
-          linkedSiteName: row.linked_site_name,
-          linkedSiteSlug: row.linked_site_slug,
-          linkedSiteStatus: row.linked_site_status,
-        })
-      );
-
       return {
-        data: companies,
+        data: response.data.rows,
         count: response.data.total,
       };
     } catch (error) {

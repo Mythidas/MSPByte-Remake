@@ -215,7 +215,6 @@ export default function Users() {
         enableExport={true}
         enableColumnToggle={true}
         emptyMessage="No users found. Create your first user to get started."
-        className="flex-1"
       />
     </div>
   );

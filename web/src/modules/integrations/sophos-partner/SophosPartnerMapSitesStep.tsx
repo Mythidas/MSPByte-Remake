@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { DataTable } from "@/components/table/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import { Tables } from "@workspace/shared/types/database";
 import { APIResponse } from "@workspace/shared/types/api";
 import { SophosPartnerTenant } from "@workspace/shared/types/integrations/sophos-partner/tenants";
 import { useAsyncDataCached } from "@/lib/hooks/useAsyncDataCached";
+import { tableCache } from "@/lib/stores/global-cache";
 
 type Props = {
   integration: Tables<"integrations">;
@@ -28,6 +29,10 @@ type Props = {
 
 export default function SophosPartnerMapSitesStep({ integration }: Props) {
   const [mapping, setMapping] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Cache key for the sites table
+  const sitesTableCacheKey = `sophos-partner-sites:${integration.id}`;
 
   // Use cached async data - automatically handles mount/unmount issues
   const {
@@ -76,80 +81,145 @@ export default function SophosPartnerMapSitesStep({ integration }: Props) {
     [tenants]
   );
 
-  // Handle mapping a site to a tenant
-  const handleMapSite = async (
-    site: Tables<"sophos_partner_sites_view">,
-    tenantId: string
-  ) => {
-    const tenant = (tenants || []).find((t) => t.id === tenantId);
-    if (!tenant) {
-      toast.error("Selected tenant not found");
-      return;
-    }
-
-    setMapping(true);
-    try {
-      const tenantConfig: SophosTenantConfig = {
-        api_host: tenant.apiHost,
-        tenant_name: tenant.name,
-      };
-
-      // Create a data source entry for this site mapping
-      const result = await insertRows("data_sources", {
-        rows: [
-          {
-            integration_id: integration.id,
-            site_id: site.id!,
-            config: tenantConfig,
-            status: "connected",
-            external_id: tenant.id,
-            credential_expiration_at: new Date(
-              Date.now() + 365 * 24 * 60 * 60 * 1000
-            ).toISOString(), // 1 year from now
-            tenant_id: site.tenant_id!,
-          },
-        ],
-      });
-
-      if (!result.error) {
-        toast.success(`Site mapped to ${tenant.name} successfully!`);
-        // Refresh the data table - trigger a refresh
-        window.location.reload(); // Simple refresh, could be improved with state management
-      } else {
-        toast.error(result.error.message || "Failed to map site");
+  // Handle mapping a site to a tenant with predictive updates
+  const handleMapSite = useCallback(
+    async (site: Tables<"sophos_partner_sites_view">, tenantId: string) => {
+      const tenant = (tenants || []).find((t) => t.id === tenantId);
+      if (!tenant) {
+        toast.error("Selected tenant not found");
+        return;
       }
-    } catch (error) {
-      console.error("Error mapping site:", error);
-      toast.error("An unexpected error occurred");
-    } finally {
-      setMapping(false);
-    }
-  };
 
-  // Handle unmapping a site
-  const handleUnmapSite = async (siteId: string) => {
-    setMapping(true);
-    try {
-      const result = await deleteRows("data_sources", {
-        filters: [
-          ["site_id", "eq", siteId],
-          ["integration_id", "eq", integration.id],
-        ],
-      });
-      if (!result.error) {
-        toast.success("Site unmapped successfully!");
-        // Refresh the data table - trigger a refresh
-        window.location.reload(); // Simple refresh, could be improved with state management
-      } else {
-        toast.error(result.error.message || "Failed to unmap site");
+      setMapping(true);
+
+      // Predictive update: immediately update the cache
+      if (site.id) {
+        tableCache.updateRow(
+          sitesTableCacheKey,
+          site.id,
+          (row: Tables<"sophos_partner_sites_view">) => ({
+            ...row,
+            is_linked: true,
+            linked_tenant_name: tenant.name,
+          })
+        );
       }
-    } catch (error) {
-      console.error("Error unmapping site:", error);
-      toast.error("An unexpected error occurred");
-    } finally {
-      setMapping(false);
-    }
-  };
+
+      try {
+        const tenantConfig: SophosTenantConfig = {
+          api_host: tenant.apiHost,
+          tenant_name: tenant.name,
+        };
+
+        // Create a data source entry for this site mapping
+        const result = await insertRows("data_sources", {
+          rows: [
+            {
+              integration_id: integration.id,
+              site_id: site.id!,
+              config: tenantConfig,
+              status: "connected",
+              external_id: tenant.id,
+              credential_expiration_at: new Date(
+                Date.now() + 365 * 24 * 60 * 60 * 1000
+              ).toISOString(), // 1 year from now
+              tenant_id: site.tenant_id!,
+            },
+          ],
+        });
+
+        if (!result.error) {
+          toast.success(`Site mapped to ${tenant.name} successfully!`);
+          // Force a refresh to show updated cache
+          setRefreshTrigger((prev) => prev + 1);
+        } else {
+          // Revert the optimistic update on error
+          tableCache.updateRow(
+            sitesTableCacheKey,
+            site.id,
+            (row: Tables<"sophos_partner_sites_view">) => ({
+              ...row,
+              is_linked: false,
+              linked_tenant_name: null,
+            })
+          );
+          toast.error(result.error.message || "Failed to map site");
+        }
+      } catch (error) {
+        console.error("Error mapping site:", error);
+        // Revert the optimistic update on error
+        tableCache.updateRow(
+          sitesTableCacheKey,
+          site.id,
+          (row: Tables<"sophos_partner_sites_view">) => ({
+            ...row,
+            is_linked: false,
+            linked_tenant_name: null,
+          })
+        );
+        toast.error("An unexpected error occurred");
+      } finally {
+        setMapping(false);
+      }
+    },
+    [integration.id, sitesTableCacheKey, tenants]
+  );
+
+  // Handle unmapping a site with predictive updates
+  const handleUnmapSite = useCallback(
+    async (siteId: string) => {
+      setMapping(true);
+
+      // Store original state for potential revert
+      const cached = tableCache.get(sitesTableCacheKey);
+      const originalRow = cached?.data.rows.find(
+        (row: any) => row.id === siteId
+      );
+
+      // Predictive update: immediately update the cache
+      if (siteId) {
+        tableCache.updateRow(
+          sitesTableCacheKey,
+          siteId,
+          (row: Tables<"sophos_partner_sites_view">) => ({
+            ...row,
+            is_linked: false,
+            linked_tenant_name: null,
+          })
+        );
+      }
+
+      try {
+        const result = await deleteRows("data_sources", {
+          filters: [
+            ["site_id", "eq", siteId],
+            ["integration_id", "eq", integration.id],
+          ],
+        });
+        if (!result.error) {
+          toast.success("Site unmapped successfully!");
+          // Force a refresh to show updated cache
+          setRefreshTrigger((prev) => prev + 1);
+        } else {
+          // Revert the optimistic update on error
+          if (originalRow) {
+            tableCache.updateRow(sitesTableCacheKey, siteId, () => originalRow);
+          }
+          toast.error(result.error.message || "Failed to unmap site");
+        }
+      } catch (error) {
+        console.error("Error unmapping site:", error);
+        // Revert the optimistic update on error
+        if (originalRow) {
+          tableCache.updateRow(sitesTableCacheKey, siteId, () => originalRow);
+        }
+        toast.error("An unexpected error occurred");
+      } finally {
+        setMapping(false);
+      }
+    },
+    [integration.id, sitesTableCacheKey]
+  );
 
   // Define columns
   const columns: DataTableColumn<Tables<"sophos_partner_sites_view">>[] =
@@ -197,7 +267,7 @@ export default function SophosPartnerMapSitesStep({ integration }: Props) {
                   <SearchBox
                     options={tenantOptions}
                     placeholder="Select Sophos Tenant..."
-                    loading={loadingTenants}
+                    loading={loadingTenants || !tenantOptions.length}
                     onSelect={(tenantId) => handleMapSite(row, tenantId)}
                   />
                 </div>
@@ -216,7 +286,7 @@ export default function SophosPartnerMapSitesStep({ integration }: Props) {
           ),
         },
       ],
-      [tenantOptions, loadingTenants, mapping]
+      [handleMapSite, handleUnmapSite, tenantOptions, loadingTenants, mapping]
     );
 
   // Define views
@@ -268,6 +338,26 @@ export default function SophosPartnerMapSitesStep({ integration }: Props) {
             }
 
             setMapping(true);
+
+            // Store original state for potential revert
+            const cached = tableCache.get(sitesTableCacheKey);
+            const originalRows = cached?.data.rows.filter((row: any) =>
+              mappedSites.some((site) => site.id === row.id)
+            );
+
+            // Predictive update: immediately update the cache for all sites
+            mappedSites.forEach((site) => {
+              tableCache.updateRow(
+                sitesTableCacheKey,
+                site.id,
+                (row: Tables<"sophos_partner_sites_view">) => ({
+                  ...row,
+                  is_linked: false,
+                  linked_tenant_name: null,
+                })
+              );
+            });
+
             try {
               // Unmap all selected sites
               for (const site of mappedSites) {
@@ -282,10 +372,19 @@ export default function SophosPartnerMapSitesStep({ integration }: Props) {
               toast.success(
                 `Successfully unmapped ${mappedSites.length} site(s)`
               );
-              // Refresh the data table
-              window.location.reload();
+              // No need to reload - cache already updated optimistically
             } catch (error) {
               console.error("Error unmapping sites:", error);
+              // Revert all optimistic updates on error
+              if (originalRows) {
+                originalRows.forEach((originalRow: any) => {
+                  tableCache.updateRow(
+                    sitesTableCacheKey,
+                    originalRow.id,
+                    () => originalRow
+                  );
+                });
+              }
               toast.error("An unexpected error occurred");
             } finally {
               setMapping(false);
@@ -293,7 +392,7 @@ export default function SophosPartnerMapSitesStep({ integration }: Props) {
           },
         },
       ],
-      []
+      [integration.id, sitesTableCacheKey]
     );
 
   // Data fetcher function
@@ -357,6 +456,8 @@ export default function SophosPartnerMapSitesStep({ integration }: Props) {
         fetcher={fetcher}
         views={views}
         actions={actions}
+        cacheKey={sitesTableCacheKey}
+        key={`${sitesTableCacheKey}-${refreshTrigger}`}
         enableSearch={true}
         enableSelection={true}
         enableRefresh={true}

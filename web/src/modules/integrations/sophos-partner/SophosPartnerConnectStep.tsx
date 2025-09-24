@@ -20,6 +20,7 @@ import {
   saveSophosPartnerConfig,
 } from "@/modules/integrations/sophos-partner/actions/config";
 import { APIResponse } from "@workspace/shared/types/api";
+import { useAsyncDataCached } from "@/lib/hooks/useAsyncDataCached";
 
 const formSchema = z.object({
   client_id: z.string().min(1, "Client ID is required"),
@@ -45,12 +46,11 @@ export default function SophosPartnerConnectStep({ integration }: Props) {
     mode: "onChange",
   });
 
-
   const {
     data: hasExistingConfig,
     loading,
     refetch,
-  } = useAsyncData(
+  } = useAsyncDataCached(
     async () => {
       const result = await getRow("data_sources", {
         filters: [
@@ -71,6 +71,10 @@ export default function SophosPartnerConnectStep({ integration }: Props) {
       return false;
     },
     {
+      deps: [integration.id], // Refetch when integration changes
+      namespace: "sophos-config", // Organized namespace
+      ttl: 5 * 60 * 1000, // 5 minute cache
+      staleWhileRevalidate: true, // Show cached data while refetching
       immediate: true,
     }
   );

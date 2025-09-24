@@ -34,7 +34,7 @@ export function SearchBar({
 
   useEffect(() => {
     onSearch?.(debouncedQuery);
-  }, [debouncedQuery]);
+  }, [debouncedQuery, onSearch]);
 
   if (lead) {
     return (

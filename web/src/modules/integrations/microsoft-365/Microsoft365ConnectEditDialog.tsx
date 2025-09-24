@@ -30,12 +30,12 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { Tables } from "@workspace/shared/types/database";
-import { Microsoft365DataSourceConfig } from "@workspace/shared/types/database/data-sources";
 import { insertRows, deleteRows, updateRow } from "@/lib/supabase/orm";
 import { SearchBar } from "@/components/SearchBar";
 import Link from "next/link";
 import Display from "@/components/Display";
 import { SubmitButton } from "@/components/SubmitButton";
+import { Microsoft365DataSourceConfig } from "@workspace/shared/types/integrations/microsoft-365";
 
 const connectionSchema = z.object({
   name: z.string().min(1, "Connection name cannot be empty"),

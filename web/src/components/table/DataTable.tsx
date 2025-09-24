@@ -1,8 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { cn } from "@/lib/utils";
 import { useDataTableURL } from "@/lib/hooks/useDataTableURL";
+import { useGlobalCache } from "@/lib/stores/global-cache";
 import { DataTableSearch } from "./DataTableSearch";
 import { DataTableToolbar } from "./DataTableToolbar";
 import { DataTableFiltersDisplay } from "./DataTableFiltersDisplay";
@@ -14,8 +22,15 @@ import {
   DataTableFilter,
   DataTableSort,
 } from "@/lib/types/datatable";
+import { Spinner } from "@/components/Spinner";
 
-export function DataTable<T>({
+export function DataTable<T>({ ...props }: DataTableProps<T>) {
+  return (
+    <Suspense fallback={<Spinner />}>{<DataTableInner {...props} />}</Suspense>
+  );
+}
+
+export function DataTableInner<T>({
   // Core props
   columns,
   fetcher,
@@ -28,6 +43,7 @@ export function DataTable<T>({
   // Configuration
   views = [],
   actions = [],
+  cacheKey,
 
   // Event listening
   eventChannel,
@@ -50,19 +66,30 @@ export function DataTable<T>({
   onRowClick,
   onSelectionChange,
 }: DataTableProps<T>) {
-  // URL state management
+  const cache = useGlobalCache();
+
+  // Get cached state if available
+  const cachedState = cacheKey ? cache.getTableState<T>(cacheKey) : undefined;
+
+  // URL state management - initialize from cache if available
   const urlState = useDataTableURL({
     initialState: {
-      filters: initialFilters,
-      sorts: initialSort,
-      pagination: { page: 0, pageSize: initialPageSize, total: 0 },
-      search: "",
-      view: null,
+      filters: cachedState?.filters || initialFilters,
+      sorts: cachedState?.sort ? [cachedState.sort] : initialSort,
+      pagination: cachedState?.pagination
+        ? {
+            ...cachedState.pagination,
+            total:
+              cachedState.data.count || cachedState.pagination.pageSize || 0,
+          }
+        : { page: 0, pageSize: initialPageSize, total: 0 },
+      search: cachedState?.search || "",
+      view: cachedState?.view || null,
     },
   });
 
-  // Local state
-  const [data, setData] = useState<T[]>([]);
+  // Local state - initialize from cache if available
+  const [data, setData] = useState<T[]>(cachedState?.data.rows || []);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedRows, setSelectedRows] = useState<T[]>([]);
@@ -134,14 +161,58 @@ export function DataTable<T>({
     return params;
   }, [pagination, effectiveFilters, effectiveSorts, search, searchableColumns]);
 
-  // Fetch data
+  // Create normalized parameters for cache key comparison
+  const normalizedFetchParams = useMemo(() => {
+    return JSON.stringify({
+      page: fetchParams.page,
+      size: fetchParams.size,
+      filters: effectiveFilters,
+      search: search,
+      view: view,
+      sort: effectiveSorts[0] || null,
+    });
+  }, [fetchParams, effectiveFilters, search, view, effectiveSorts]);
+
+  // Fetch data with caching support
   const fetchData = useCallback(
-    async (params: DataTableFetchParams) => {
-      const paramsKey = JSON.stringify(params);
+    async (params: DataTableFetchParams, forceRefresh = false) => {
+      const paramsKey = normalizedFetchParams;
 
       // Prevent duplicate fetches with same parameters
-      if (lastFetchParamsRef.current === paramsKey) {
+      if (lastFetchParamsRef.current === paramsKey && !forceRefresh) {
         return;
+      }
+
+      // Check cache first if caching is enabled and not forcing refresh
+      if (cacheKey && !forceRefresh) {
+        const cached = cache.getTableState<T>(cacheKey);
+        const cachedParamsKey = cached
+          ? JSON.stringify({
+              page: cached.pagination.page,
+              size: cached.pagination.pageSize,
+              filters: cached.filters,
+              search: cached.search,
+              view: cached.view,
+              sort: cached.sort,
+            })
+          : null;
+
+        // If cached data matches current params and isn't expired, use it
+        if (
+          cached &&
+          cachedParamsKey === paramsKey &&
+          !cache.isTableExpired(cacheKey)
+        ) {
+          setData(cached.data.rows);
+          if (pagination.total !== cached.data.count) {
+            urlState.setPagination({
+              ...pagination,
+              total: cached.data.count,
+            });
+          }
+          lastFetchParamsRef.current = paramsKey;
+          return;
+        }
       }
 
       lastFetchParamsRef.current = paramsKey;
@@ -156,12 +227,32 @@ export function DataTable<T>({
           setData([]);
         } else {
           setData(result.data);
+
           // Update total count only if it's different to avoid infinite loops
           if (pagination.total !== result.count) {
             urlState.setPagination({
               ...pagination,
               total: result.count,
             });
+          }
+
+          // Save to cache if caching is enabled
+          if (cacheKey) {
+            cache.setTableState(
+              cacheKey,
+              {
+                data: { rows: result.data, count: result.count },
+                pagination: {
+                  page: params.page || 0,
+                  pageSize: params.size || 25,
+                },
+                search: search,
+                filters: filters,
+                view: view,
+                sort: effectiveSorts[0] || null,
+              },
+              10 * 60 * 1000
+            ); // 10 minute TTL
           }
         }
       } catch (err) {
@@ -171,7 +262,18 @@ export function DataTable<T>({
         setIsLoading(false);
       }
     },
-    [fetcher, pagination, urlState]
+    [
+      fetcher,
+      pagination,
+      urlState,
+      cacheKey,
+      cache,
+      search,
+      filters,
+      view,
+      effectiveSorts,
+      normalizedFetchParams,
+    ]
   );
 
   // Initial data fetch and refetch on params change
@@ -234,14 +336,17 @@ export function DataTable<T>({
       if (action) {
         try {
           await action.onClick(rows);
-          // Refresh data after action
-          fetchData(fetchParams);
+          // Clear cache and refresh data after action
+          if (cacheKey) {
+            cache.clearTableCache(cacheKey);
+          }
+          fetchData(fetchParams, true);
         } catch (err) {
           console.error("Action failed:", err);
         }
       }
     },
-    [actions, fetchData]
+    [actions, fetchData, fetchParams, cacheKey, cache]
   );
 
   // Handle column visibility
@@ -358,7 +463,12 @@ export function DataTable<T>({
           enableExport={enableExport}
           onExport={handleExport}
           enableRefresh={enableRefresh}
-          onRefresh={() => fetchData(fetchParams)}
+          onRefresh={() => {
+            if (cacheKey) {
+              cache.clearTableCache(cacheKey);
+            }
+            fetchData(fetchParams, true);
+          }}
           isRefreshing={isLoading}
         />
       </div>

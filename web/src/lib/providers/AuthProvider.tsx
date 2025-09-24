@@ -20,7 +20,7 @@ export function AuthProvider({
       getCurrentUser().then((u) => {
         if (u.data) setUser(u.data);
       });
-  }, [initialUser]);
+  }, [setUser, initialUser]);
 
   return <>{children}</>;
 }

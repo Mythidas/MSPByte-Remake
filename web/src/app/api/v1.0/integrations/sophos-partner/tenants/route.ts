@@ -55,7 +55,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(errorResponse, { status: 500 });
     }
 
-    console.log("success");
     const successResponse: APIResponse<typeof result.data> = {
       data: result.data,
     };
