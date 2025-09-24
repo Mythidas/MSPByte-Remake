@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLazyTabsStore, useLazyTabsSync } from "@/lib/stores/lazy-tabs";
 
 interface LazyTabsProps {
@@ -43,13 +43,11 @@ export function LazyTabs({
   const sync = useLazyTabsSync();
   const initialized = useRef(false);
 
-  // Initialize the tabs with URL sync
-  useEffect(() => {
-    if (!initialized.current) {
-      sync.initializeFromURL(id, defaultValue, urlParam);
-      initialized.current = true;
-    }
-  }, [id, defaultValue, urlParam, sync]);
+  // Initialize immediately when component mounts (client-only)
+  if (!initialized.current && typeof window !== 'undefined') {
+    sync.initializeFromURL(id, defaultValue, urlParam);
+    initialized.current = true;
+  }
 
   // Sync to URL when active tab changes
   useEffect(() => {
@@ -70,8 +68,7 @@ export function LazyTabs({
   // Clean up when component unmounts
   useEffect(() => {
     return () => {
-      // Optional: Reset tabs state on unmount (uncomment if desired)
-      // store.resetTabs(id);
+      store.resetTabs(id);
     };
   }, [id]);
 
@@ -128,13 +125,21 @@ export function LazyTabsContent({
     }
   }, [isActive, hasBeenLoaded, store, tabsId, value]);
 
-  // Determine if we should render the content
+  // Render if active OR if it has been loaded before (keeps components mounted)
   const shouldRender = !lazy || forceRender || isActive || hasBeenLoaded;
 
+
   return (
-    <TabsContent value={value} className={className}>
+    <div
+      data-state={isActive ? "active" : "inactive"}
+      data-orientation="horizontal"
+      role="tabpanel"
+      tabIndex={0}
+      className={`mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${className}`}
+      style={{ display: isActive ? "block" : "none" }}
+    >
       {shouldRender ? children : null}
-    </TabsContent>
+    </div>
   );
 }
 

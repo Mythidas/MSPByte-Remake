@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+"use client";
+
+import { useEffect, useRef, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
@@ -22,6 +24,8 @@ export interface UseAsyncDataOptions<T, R = T> {
   initialData?: R | null;
   // Whether to fetch immediately on mount
   immediate?: boolean;
+  // Whether to abort request on unmount (default: true)
+  abortOnUnmount?: boolean;
 }
 
 export interface UseAsyncRenderOptions {
@@ -37,7 +41,7 @@ export interface UseAsyncRenderOptions {
  * Hook for managing async data fetching with loading states, error handling, and optional polling
  */
 export function useAsyncData<T, R = T>(
-  fetchFn: () => Promise<T>,
+  fetchFn: (signal?: AbortSignal) => Promise<T>,
   options: UseAsyncDataOptions<T, R> = {}
 ): AsyncState<R> {
   const {
@@ -46,6 +50,7 @@ export function useAsyncData<T, R = T>(
     refetchInterval,
     initialData = null,
     immediate = true,
+    abortOnUnmount = true,
   } = options;
 
   const [data, setData] = useState<R | null>(initialData);
@@ -54,34 +59,56 @@ export function useAsyncData<T, R = T>(
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
+  const triggeredRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Cleanup on unmount
+  // Reset mounted state on mount and cleanup on unmount
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+      if (abortOnUnmount && abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
     };
-  }, []);
+  }, [abortOnUnmount]);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = async () => {
     if (!mountedRef.current) return;
+
+    // Create new AbortController for this request
+    if (abortOnUnmount) {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+    }
 
     try {
       setLoading(true);
       setError(null);
 
-      const result = await fetchFn();
+      const signal = abortOnUnmount
+        ? abortControllerRef.current?.signal
+        : undefined;
+      const result = await fetchFn(signal);
 
       if (!mountedRef.current) return;
 
-      const finalData = transform ? transform(result) : (result as unknown as R);
+      const finalData = transform
+        ? transform(result)
+        : (result as unknown as R);
       setData(finalData);
     } catch (err) {
       if (!mountedRef.current) return;
 
-      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
+      // Don't set error state if request was aborted
+      if (err instanceof Error && err.name === "AbortError") {
+        return;
+      }
+
+      const errorMessage =
+        err instanceof Error ? err.message : "An unknown error occurred";
       setError(errorMessage);
       setData(null);
     } finally {
@@ -89,11 +116,12 @@ export function useAsyncData<T, R = T>(
         setLoading(false);
       }
     }
-  }, [fetchFn, transform]);
+  };
 
   // Effect for initial fetch and dependency changes
   useEffect(() => {
-    if (immediate) {
+    if (immediate && !triggeredRef.current) {
+      triggeredRef.current = true;
       fetchData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -111,7 +139,7 @@ export function useAsyncData<T, R = T>(
         }
       };
     }
-  }, [refetchInterval, fetchData]);
+  }, [refetchInterval]);
 
   return {
     data,
@@ -182,7 +210,9 @@ function DefaultErrorComponent({ error }: { error: string }) {
 }
 
 // Utility function for creating custom loading components
-export function createLoadingComponent(content: React.ReactNode): React.ComponentType {
+export function createLoadingComponent(
+  content: React.ReactNode
+): React.ComponentType {
   return function CustomLoadingComponent() {
     return <>{content}</>;
   };

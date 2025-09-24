@@ -10,8 +10,7 @@ import {
 import { getRow } from "@/lib/supabase/orm";
 import { AlertCircleIcon } from "lucide-react";
 import INTEGRATION_PAGES from "@/config/integration-pages";
-import { LazyTabs, LazyTabsContent } from "@/components/ui/lazy-tabs";
-import { TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DisableIntegrationButton from "@/modules/integrations/components/DisableIntegrationButton";
 import { getDataSourcesCount } from "@/modules/integrations/actions/disable-integration";
 
@@ -26,7 +25,7 @@ export default async function Page({ params }: Props) {
   });
   const config = INTEGRATION_PAGES[integrationId];
 
-  if (!integration) {
+  if (!integration || !config) {
     return (
       <Alert variant="destructive">
         <AlertCircleIcon />
@@ -37,7 +36,9 @@ export default async function Page({ params }: Props) {
 
   // Get data sources count for the disable button
   const dataSourcesResult = await getDataSourcesCount(integrationId);
-  const dataSourcesCount = dataSourcesResult.success ? dataSourcesResult.count || 0 : 0;
+  const dataSourcesCount = dataSourcesResult.success
+    ? dataSourcesResult.count || 0
+    : 0;
 
   return (
     <div className="flex flex-col size-full gap-4">
@@ -79,11 +80,7 @@ export default async function Page({ params }: Props) {
       </div>
 
       <div className="flex flex-col bg-card rounded shadow p-4 gap-4 size-full overflow-hidden">
-        <LazyTabs
-          id={`integration-${integration.id}`}
-          defaultValue="0"
-          urlParam="step"
-        >
+        <Tabs defaultValue="0">
           <TabsList>
             {config.steps.map((step, index) => {
               return (
@@ -95,12 +92,12 @@ export default async function Page({ params }: Props) {
           </TabsList>
           {config.steps.map((step, index) => {
             return (
-              <LazyTabsContent key={index} value={`${index}`}>
+              <TabsContent key={index} value={`${index}`}>
                 {step.render({ integration })}
-              </LazyTabsContent>
+              </TabsContent>
             );
           })}
-        </LazyTabs>
+        </Tabs>
       </div>
     </div>
   );

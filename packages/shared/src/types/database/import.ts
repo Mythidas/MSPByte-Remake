@@ -696,6 +696,31 @@ export type Database = {
       [_ in never]: never
     }
     Views: {
+      autotask_companies_view: {
+        Row: {
+          created_at: string | null
+          external_id: string | null
+          id: string | null
+          integration_id: string | null
+          is_linked: boolean | null
+          linked_site_id: string | null
+          linked_site_name: string | null
+          linked_site_slug: string | null
+          linked_site_status: string | null
+          name: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entities_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integrations_view: {
         Row: {
           category: string | null
@@ -765,6 +790,13 @@ export type Database = {
             foreignKeyName: "entities_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
+            referencedRelation: "autotask_companies_view"
+            referencedColumns: ["linked_site_id"]
+          },
+          {
+            foreignKeyName: "entities_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
             referencedRelation: "sites_view"
             referencedColumns: ["id"]
           },
@@ -774,6 +806,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sites_view"
             referencedColumns: ["parent_id"]
+          },
+          {
+            foreignKeyName: "entities_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sophos_partner_sites_view"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -796,6 +835,24 @@ export type Database = {
         }
         Relationships: []
       }
+      sophos_partner_sites_view: {
+        Row: {
+          created_at: string | null
+          data_source_status: string | null
+          id: string | null
+          is_linked: boolean | null
+          linked_tenant_api_host: string | null
+          linked_tenant_id: string | null
+          linked_tenant_name: string | null
+          mapped_at: string | null
+          name: string | null
+          slug: string | null
+          status: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
       users_view: {
         Row: {
           created_at: string | null
@@ -810,23 +867,6 @@ export type Database = {
           status: string | null
           tenant_id: string | null
           updated_at: string | null
-        }
-        Relationships: []
-      }
-      autotask_companies_view: {
-        Row: {
-          id: string
-          external_id: string
-          integration_id: string
-          tenant_id: string
-          name: string | null
-          created_at: string
-          updated_at: string
-          is_linked: boolean
-          linked_site_id: string | null
-          linked_site_name: string | null
-          linked_site_slug: string | null
-          linked_site_status: string | null
         }
         Relationships: []
       }

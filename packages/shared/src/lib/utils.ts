@@ -43,3 +43,7 @@ export function generatePassword(length: number = 12): string {
 
   return password;
 }
+
+export function isNextJS() {
+  return typeof window !== "undefined" && (window as any).__NEXT_DATA__;
+}
