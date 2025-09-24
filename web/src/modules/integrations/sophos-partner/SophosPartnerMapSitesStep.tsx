@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { DataTable } from "@/components/table/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import { SophosTenantConfig } from "@workspace/shared/types/integrations/sophos-
 import { Tables } from "@workspace/shared/types/database";
 import { APIResponse } from "@workspace/shared/types/api";
 import { SophosPartnerTenant } from "@workspace/shared/types/integrations/sophos-partner/tenants";
-import { useSophosTenantsStore } from "@/lib/stores/sophos-tenants";
+import { useAsyncDataCached } from "@/lib/hooks/useAsyncDataCached";
 
 type Props = {
   integration: Tables<"integrations">;
@@ -29,46 +29,42 @@ type Props = {
 export default function SophosPartnerMapSitesStep({ integration }: Props) {
   const [mapping, setMapping] = useState(false);
 
-  const store = useSophosTenantsStore();
-  const tenants = store.getTenants(integration.id);
-  const loadingTenants = store.isLoading(integration.id);
-
-
-  useEffect(() => {
-    // Only fetch if we don't already have tenants
-    if (tenants || loadingTenants) return;
-
-    const fetchTenants = async () => {
-      store.setLoading(integration.id, true);
-
-      try {
-        const response = await fetch(
-          `/api/v1.0/integrations/sophos-partner/tenants?integrationId=${integration.id}`,
-          {
-            method: "GET",
-          }
-        );
-
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  // Use cached async data - automatically handles mount/unmount issues
+  const {
+    data: tenants,
+    loading: loadingTenants,
+    error: tenantsError,
+    refetch: refetchTenants,
+  } = useAsyncDataCached(
+    async (signal) => {
+      const response = await fetch(
+        `/api/v1.0/integrations/sophos-partner/tenants?integrationId=${integration.id}`,
+        {
+          method: "GET",
+          signal,
         }
+      );
 
-        const result: APIResponse<SophosPartnerTenant[]> = await response.json();
-
-        if (result.error) {
-          throw new Error(result.error.message);
-        }
-
-        store.setTenants(integration.id, result.data || []);
-      } catch (error) {
-        store.setLoading(integration.id, false);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-    };
 
-    fetchTenants();
-  }, [integration.id, tenants, loadingTenants, store]);
+      const result: APIResponse<SophosPartnerTenant[]> = await response.json();
 
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+
+      return result.data || [];
+    },
+    {
+      deps: [integration.id], // Refetch when integration changes
+      namespace: "sophos-tenants", // Organized namespace
+      ttl: 5 * 60 * 1000, // 5 minute cache
+      staleWhileRevalidate: true, // Show cached data while refetching
+      immediate: true,
+    }
+  );
 
   // Convert tenants to SearchBox options
   const tenantOptions = useMemo(
@@ -330,6 +326,18 @@ export default function SophosPartnerMapSitesStep({ integration }: Props) {
       };
     }
   };
+
+  // Show error if tenants failed to load
+  if (tenantsError) {
+    return (
+      <div className="p-4 text-red-600">
+        Error loading tenants: {tenantsError}
+        <Button variant="outline" onClick={refetchTenants} className="ml-2">
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4 size-full pb-10">

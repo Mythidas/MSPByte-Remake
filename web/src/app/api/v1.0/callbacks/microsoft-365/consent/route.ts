@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { insertRows, updateRow, getRows } from "@/lib/supabase/orm";
 import { TablesInsert } from "@workspace/shared/types/database";
-import { Microsoft365DataSourceConfig } from "@workspace/shared/types/database/data-sources";
+import { Microsoft365DataSourceConfig } from "@workspace/shared/types/integrations/microsoft-365";
 
 interface CallbackState {
   action: "initial_consent" | "reconsent";

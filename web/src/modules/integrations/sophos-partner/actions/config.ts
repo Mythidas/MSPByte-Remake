@@ -88,10 +88,3 @@ export async function saveSophosPartnerConfig(
     };
   }
 }
-
-export async function testSophosPartnerConnection(
-  config: SophosPartnerConfigInput
-) {
-  const connector = new SophosPartnerConnector(config);
-  return await connector.checkHealth();
-}
