@@ -17,6 +17,7 @@ import {
   testAutoTaskConnection,
   type AutoTaskConfigInput,
 } from "./actions/config";
+import { Spinner } from "@/components/Spinner";
 
 const formSchema = z.object({
   server: z.string().min(1, "Server is required"),
@@ -123,8 +124,8 @@ export default function AutoTaskConnectStep({ integration }: Props) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="w-6 h-6 animate-spin mr-2" />
+      <div className="flex items-center justify-center p-8 gap-2">
+        <Spinner />
         Loading configuration...
       </div>
     );

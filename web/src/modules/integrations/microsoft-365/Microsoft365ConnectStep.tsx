@@ -29,10 +29,10 @@ import {
 import { getRows, deleteRows } from "@/lib/supabase/orm";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Microsoft365DataSourceConfig } from "@workspace/shared/types/database/data-sources";
 import Microsoft365ConnectDialog from "@/modules/integrations/microsoft-365/Microsoft365ConnectDialog";
 import Microsoft365ConnectEditDialog from "@/modules/integrations/microsoft-365/Microsoft365ConnectEditDialog";
 import Display from "@/components/Display";
+import { Microsoft365DataSourceConfig } from "@workspace/shared/types/integrations/microsoft-365";
 
 function StatusBadge({ status }: { status: string }) {
   switch (status) {

@@ -813,6 +813,23 @@ export type Database = {
         }
         Relationships: []
       }
+      autotask_companies_view: {
+        Row: {
+          id: string
+          external_id: string
+          integration_id: string
+          tenant_id: string
+          name: string | null
+          created_at: string
+          updated_at: string
+          is_linked: boolean
+          linked_site_id: string | null
+          linked_site_name: string | null
+          linked_site_slug: string | null
+          linked_site_status: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never

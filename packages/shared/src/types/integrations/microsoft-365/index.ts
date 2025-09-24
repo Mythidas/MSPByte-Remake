@@ -1,3 +1,7 @@
+export type Microsoft365IntegrationConfig = {
+  permission_version: number;
+};
+
 export type Microsoft365DataSourceConfig = {
   name: string;
   tenant_id: string;

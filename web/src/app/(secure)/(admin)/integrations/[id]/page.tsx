@@ -7,12 +7,13 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import { Button } from "@/components/ui/button";
 import { getRow } from "@/lib/supabase/orm";
 import { AlertCircleIcon } from "lucide-react";
 import INTEGRATION_PAGES from "@/config/integration-pages";
 import { LazyTabs, LazyTabsContent } from "@/components/ui/lazy-tabs";
 import { TabsList, TabsTrigger } from "@/components/ui/tabs";
+import DisableIntegrationButton from "@/modules/integrations/components/DisableIntegrationButton";
+import { getDataSourcesCount } from "@/modules/integrations/actions/disable-integration";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -33,6 +34,10 @@ export default async function Page({ params }: Props) {
       </Alert>
     );
   }
+
+  // Get data sources count for the disable button
+  const dataSourcesResult = await getDataSourcesCount(integrationId);
+  const dataSourcesCount = dataSourcesResult.success ? dataSourcesResult.count || 0 : 0;
 
   return (
     <div className="flex flex-col size-full gap-4">
@@ -66,7 +71,11 @@ export default async function Page({ params }: Props) {
           </div>
         </div>
 
-        <Button variant="destructive">Disable</Button>
+        <DisableIntegrationButton
+          integrationId={integrationId}
+          integrationName={integration.name}
+          dataSourcesCount={dataSourcesCount}
+        />
       </div>
 
       <div className="flex flex-col bg-card rounded shadow p-4 gap-4 size-full overflow-hidden">
