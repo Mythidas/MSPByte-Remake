@@ -8,8 +8,7 @@
       "@/components/*": ["./src/components/*"],
       "@/modules/*": ["./src/modules/*"],
       "@/config/*": ["./src/config/*"],
-      "@workspace/shared/*": ["../packages/shared/src/*"],
-      "@workspace/events/*": ["../packages/events/*"]
+      "@workspace/shared/*": ["../packages/shared/src/*"]
     },
     "noEmit": true
   },

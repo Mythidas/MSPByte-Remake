@@ -8,3 +8,7 @@ export type Company = {
 
   created_at: string;
 };
+
+export type Endpoint = {
+  external_id: string;
+};

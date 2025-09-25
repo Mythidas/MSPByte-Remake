@@ -2,6 +2,7 @@ export type DataEventTemplate<T> = {
   job_id: string;
   tenant_id: string;
   integration_id: string;
+  data_source_id: string;
   site_id?: string;
   dataType: T;
   data: {

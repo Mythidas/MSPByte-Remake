@@ -1,0 +1,14 @@
+{
+  "extends": "@workspace/typescript-config/base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "rootDir": "../..",
+    "paths": {
+      "@workspace/shared/*": ["../../packages/shared/src/*"],
+      "@workspace/services/*": ["../../backend/services/src/*"],
+      "@workspace/pipeline/*": ["../../backend/pipeline/*"]
+    }
+  },
+  "include": ["**/*.ts"]
+}

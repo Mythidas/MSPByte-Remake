@@ -1,0 +1,14 @@
+{
+  "name": "@workspace/pipeline",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "exports": {
+    "./adapters/*": "./adapters/*",
+    "./scheduler/*": "./scheduler/*",
+    "./shared/*": "./shared/*"
+  },
+  "devDependencies": {
+    "@workspace/shared": "workspace:*"
+  }
+}
