@@ -103,7 +103,7 @@ export type Database = {
           external_id: string | null
           id: string
           integration_id: string
-          last_sync_at: string | null
+          metadata: Json | null
           site_id: string | null
           status: string
           tenant_id: string
@@ -116,7 +116,7 @@ export type Database = {
           external_id?: string | null
           id?: string
           integration_id: string
-          last_sync_at?: string | null
+          metadata?: Json | null
           site_id?: string | null
           status?: string
           tenant_id: string
@@ -129,7 +129,7 @@ export type Database = {
           external_id?: string | null
           id?: string
           integration_id?: string
-          last_sync_at?: string | null
+          metadata?: Json | null
           site_id?: string | null
           status?: string
           tenant_id?: string

@@ -172,33 +172,39 @@ export async function internalUpsertRows<T extends Table>(
   table: T,
   config: UpsertRowConfig<T>
 ) {
-  return tablesUpsertGeneric(supabase, table, config.rows, (query) => {
-    if (config.filters) {
-      for (const filter of config.filters) {
-        if (!filter) continue;
+  return tablesUpsertGeneric(
+    supabase,
+    table,
+    config.rows,
+    config.onConlfict,
+    (query) => {
+      if (config.filters) {
+        for (const filter of config.filters) {
+          if (!filter) continue;
 
-        let [col, op, val] = filter;
-        if (op === "in" && Array.isArray(val)) {
-          val = `(${val.join(",")})`;
+          let [col, op, val] = filter;
+          if (op === "in" && Array.isArray(val)) {
+            val = `(${val.join(",")})`;
+          }
+
+          query = query.filter(col as string, op, val);
         }
+      }
 
-        query = query.filter(col as string, op, val);
+      if (config && config.ors) {
+        for (const or of config.ors) {
+          if (!or) continue;
+
+          let [first, second] = or;
+          if (!first || !second) continue;
+
+          query = query.or(
+            `${first[0]}.${first[1]}.${first[2]},${second[0]}.${second[1]}.${second[2]}`
+          );
+        }
       }
     }
-
-    if (config && config.ors) {
-      for (const or of config.ors) {
-        if (!or) continue;
-
-        let [first, second] = or;
-        if (!first || !second) continue;
-
-        query = query.or(
-          `${first[0]}.${first[1]}.${first[2]},${second[0]}.${second[1]}.${second[2]}`
-        );
-      }
-    }
-  });
+  );
 }
 
 export async function internalDeleteRows<T extends Table>(

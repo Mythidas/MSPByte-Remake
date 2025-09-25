@@ -1,6 +1,9 @@
 import Debug from "@workspace/shared/lib/Debug";
 import { natsClient } from "@workspace/pipeline/shared/nats";
-import { getRows, updateRow, insertRows } from "@workspace/shared/lib/db/orm";
+import { getRows, updateRow } from "@workspace/shared/lib/db/orm";
+import { Tables } from "@workspace/shared/types/database";
+import { EventPayload } from "@workspace/shared/types/events";
+import { generateUUID } from "@workspace/shared/lib/utils";
 
 export class Scheduler {
   private pollInterval: number = 10000; // 30 seconds
@@ -22,9 +25,6 @@ export class Scheduler {
     setInterval(async () => {
       await this.pollJobs();
     }, this.pollInterval);
-
-    // Initial poll
-    await this.pollJobs();
   }
 
   async stop(): Promise<void> {
@@ -39,6 +39,7 @@ export class Scheduler {
   private async pollJobs(): Promise<void> {
     try {
       // Query for due jobs that haven't exceeded retry count
+      // TODO: Make an atomic SQL function to avoid duplicate fetches
       const { data: jobs, error } = await getRows("scheduled_jobs", {
         filters: [
           ["scheduled_at", "lte", new Date().toISOString()],
@@ -81,7 +82,7 @@ export class Scheduler {
     }
   }
 
-  private async processJob(job: any): Promise<void> {
+  private async processJob(job: Tables<"scheduled_jobs">): Promise<void> {
     try {
       Debug.log({
         module: "Scheduler",
@@ -89,12 +90,12 @@ export class Scheduler {
         message: `Processing job ${job.id} for action ${job.action}`,
       });
 
+      // TODO: Create updated_at and created_at triggers in SQL
       // Update job status to running
       await updateRow("scheduled_jobs", {
         row: {
           status: "running",
           started_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
         },
         id: job.id,
       });
@@ -102,19 +103,13 @@ export class Scheduler {
       // Parse the action to determine topic and data
       // Action format: "sync.identities.microsoft-365"
       const actionParts = job.action.split(".");
-      if (actionParts.length >= 3 && actionParts[0] === "sync") {
-        const entityType = actionParts[1];
-        const integration = actionParts[2];
-
-        const topic = `sync.${entityType}.${integration}`;
+      if (actionParts.length === 2 && actionParts[0] === "sync") {
+        const topic = `${job.integration_id}.${job.action}`;
         await natsClient.publish(topic, {
-          jobId: job.id,
-          integrationId: job.integration_id,
-          dataSourceId: job.data_source_id,
-          tenantId: job.tenant_id,
-          payload: job.payload,
-          action: job.action,
-        });
+          event_id: generateUUID(),
+          type: actionParts[1],
+          job: job,
+        } as EventPayload<"*.sync.*">);
 
         Debug.log({
           module: "Scheduler",
@@ -132,64 +127,49 @@ export class Scheduler {
         code: "SCHEDULER_JOB_FAILED",
       });
 
-      // Update job with error and increment retry count
-      await updateRow("scheduled_jobs", {
-        row: {
-          status: "failed",
-          error: error instanceof Error ? error.message : "Unknown error",
-          attempts: (job.attempts || 0) + 1,
-          next_retry_at: new Date(Date.now() + 60000).toISOString(), // Retry in 1 minute
-          updated_at: new Date().toISOString(),
-        },
-        id: job.id,
-      });
+      await Scheduler.failJob(job, error as string);
     }
   }
 
-  async scheduleJob(
-    action: string,
-    tenantId: string,
-    integrationId: string,
-    payload: any,
-    scheduledAt: Date,
-    dataSourceId?: string
-  ): Promise<void> {
-    try {
-      const { error } = await insertRows("scheduled_jobs", {
-        rows: [
-          {
-            action,
-            tenant_id: tenantId,
-            integration_id: integrationId,
-            data_source_id: dataSourceId || null,
-            payload,
-            scheduled_at: scheduledAt.toISOString(),
-            started_at: new Date().toISOString(),
-            status: "pending",
-            attempts: 0,
-            attempts_max: 3,
-            created_by: "system", // This should be the actual user ID
+  public static async failJob(job: Tables<"scheduled_jobs">, error: string) {
+    const attempts = job.attempts || 0;
+    const attemptsMax = job.attempts_max || 3;
+    const invalid = attempts >= attemptsMax;
+
+    await updateRow("scheduled_jobs", {
+      row: {
+        status: invalid ? "invalid" : "failed",
+        error,
+        attempts: attempts + 1,
+        attempts_max: attemptsMax,
+        next_retry_at: new Date(Date.now() + 60000).toISOString(),
+      },
+      id: job.id,
+    });
+  }
+
+  public static async completeJob(
+    job: Tables<"scheduled_jobs">,
+    dataSource?: Tables<"data_sources">,
+    action?: string
+  ) {
+    await updateRow("scheduled_jobs", {
+      row: {
+        status: "completed",
+      },
+      id: job.id,
+    });
+
+    if (dataSource && action) {
+      await updateRow("data_sources", {
+        row: {
+          metadata: {
+            ...(dataSource.metadata as any),
+            action: new Date().toISOString(),
           },
-        ],
+        },
+        id: dataSource.id,
       });
-
-      if (error) {
-        throw error;
-      }
-
-      Debug.log({
-        module: "Scheduler",
-        context: "scheduleJob",
-        message: `Scheduled job for ${action} tenant ${tenantId}`,
-      });
-    } catch (error) {
-      Debug.error({
-        module: "Scheduler",
-        context: "scheduleJob",
-        message: `Failed to schedule job for ${action}`,
-        code: "SCHEDULER_SCHEDULE_FAILED",
-      });
-      throw error;
     }
   }
 }

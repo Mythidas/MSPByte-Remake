@@ -1,54 +1,53 @@
-import { BaseAdapter } from "@workspace/pipeline/adapters/base";
+import { BaseAdapter } from "@workspace/pipeline/adapters/BaseAdapter";
 import Debug from "@workspace/shared/lib/Debug";
 
-export class SophosAdapter extends BaseAdapter {
+export class Microsoft365Adapter extends BaseAdapter {
   constructor() {
-    super("sophos-partner");
+    super("microsoft-365");
   }
 
-  protected async fetchData(
+  protected async getRawData(
     payload: any,
     dataSourceId: string,
     tenantId: string
   ): Promise<any> {
     try {
       Debug.log({
-        module: "SophosAdapter",
+        module: "Microsoft365Adapter",
         context: "fetchData",
-        message: `Fetching data for tenant ${tenantId}, dataSource ${dataSourceId}`
+        message: `Fetching data for tenant ${tenantId}, dataSource ${dataSourceId}`,
       });
 
-      // TODO: Implement actual Sophos API calls
+      // TODO: Implement actual Microsoft365 API calls
       // This would typically involve:
-      // 1. Authentication with Sophos credentials from data source config
-      // 2. Making REST API calls to Sophos Central endpoints based on payload
+      // 1. Getting access token from data source config
+      // 2. Making Graph API calls based on entity type in payload
       // 3. Handling pagination
       // 4. Managing rate limits
 
       // Placeholder implementation
       const mockData = {
-        endpoints: [],
-        alerts: [],
-        policies: [],
         users: [],
         groups: [],
+        devices: [],
+        licenses: [],
         fetchedAt: new Date().toISOString(),
-        source: "Sophos",
+        source: "Microsoft365",
         entityType: payload.entityType || "unknown",
       };
 
       Debug.log({
-        module: "SophosAdapter",
+        module: "Microsoft365Adapter",
         context: "fetchData",
-        message: `Data fetched for tenant ${tenantId}`
+        message: `Data fetched for tenant ${tenantId}`,
       });
       return mockData;
     } catch (error) {
       Debug.error({
-        module: "SophosAdapter",
+        module: "Microsoft365Adapter",
         context: "fetchData",
         message: `Failed to fetch data for tenant ${tenantId}`,
-        code: "SOPHOS_FETCH_FAILED"
+        code: "MICROSOFT365_FETCH_FAILED",
       });
       throw error;
     }

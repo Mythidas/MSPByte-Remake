@@ -6,10 +6,11 @@
     "baseUrl": ".",
     "module": "es2022",
     "paths": {
+      "./*": ["./src/*"],
       "@workspace/shared/*": ["../../packages/shared/src/*"],
       "@workspace/services/*": ["../../backend/services/src/*"],
       "@workspace/pipeline/*": ["../../backend/pipeline/*"]
     }
   },
-  "include": ["**/*.ts"]
+  "include": ["./src/*.ts"]
 }

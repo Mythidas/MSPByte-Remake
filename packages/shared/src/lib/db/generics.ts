@@ -358,13 +358,16 @@ export async function tablesUpsertGeneric<T extends Table>(
   supabase: SupabaseClient,
   table: T,
   rows: (TablesUpdate<T> | TablesInsert<T>)[],
+  onConflct: Row<T>[],
   modifyQuery?: (query: QueryBuilder<T>) => void
 ): Promise<APIResponse<Tables<T>[]>> {
   try {
     let query = supabase
       .schema(getSchema(table))
       .from(table as any)
-      .upsert(rows as any);
+      .upsert(rows as any, {
+        onConflict: onConflct.join(","),
+      });
 
     if (modifyQuery) {
       modifyQuery(query as any);

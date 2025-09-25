@@ -1,17 +1,18 @@
-import { Microsoft365Adapter } from "@workspace/pipeline/adapters/microsoft365";
-import { AutoTaskAdapter } from "@workspace/pipeline/adapters/autotask";
-import { SophosAdapter } from "@workspace/pipeline/adapters/sophos";
-import { BaseAdapter } from "@workspace/pipeline/adapters/base";
 import Debug from "@workspace/shared/lib/Debug";
 import dotenv from "dotenv";
 import { natsClient } from "@workspace/pipeline/shared/nats";
 import { Scheduler } from "@workspace/pipeline/scheduler";
-import { BaseProcessor } from "@workspace/pipeline/processors/base";
 import { BaseResolver } from "@workspace/pipeline/resolvers/base";
 import { BaseLinker } from "@workspace/pipeline/linkers/base";
 import { BaseWorker } from "@workspace/pipeline/workers/base";
+import { BaseProcessor } from "@workspace/pipeline/processors/BaseProcessor";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+import { AutoTaskAdapter } from "@workspace/pipeline/adapters/AutoTaskAdapter";
+import { BaseAdapter } from "@workspace/pipeline/adapters/BaseAdapter";
+import { Microsoft365Adapter } from "@workspace/pipeline/adapters/Microsoft365Adapter";
+import { SophosAdapter } from "@workspace/pipeline/adapters/SophosAdapter";
+import { CompanyProcessor } from "@workspace/pipeline/processors/CompanyProcessor";
 
 // Compute __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -36,7 +37,7 @@ class MSPByteBackend {
     ]);
 
     // Initialize empty arrays - you'll add concrete implementations later
-    this.processors = [];
+    this.processors = [new CompanyProcessor()];
     this.resolvers = [];
     this.linkers = [];
     this.workers = [];
