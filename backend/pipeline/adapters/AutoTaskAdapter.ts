@@ -1,21 +1,21 @@
 import { BaseAdapter } from "@workspace/pipeline/adapters/BaseAdapter";
 import Debug from "@workspace/shared/lib/Debug";
 import { APIResponse } from "@workspace/shared/types/api";
-import { Tables } from "@workspace/shared/types/database";
-import { DataFetchPayload } from "@workspace/shared/types/events/data-event";
 import AutoTaskConnector from "@workspace/shared/lib/connectors/AutoTaskConnector";
 import { AutoTaskDataSourceConfig } from "@workspace/shared/types/integrations/autotask";
 import Encryption from "@workspace/shared/lib/Encryption";
-import { EventPayload } from "@workspace/shared/types/events";
-import { Scheduler } from "@workspace/pipeline/scheduler";
+import {
+  DataFetchPayload,
+  SyncEventPayload,
+} from "@workspace/shared/types/pipeline";
 
 export class AutoTaskAdapter extends BaseAdapter {
   constructor() {
-    super("autotask");
+    super("autotask", ["companies"]);
   }
 
   protected async getRawData(
-    eventData: EventPayload<"*.sync.*">,
+    eventData: SyncEventPayload,
     tenantID: string,
     dataSourceID?: string,
     config?: AutoTaskDataSourceConfig
@@ -36,7 +36,7 @@ export class AutoTaskAdapter extends BaseAdapter {
         message: `Fetching data for tenant ${tenantID}, dataSource ${dataSourceID || "N/A"}`,
       });
 
-      switch (eventData.type) {
+      switch (eventData.entityType) {
         case "companies": {
           return await this.handleCompanySync(dataSourceID, config);
         }
@@ -45,14 +45,14 @@ export class AutoTaskAdapter extends BaseAdapter {
       return Debug.error({
         module: "AutoTaskAdapter",
         context: "getRawData",
-        message: `Action not supported: sync.${eventData.type}`,
+        message: `Stage not supported: ${eventData.stage}`,
         code: "AUTOTASK_FETCH_FAILED",
       });
     } catch (error) {
       return Debug.error({
         module: "AutoTaskAdapter",
         context: "getRawData",
-        message: `Failed to fetch data for tenant ${tenantID} action sync.${eventData.type}`,
+        message: `Failed to fetch data for tenant ${tenantID} stage ${eventData.stage}`,
         code: "AUTOTASK_FETCH_FAILED",
       });
     }

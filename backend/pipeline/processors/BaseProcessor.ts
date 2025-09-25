@@ -1,33 +1,40 @@
 import { natsClient } from "@workspace/pipeline/shared/nats";
-import {
-  getRows,
-  insertRows,
-  updateRow,
-  upsertRows,
-} from "@workspace/shared/lib/db/orm";
+import { getRows, upsertRows } from "@workspace/shared/lib/db/orm";
 import Debug from "@workspace/shared/lib/Debug";
-import { EventPayload } from "@workspace/shared/types/events";
-import { DataFetchPayload } from "@workspace/shared/types/events/data-event";
-import { Company } from "@workspace/shared/types/database/normalized";
 import { APIResponse } from "@workspace/shared/types/api";
-import { EntityTypes } from "@workspace/shared/types/database/entity";
 import { Tables, TablesInsert } from "@workspace/shared/types/database";
+import { Company } from "@workspace/shared/types/database/normalized";
+import {
+  EntityType,
+  IntegrationType,
+  FetchedEventPayload,
+  ProcessedEventPayload,
+  FailedEventPayload,
+  DataFetchPayload,
+  buildEventName,
+  flowResolver,
+} from "@workspace/shared/types/pipeline";
 
-export type CompanyData = {
-  normalized: Company;
+export interface ProcessedEntityData<T = any> {
+  normalized: T;
   raw: any;
   hash: string;
-};
+  externalID: string;
+}
 
-export abstract class BaseProcessor {
-  protected entityType: EntityTypes;
+export type CompanyData = ProcessedEntityData<Company>;
 
-  constructor(entityType: EntityTypes) {
+export abstract class BaseProcessor<T = any> {
+  protected entityType: EntityType;
+  protected integrationType?: IntegrationType;
+
+  constructor(entityType: EntityType, integrationType?: IntegrationType) {
     this.entityType = entityType;
+    this.integrationType = integrationType;
   }
 
   async start(): Promise<void> {
-    const topic = `${this.entityType}.fetched`;
+    const topic = buildEventName("fetched", this.entityType);
     await natsClient.subscribe(topic, this.handleProcessing.bind(this));
     Debug.log({
       module: "BaseProcessor",
@@ -37,10 +44,17 @@ export abstract class BaseProcessor {
   }
 
   private async handleProcessing(
-    eventData: EventPayload<"*.fetched">
+    fetchedEvent: FetchedEventPayload
   ): Promise<void> {
-    const { eventID, tenantID, integrationID, dataSourceID, entityType, data } =
-      eventData;
+    const {
+      eventID,
+      tenantID,
+      integrationID,
+      integrationType,
+      dataSourceID,
+      entityType,
+      data,
+    } = fetchedEvent;
 
     try {
       Debug.log({
@@ -49,19 +63,17 @@ export abstract class BaseProcessor {
         message: `Processing event ${eventID} (${entityType} | ${integrationID})`,
       });
 
-      // Normalize the raw data using abstract method
       const existingData = await this.getExistingData(
         integrationID,
         tenantID,
-        "companies"
+        entityType
       );
       if (existingData.error) {
-        Debug.error({
-          module: "BaseProcessor",
-          context: "handleProcessing",
-          message: `Failed to fetch existing data: ${existingData.error.message} (${entityType} | ${integrationID})`,
-          code: "DB_FAILURE",
-        });
+        await this.publishFailedEvent(
+          fetchedEvent,
+          `Failed to fetch existing data: ${existingData.error.message}`,
+          "DB_FAILURE"
+        );
         return;
       }
 
@@ -72,26 +84,44 @@ export abstract class BaseProcessor {
         tenantID,
         dataSourceID,
         integrationID,
+        entityType,
         normalizedData
       );
 
       if (stored.error) {
-        Debug.error({
-          module: "BaseProcessor",
-          context: "handleProcessing",
-          message: `Failed to store entites: ${stored.error.message}`,
-          code: "DB_FAILURE",
-        });
+        await this.publishFailedEvent(
+          fetchedEvent,
+          `Failed to store entities: ${stored.error.message}`,
+          "DB_FAILURE"
+        );
+        return;
       }
 
-      // TODO: Publish NATS event
+      const nextStage = flowResolver.getNextStage(
+        "processed",
+        entityType,
+        integrationType
+      );
+      if (nextStage) {
+        await this.publishProcessedEvent(
+          fetchedEvent,
+          stored.data,
+          normalizedData.length
+        );
+      }
     } catch (error) {
       Debug.error({
         module: "BaseProcessor",
         context: "handleProcessing",
-        message: `Failed for event ${eventID} (${entityType} | ${integrationID})`,
+        message: `Failed for event ${eventID} (${entityType} | ${integrationID}): ${error}`,
         code: "PROCESSOR_FAILED",
       });
+
+      await this.publishFailedEvent(
+        fetchedEvent,
+        `Processing failed: ${error}`,
+        "PROCESSOR_FAILED"
+      );
     }
   }
 
@@ -99,12 +129,12 @@ export abstract class BaseProcessor {
   protected abstract normalizeData(
     integrationID: string,
     data: DataFetchPayload[]
-  ): CompanyData[];
+  ): ProcessedEntityData<T>[];
 
   private async getExistingData(
     integrationID: string,
     tenantID: string,
-    type: EntityTypes
+    type: EntityType
   ) {
     return await getRows("entities", {
       filters: [
@@ -131,16 +161,17 @@ export abstract class BaseProcessor {
     tenantID: string,
     dataSourceID: string,
     integrationID: string,
-    normalized: CompanyData[]
+    entityType: EntityType,
+    normalized: ProcessedEntityData<T>[]
   ): Promise<APIResponse<Tables<"entities">[]>> {
     const records = normalized.map((row) => {
       return {
         tenant_id: tenantID,
         integration_id: integrationID,
         data_source_id: dataSourceID,
-        external_id: row.normalized.external_id,
+        external_id: row.externalID,
 
-        entity_type: "company",
+        entity_type: entityType,
         data_hash: row.hash,
 
         normalized_data: row.normalized as any,
@@ -158,5 +189,88 @@ export abstract class BaseProcessor {
         "data_source_id",
       ],
     });
+  }
+
+  private async publishProcessedEvent(
+    originalEvent: FetchedEventPayload,
+    storedEntities: Tables<"entities">[],
+    totalProcessed: number
+  ): Promise<void> {
+    const processedEvent: ProcessedEventPayload = {
+      eventID: originalEvent.eventID,
+      tenantID: originalEvent.tenantID,
+      integrationID: originalEvent.integrationID,
+      integrationType: originalEvent.integrationType,
+      dataSourceID: originalEvent.dataSourceID,
+      entityType: originalEvent.entityType,
+      stage: "processed",
+      createdAt: new Date().toISOString(),
+      parentEventID: originalEvent.eventID,
+
+      entityIDs: storedEntities.map((e) => e.id),
+      entitiesCreated: storedEntities.filter(
+        (e) => e.created_at === e.updated_at
+      ).length,
+      entitiesUpdated: storedEntities.filter(
+        (e) => e.created_at !== e.updated_at
+      ).length,
+      entitiesSkipped: originalEvent.total - totalProcessed,
+    };
+
+    const eventName = buildEventName("processed", originalEvent.entityType);
+
+    try {
+      await natsClient.publish(eventName, processedEvent);
+      Debug.log({
+        module: "BaseProcessor",
+        context: "publishProcessedEvent",
+        message: `Published ${eventName} event with ${storedEntities.length} entities`,
+      });
+    } catch (err) {
+      Debug.error({
+        module: "BaseProcessor",
+        context: "publishProcessedEvent",
+        message: `Failed to publish ${eventName}: ${err}`,
+        code: "NATS_FAILURE",
+      });
+    }
+  }
+
+  private async publishFailedEvent(
+    originalEvent: FetchedEventPayload,
+    errorMessage: string,
+    errorCode: string
+  ): Promise<void> {
+    const failedEvent: FailedEventPayload = {
+      eventID: originalEvent.eventID,
+      tenantID: originalEvent.tenantID,
+      integrationID: originalEvent.integrationID,
+      integrationType: originalEvent.integrationType,
+      dataSourceID: originalEvent.dataSourceID,
+      entityType: originalEvent.entityType,
+      stage: "failed",
+      createdAt: new Date().toISOString(),
+      parentEventID: originalEvent.eventID,
+
+      error: {
+        code: errorCode,
+        message: errorMessage,
+        retryable: errorCode !== "UNSUPPORTED_ENTITY",
+      },
+      failedAt: "processed",
+    };
+
+    const eventName = buildEventName("failed", originalEvent.entityType);
+
+    try {
+      await natsClient.publish(eventName, failedEvent);
+    } catch (err) {
+      Debug.error({
+        module: "BaseProcessor",
+        context: "publishFailedEvent",
+        message: `Failed to publish failure event: ${err}`,
+        code: "NATS_FAILURE",
+      });
+    }
   }
 }

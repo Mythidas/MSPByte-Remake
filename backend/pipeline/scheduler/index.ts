@@ -2,8 +2,8 @@ import Debug from "@workspace/shared/lib/Debug";
 import { natsClient } from "@workspace/pipeline/shared/nats";
 import { getRows, updateRow } from "@workspace/shared/lib/db/orm";
 import { Tables } from "@workspace/shared/types/database";
-import { EventPayload } from "@workspace/shared/types/events";
 import { generateUUID } from "@workspace/shared/lib/utils";
+import { SyncEventPayload } from "@workspace/shared/types/pipeline";
 
 export class Scheduler {
   private pollInterval: number = 10000; // 30 seconds
@@ -58,15 +58,15 @@ export class Scheduler {
         return;
       }
 
+      if (jobs.rows.length === 0) {
+        return;
+      }
+
       Debug.log({
         module: "Scheduler",
         context: "pollJobs",
         message: `Polling for Jobs: ${jobs.rows.length} jobs found`,
       });
-
-      if (jobs.rows.length === 0) {
-        return;
-      }
 
       // Process each job
       for (const job of jobs.rows) {
@@ -91,7 +91,6 @@ export class Scheduler {
       });
 
       // TODO: Create updated_at and created_at triggers in SQL
-      // Update job status to running
       await updateRow("scheduled_jobs", {
         row: {
           status: "running",
@@ -100,16 +99,20 @@ export class Scheduler {
         id: job.id,
       });
 
-      // Parse the action to determine topic and data
-      // Action format: "sync.identities.microsoft-365"
+      // Action format: "sync.identities"
       const actionParts = job.action.split(".");
       if (actionParts.length === 2 && actionParts[0] === "sync") {
         const topic = `${job.integration_id}.${job.action}`;
         await natsClient.publish(topic, {
-          event_id: generateUUID(),
-          type: actionParts[1],
-          job: job,
-        } as EventPayload<"*.sync.*">);
+          job,
+          eventID: generateUUID(),
+          tenantID: job.tenant_id,
+          integrationID: job.integration_id,
+          dataSourceID: job.data_source_id,
+
+          integrationType: job.integration_id,
+          entityType: actionParts[1],
+        } as SyncEventPayload);
 
         Debug.log({
           module: "Scheduler",

@@ -3,8 +3,8 @@ import {
   CompanyData,
 } from "@workspace/pipeline/processors/BaseProcessor";
 import Debug from "@workspace/shared/lib/Debug";
-import { DataFetchPayload } from "@workspace/shared/types/events/data-event";
 import { AutoTaskCompany } from "@workspace/shared/types/integrations/autotask/company";
+import { DataFetchPayload } from "@workspace/shared/types/pipeline";
 
 export class CompanyProcessor extends BaseProcessor {
   constructor() {
@@ -38,6 +38,7 @@ export class CompanyProcessor extends BaseProcessor {
       };
 
       return {
+        externalID: String(rawData.id),
         raw: rawData,
         hash: dataHash,
         normalized: {
