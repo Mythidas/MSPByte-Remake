@@ -3,6 +3,7 @@ import { Client } from "@microsoft/microsoft-graph-client";
 import Debug from "@workspace/shared/lib/Debug";
 import { APIResponse } from "@workspace/shared/types/api";
 import { Microsoft365DataSourceConfig } from "@workspace/shared/types/integrations/microsoft-365";
+import { MSGraphGroup } from "@workspace/shared/types/integrations/microsoft-365/groups";
 import { MSGraphIdentity } from "@workspace/shared/types/integrations/microsoft-365/identities";
 
 export default class Microsoft365Connector {
@@ -69,6 +70,39 @@ export default class Microsoft365Connector {
       return Debug.error({
         module: "Microsoft365Connector",
         context: "getIdentities",
+        message: `Failed to fetch: ${err}`,
+        code: "GRAPH_FAILURE",
+      });
+    }
+  }
+
+  async getGroups(): Promise<APIResponse<MSGraphGroup[]>> {
+    try {
+      const { data: client, error: clientError } = await this.getGraphClient();
+      if (clientError) return { error: clientError };
+
+      let query = client
+        .api("/groups")
+        .header("ConsistencyLevel", "eventual")
+        .orderby("displayName");
+
+      let allGroups: MSGraphGroup[] = [];
+      let response = await query.get();
+
+      allGroups = allGroups.concat(response.value);
+
+      while (response["@odata.nextLink"]) {
+        response = await client.api(response["@odata.nextLink"]).get();
+        allGroups = allGroups.concat(response.value);
+      }
+
+      return {
+        data: allGroups,
+      };
+    } catch (err) {
+      return Debug.error({
+        module: "Microsoft365Connector",
+        context: "getGroups",
         message: `Failed to fetch: ${err}`,
         code: "GRAPH_FAILURE",
       });

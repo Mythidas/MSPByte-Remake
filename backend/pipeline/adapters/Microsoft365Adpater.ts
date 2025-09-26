@@ -12,7 +12,7 @@ import Encryption from "@workspace/shared/lib/Encryption";
 
 export class Microsoft365Adapter extends BaseAdapter {
   constructor() {
-    super("microsoft-365", ["identities"]);
+    super("microsoft-365", ["identities", "groups"]);
   }
 
   protected async getRawData(
@@ -30,6 +30,9 @@ export class Microsoft365Adapter extends BaseAdapter {
     switch (props.eventData.entityType) {
       case "identities": {
         return await this.handleIdentitySync(props.dataSource);
+      }
+      case "groups": {
+        return await this.handleGroupSync(props.dataSource);
       }
     }
 
@@ -79,6 +82,43 @@ export class Microsoft365Adapter extends BaseAdapter {
           dataHash,
           rawData,
           siteID,
+        };
+      }),
+    };
+  }
+
+  private async handleGroupSync(dataSource: Tables<"data_sources">) {
+    const config = dataSource.config as Microsoft365DataSourceConfig;
+
+    const connector = new Microsoft365Connector(config);
+    const health = await connector.checkHealth();
+    if (!health) {
+      return Debug.error({
+        module: "Microsoft365Adapter",
+        context: "handleIdentitySync",
+        message: `Connector failed health check: ${dataSource.id}`,
+        code: "CONNECTOR_FAILURE",
+      });
+    }
+
+    const { data: groups, error } = await connector.getGroups();
+    if (error) {
+      return { error };
+    }
+    return {
+      data: groups.map((rawData) => {
+        const dataHash = Encryption.sha256(
+          JSON.stringify({
+            ...rawData,
+            signInActivity: undefined,
+          })
+        );
+
+        return {
+          externalID: rawData.id,
+
+          dataHash,
+          rawData,
         };
       }),
     };

@@ -21,7 +21,8 @@ export type EntityType =
   | "users"
   | "licenses"
   | "license_assignments"
-  | "billing_records";
+  | "billing_records"
+  | "groups";
 
 // Integration types for adapter identification
 export type IntegrationType =
