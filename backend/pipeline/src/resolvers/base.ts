@@ -1,5 +1,5 @@
 import Debug from "@workspace/shared/lib/Debug";
-import { natsClient } from "@workspace/pipeline/shared/nats";
+import { natsClient } from "@workspace/pipeline/helpers/nats";
 import { getRows, updateRow, insertRows } from "@workspace/shared/lib/db/orm";
 
 export abstract class BaseResolver {
@@ -15,7 +15,7 @@ export abstract class BaseResolver {
     Debug.log({
       module: "BaseResolver",
       context: this.constructor.name,
-      message: `Started, listening to ${topic}`
+      message: `Started, listening to ${topic}`,
     });
   }
 
@@ -26,7 +26,7 @@ export abstract class BaseResolver {
       Debug.log({
         module: "BaseResolver",
         context: this.constructor.name,
-        message: `Resolving entity ${entityId}`
+        message: `Resolving entity ${entityId}`,
       });
 
       // Resolve data using abstract method
@@ -50,14 +50,14 @@ export abstract class BaseResolver {
       Debug.log({
         module: "BaseResolver",
         context: this.constructor.name,
-        message: `Completed entity ${entityId}`
+        message: `Completed entity ${entityId}`,
       });
     } catch (error) {
       Debug.error({
         module: "BaseResolver",
         context: this.constructor.name,
         message: `Failed for entity ${entityId}`,
-        code: "RESOLVER_FAILED"
+        code: "RESOLVER_FAILED",
       });
       await this.logError("resolver", entityId, error, tenantId);
     }

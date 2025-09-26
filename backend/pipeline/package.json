@@ -4,9 +4,13 @@
   "type": "module",
   "private": true,
   "exports": {
-    "./adapters/*": "./adapters/*",
-    "./scheduler/*": "./scheduler/*",
-    "./shared/*": "./shared/*"
+    "./adapters/*": "./src/adapters/*",
+    "./linkers/*": "./src/linkers/*",
+    "./processors/*": "./src/processors/*",
+    "./resolvers/*": "./src/resolvers/*",
+    "./scheduler/*": "./src/scheduler/*",
+    "./helpers/*": "./src/helpers/*",
+    "./workers/*": "./src/workers/*"
   },
   "devDependencies": {
     "@workspace/shared": "workspace:*"

@@ -1,5 +1,5 @@
 import Debug from "@workspace/shared/lib/Debug";
-import { natsClient } from "@workspace/pipeline/shared/nats";
+import { natsClient } from "@workspace/pipeline/helpers/nats";
 import { insertRows } from "@workspace/shared/lib/db/orm";
 
 interface LinkerDependency {
@@ -38,7 +38,7 @@ export abstract class BaseLinker {
         Debug.log({
           module: "BaseLinker",
           context: this.constructor.name,
-          message: `Subscribed to dependency: ${dependency.topic}`
+          message: `Subscribed to dependency: ${dependency.topic}`,
         });
       }
     } else {
@@ -48,7 +48,7 @@ export abstract class BaseLinker {
       Debug.log({
         module: "BaseLinker",
         context: this.constructor.name,
-        message: `Started, listening to ${topic}`
+        message: `Started, listening to ${topic}`,
       });
     }
 
@@ -95,7 +95,7 @@ export abstract class BaseLinker {
       Debug.log({
         module: "BaseLinker",
         context: this.constructor.name,
-        message: `Linking entity ${entityId}`
+        message: `Linking entity ${entityId}`,
       });
 
       // Create relationships using abstract method
@@ -122,14 +122,14 @@ export abstract class BaseLinker {
       Debug.log({
         module: "BaseLinker",
         context: this.constructor.name,
-        message: `Completed entity ${entityId}, created ${relationships.length} relationships`
+        message: `Completed entity ${entityId}, created ${relationships.length} relationships`,
       });
     } catch (error) {
       Debug.error({
         module: "BaseLinker",
         context: this.constructor.name,
         message: `Failed for entity ${entityId}`,
-        code: "LINKER_FAILED"
+        code: "LINKER_FAILED",
       });
       await this.logError("linker", entityId, error, tenantId);
     }
@@ -171,7 +171,7 @@ export abstract class BaseLinker {
     Debug.log({
       module: "BaseLinker",
       context: "storeRelationships",
-      message: `Created ${relationships.length} entity relationships`
+      message: `Created ${relationships.length} entity relationships`,
     });
   }
 
@@ -205,7 +205,7 @@ export abstract class BaseLinker {
         Debug.log({
           module: "BaseLinker",
           context: "cleanupExpired",
-          message: `Cleaning up expired pending linkage for entity ${entityId}`
+          message: `Cleaning up expired pending linkage for entity ${entityId}`,
         });
         this.pendingLinkages.delete(entityId);
       }

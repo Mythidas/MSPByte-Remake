@@ -7,7 +7,7 @@
     "paths": {
       "@workspace/shared/*": ["../../packages/shared/src/*"],
       "@workspace/services/*": ["../../backend/services/src/*"],
-      "@workspace/pipeline/*": ["../../backend/pipeline/*"]
+      "@workspace/pipeline/*": ["../../backend/pipeline/src/*"]
     }
   },
   "include": ["**/*.ts"]

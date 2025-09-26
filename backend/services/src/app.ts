@@ -1,21 +1,22 @@
-import Debug from "@workspace/shared/lib/Debug";
-import dotenv from "dotenv";
-import { natsClient } from "@workspace/pipeline/shared/nats";
-import { Scheduler } from "@workspace/pipeline/scheduler";
-import { BaseResolver } from "@workspace/pipeline/resolvers/base";
-import { BaseLinker } from "@workspace/pipeline/linkers/base";
-import { BaseWorker } from "@workspace/pipeline/workers/base";
-import { BaseProcessor } from "@workspace/pipeline/processors/BaseProcessor";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
 import { AutoTaskAdapter } from "@workspace/pipeline/adapters/AutoTaskAdapter";
 import { BaseAdapter } from "@workspace/pipeline/adapters/BaseAdapter";
+import { Microsoft365Adapter } from "@workspace/pipeline/adapters/Microsoft365Adpater";
 import { SophosPartnerAdapter } from "@workspace/pipeline/adapters/SophosPartnerAdapter";
+import { BaseLinker } from "@workspace/pipeline/linkers/base";
+import { BaseProcessor } from "@workspace/pipeline/processors/BaseProcessor";
 import { CompanyProcessor } from "@workspace/pipeline/processors/CompanyProcessor";
 import { EndpointProcessor } from "@workspace/pipeline/processors/EndpointProcessor";
+import { GroupProcessor } from "@workspace/pipeline/processors/GroupProcessor";
 import { IdentityProcessor } from "@workspace/pipeline/processors/IdentityProcessor";
+import { BaseResolver } from "@workspace/pipeline/resolvers/base";
+import { Scheduler } from "@workspace/pipeline/scheduler";
+import { natsClient } from "@workspace/pipeline/helpers/nats.js";
+import { BaseWorker } from "@workspace/pipeline/workers/base";
+import Debug from "@workspace/shared/lib/Debug";
 import { IntegrationType } from "@workspace/shared/types/pipeline";
-import { Microsoft365Adapter } from "@workspace/pipeline/adapters/Microsoft365Adpater";
+import dotenv from "dotenv";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 
 // Compute __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -44,6 +45,7 @@ class MSPByteBackend {
       new CompanyProcessor(),
       new EndpointProcessor(),
       new IdentityProcessor(),
+      new GroupProcessor(),
     ];
     this.resolvers = [];
     this.linkers = [];

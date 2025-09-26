@@ -1,4 +1,4 @@
-import { natsClient } from "@workspace/pipeline/shared/nats";
+import { natsClient } from "@workspace/pipeline/helpers/nats";
 import { getRows, upsertRows } from "@workspace/shared/lib/db/orm";
 import Debug from "@workspace/shared/lib/Debug";
 import { APIResponse } from "@workspace/shared/types/api";

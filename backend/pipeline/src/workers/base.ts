@@ -1,5 +1,5 @@
 import Debug from "@workspace/shared/lib/Debug";
-import { natsClient } from "@workspace/pipeline/shared/nats";
+import { natsClient } from "@workspace/pipeline/helpers/nats";
 import { insertRows, updateRow } from "@workspace/shared/lib/db/orm";
 
 export abstract class BaseWorker {
@@ -15,7 +15,7 @@ export abstract class BaseWorker {
     Debug.log({
       module: "BaseWorker",
       context: this.constructor.name,
-      message: `Started, listening to ${topic}`
+      message: `Started, listening to ${topic}`,
     });
   }
 
@@ -32,7 +32,7 @@ export abstract class BaseWorker {
       Debug.log({
         module: "BaseWorker",
         context: this.constructor.name,
-        message: `Processing entity ${entityId}`
+        message: `Processing entity ${entityId}`,
       });
 
       // Execute business logic using abstract method
@@ -49,14 +49,14 @@ export abstract class BaseWorker {
       Debug.log({
         module: "BaseWorker",
         context: this.constructor.name,
-        message: `Completed entity ${entityId}`
+        message: `Completed entity ${entityId}`,
       });
     } catch (error) {
       Debug.error({
         module: "BaseWorker",
         context: this.constructor.name,
         message: `Failed for entity ${entityId}`,
-        code: "WORKER_FAILED"
+        code: "WORKER_FAILED",
       });
       await this.logError("worker", entityId, error, tenantId);
     }

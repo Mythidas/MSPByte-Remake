@@ -1,5 +1,5 @@
 import Debug from "@workspace/shared/lib/Debug";
-import { natsClient } from "@workspace/pipeline/shared/nats";
+import { natsClient } from "@workspace/pipeline/helpers/nats";
 import { getRows, updateRow } from "@workspace/shared/lib/db/orm";
 import { Tables } from "@workspace/shared/types/database";
 import { generateUUID } from "@workspace/shared/lib/utils";
