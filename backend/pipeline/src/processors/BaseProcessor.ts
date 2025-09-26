@@ -6,6 +6,7 @@ import { Tables, TablesInsert } from "@workspace/shared/types/database";
 import {
   Company,
   Endpoint,
+  Group,
   Identity,
 } from "@workspace/shared/types/database/normalized";
 import {
@@ -30,6 +31,7 @@ export interface ProcessedEntityData<T = any> {
 export type CompanyData = ProcessedEntityData<Company>;
 export type EndpointData = ProcessedEntityData<Endpoint>;
 export type IdentityData = ProcessedEntityData<Identity>;
+export type GroupData = ProcessedEntityData<Group>;
 
 export abstract class BaseProcessor<T = any> {
   protected entityType: EntityType;

@@ -35,3 +35,14 @@ export type Identity = {
   licenses: string[];
   last_login_at: string;
 };
+
+export type Group = {
+  external_id: string;
+  external_parent_id?: string;
+
+  name: string;
+  type: "security" | "distribution" | "modern" | "custom";
+  description?: string;
+
+  created_at: string;
+};

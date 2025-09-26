@@ -16,7 +16,6 @@ const defaultEntityFlow: StandardFlow<EntityType> = {
   processed: "linked",
   linked: "completed",
   completed: null,
-  resolved: "linked", // resolved can skip to linking
   failed: null,
 };
 
