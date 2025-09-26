@@ -1,26 +1,26 @@
-import { BaseAdapter } from "@workspace/pipeline/adapters/BaseAdapter";
+import {
+  BaseAdapter,
+  RawDataProps,
+} from "@workspace/pipeline/adapters/BaseAdapter";
 import Debug from "@workspace/shared/lib/Debug";
 import { APIResponse } from "@workspace/shared/types/api";
 import AutoTaskConnector from "@workspace/shared/lib/connectors/AutoTaskConnector";
 import { AutoTaskDataSourceConfig } from "@workspace/shared/types/integrations/autotask";
 import Encryption from "@workspace/shared/lib/Encryption";
-import {
-  DataFetchPayload,
-  SyncEventPayload,
-} from "@workspace/shared/types/pipeline";
+import { DataFetchPayload } from "@workspace/shared/types/pipeline";
+import { Tables } from "@workspace/shared/types/database";
 
 export class AutoTaskAdapter extends BaseAdapter {
   constructor() {
     super("autotask", ["companies"]);
   }
 
-  protected async getRawData(
-    eventData: SyncEventPayload,
-    tenantID: string,
-    dataSourceID?: string,
-    config?: AutoTaskDataSourceConfig
-  ) {
-    if (!dataSourceID || !config) {
+  protected async getRawData({
+    eventData,
+    dataSource,
+    tenantID,
+  }: RawDataProps) {
+    if (!dataSource) {
       return Debug.error({
         module: "AutoTaskAdapter",
         context: "getRawData",
@@ -33,12 +33,12 @@ export class AutoTaskAdapter extends BaseAdapter {
       Debug.log({
         module: "AutoTaskAdapter",
         context: "getRawData",
-        message: `Fetching data for tenant ${tenantID}, dataSource ${dataSourceID || "N/A"}`,
+        message: `Fetching data for tenant ${tenantID}, dataSource ${dataSource.id || "N/A"}`,
       });
 
       switch (eventData.entityType) {
         case "companies": {
-          return await this.handleCompanySync(dataSourceID, config);
+          return await this.handleCompanySync(dataSource);
         }
       }
 
@@ -59,16 +59,17 @@ export class AutoTaskAdapter extends BaseAdapter {
   }
 
   private async handleCompanySync(
-    dataSourceID: string,
-    config: AutoTaskDataSourceConfig
+    dataSource: Tables<"data_sources">
   ): Promise<APIResponse<DataFetchPayload[]>> {
-    const connector = new AutoTaskConnector(config);
+    const connector = new AutoTaskConnector(
+      dataSource.config as AutoTaskDataSourceConfig
+    );
     const health = await connector.checkHealth();
     if (!health) {
       return Debug.error({
         module: "AutoTaskAdapter",
         context: "handleCompanySync",
-        message: `Connector failed health check: ${dataSourceID}`,
+        message: `Connector failed health check: ${dataSource.id}`,
         code: "CONNECTOR_FAILURE",
       });
     }

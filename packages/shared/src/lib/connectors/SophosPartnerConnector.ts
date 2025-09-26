@@ -73,7 +73,6 @@ export default class SophosPartnerConnector {
   }
 
   async getEndpoints(
-    tenantId: string,
     config: SophosTenantConfig
   ): Promise<APIResponse<SophosPartnerEndpoint[]>> {
     try {
@@ -90,7 +89,7 @@ export default class SophosPartnerConnector {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
-            "X-Tenant-ID": tenantId,
+            "X-Tenant-ID": config.tenant_id,
           },
         },
         "SophosPartner"

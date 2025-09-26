@@ -3,7 +3,7 @@ import { getRows, upsertRows } from "@workspace/shared/lib/db/orm";
 import Debug from "@workspace/shared/lib/Debug";
 import { APIResponse } from "@workspace/shared/types/api";
 import { Tables, TablesInsert } from "@workspace/shared/types/database";
-import { Company } from "@workspace/shared/types/database/normalized";
+import { Company, Endpoint } from "@workspace/shared/types/database/normalized";
 import {
   EntityType,
   IntegrationType,
@@ -20,9 +20,11 @@ export interface ProcessedEntityData<T = any> {
   raw: any;
   hash: string;
   externalID: string;
+  siteID?: string;
 }
 
 export type CompanyData = ProcessedEntityData<Company>;
+export type EndpointData = ProcessedEntityData<Endpoint>;
 
 export abstract class BaseProcessor<T = any> {
   protected entityType: EntityType;
@@ -78,7 +80,7 @@ export abstract class BaseProcessor<T = any> {
       }
 
       const changedData = this.filterChangedData(data, existingData.data.rows);
-      const normalizedData = this.normalizeData(integrationID, changedData);
+      const normalizedData = this.normalizeData(integrationType, changedData);
 
       const stored = await this.storeEntities(
         tenantID,
@@ -127,7 +129,7 @@ export abstract class BaseProcessor<T = any> {
 
   // Abstract method that must be implemented by concrete processors
   protected abstract normalizeData(
-    integrationID: string,
+    integrationType: IntegrationType,
     data: DataFetchPayload[]
   ): ProcessedEntityData<T>[];
 
@@ -170,6 +172,7 @@ export abstract class BaseProcessor<T = any> {
         integration_id: integrationID,
         data_source_id: dataSourceID,
         external_id: row.externalID,
+        site_id: row.siteID,
 
         entity_type: entityType,
         data_hash: row.hash,

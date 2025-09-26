@@ -50,7 +50,7 @@ export const handleAuth = async (request: NextRequest) => {
     // re-write landing page
     if (error && request.nextUrl.pathname === "/") {
       const url = request.nextUrl.clone();
-      url.pathname = "/landing-page";
+      url.pathname = "/landing";
       return NextResponse.rewrite(url);
     }
 
@@ -69,7 +69,7 @@ export const handleAuth = async (request: NextRequest) => {
     console.error(`[Middleware] Failed to check auth: ${err}`);
 
     const url = request.nextUrl.clone();
-    url.pathname = "/landing-page";
+    url.pathname = "/landing";
     return NextResponse.rewrite(url);
   }
 };

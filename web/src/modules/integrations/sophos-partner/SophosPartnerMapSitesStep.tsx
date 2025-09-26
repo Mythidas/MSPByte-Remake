@@ -109,6 +109,7 @@ export default function SophosPartnerMapSitesStep({ integration }: Props) {
         const tenantConfig: SophosTenantConfig = {
           api_host: tenant.apiHost,
           tenant_name: tenant.name,
+          tenant_id: tenant.id,
         };
 
         // Create a data source entry for this site mapping

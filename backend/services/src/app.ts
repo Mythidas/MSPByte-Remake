@@ -10,9 +10,9 @@ import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { AutoTaskAdapter } from "@workspace/pipeline/adapters/AutoTaskAdapter";
 import { BaseAdapter } from "@workspace/pipeline/adapters/BaseAdapter";
-import { Microsoft365Adapter } from "@workspace/pipeline/adapters/Microsoft365Adapter";
-import { SophosAdapter } from "@workspace/pipeline/adapters/SophosAdapter";
+import { SophosPartnerAdapter } from "@workspace/pipeline/adapters/SophosPartnerAdapter";
 import { CompanyProcessor } from "@workspace/pipeline/processors/CompanyProcessor";
+import { EndpointProcessor } from "@workspace/pipeline/processors/EndpointProcessor";
 
 // Compute __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -31,13 +31,12 @@ class MSPByteBackend {
   constructor() {
     this.scheduler = new Scheduler();
     this.adapters = new Map([
-      ["microsoft365", new Microsoft365Adapter() as BaseAdapter],
-      ["autotask", new AutoTaskAdapter()],
-      ["sophos", new SophosAdapter()],
+      ["autotask", new AutoTaskAdapter() as BaseAdapter],
+      ["sophos", new SophosPartnerAdapter()],
     ]);
 
     // Initialize empty arrays - you'll add concrete implementations later
-    this.processors = [new CompanyProcessor()];
+    this.processors = [new CompanyProcessor(), new EndpointProcessor()];
     this.resolvers = [];
     this.linkers = [];
     this.workers = [];

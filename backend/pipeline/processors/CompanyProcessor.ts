@@ -4,7 +4,10 @@ import {
 } from "@workspace/pipeline/processors/BaseProcessor";
 import Debug from "@workspace/shared/lib/Debug";
 import { AutoTaskCompany } from "@workspace/shared/types/integrations/autotask/company";
-import { DataFetchPayload } from "@workspace/shared/types/pipeline";
+import {
+  DataFetchPayload,
+  IntegrationType,
+} from "@workspace/shared/types/pipeline";
 
 export class CompanyProcessor extends BaseProcessor {
   constructor() {
@@ -12,17 +15,17 @@ export class CompanyProcessor extends BaseProcessor {
   }
 
   protected normalizeData(
-    integrationID: string,
+    integrationType: IntegrationType,
     data: DataFetchPayload[]
   ): CompanyData[] {
-    switch (integrationID) {
+    switch (integrationType) {
       case "autotask":
         return this.fromAutoTask(data);
       default: {
         Debug.error({
           module: "CompanyProcessor",
           context: "normalizeData",
-          message: `No normalizer for this data: ${integrationID} | companies`,
+          message: `No normalizer for this data: ${integrationType}`,
           code: "NORMALIZER_NOT_FOUND",
         });
         return [];

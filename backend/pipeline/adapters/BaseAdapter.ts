@@ -3,6 +3,7 @@ import { natsClient } from "@workspace/pipeline/shared/nats";
 import { getRow } from "@workspace/shared/lib/db/orm";
 import Debug from "@workspace/shared/lib/Debug";
 import { APIResponse } from "@workspace/shared/types/api";
+import { Tables } from "@workspace/shared/types/database";
 import {
   IntegrationType,
   EntityType,
@@ -13,6 +14,12 @@ import {
   buildEventName,
   flowResolver,
 } from "@workspace/shared/types/pipeline";
+
+export type RawDataProps = {
+  eventData: SyncEventPayload;
+  tenantID: string;
+  dataSource?: Tables<"data_sources">;
+};
 
 export abstract class BaseAdapter {
   constructor(
@@ -32,7 +39,7 @@ export abstract class BaseAdapter {
   }
 
   private async handleJob(syncEvent: SyncEventPayload): Promise<void> {
-    const { entityType, job } = syncEvent;
+    const { entityType, job, tenantID } = syncEvent;
 
     // Validate this adapter supports the requested entity type
     if (!this.supportedEntities.includes(entityType)) {
@@ -55,12 +62,11 @@ export abstract class BaseAdapter {
         return;
       }
 
-      const result = await this.getRawData(
-        syncEvent,
-        syncEvent.tenantID,
-        dataSource.id,
-        dataSource.config
-      );
+      const result = await this.getRawData({
+        eventData: syncEvent,
+        tenantID,
+        dataSource,
+      });
       if (result.error) {
         await Scheduler.failJob(job, result.error.message);
         return;
@@ -69,7 +75,10 @@ export abstract class BaseAdapter {
         await Scheduler.completeJob(job, dataSource, `sync.${entityType}`);
       }
     } else {
-      const result = await this.getRawData(syncEvent, syncEvent.tenantID);
+      const result = await this.getRawData({
+        eventData: syncEvent,
+        tenantID,
+      });
       if (result.error) {
         await Scheduler.failJob(job, result.error.message);
         return;
@@ -131,10 +140,7 @@ export abstract class BaseAdapter {
   }
 
   protected abstract getRawData(
-    syncEvent: SyncEventPayload,
-    tenantID: string,
-    dataSourceID?: string,
-    config?: any
+    props: RawDataProps
   ): Promise<APIResponse<DataFetchPayload[]>>;
 
   private async publishFailedEvent(

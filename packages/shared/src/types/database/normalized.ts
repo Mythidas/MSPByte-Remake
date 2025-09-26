@@ -11,4 +11,14 @@ export type Company = {
 
 export type Endpoint = {
   external_id: string;
+
+  hostname: string;
+  status: "online" | "offline";
+  os: string;
+
+  ip_address: string;
+  ext_address: string;
+  mac_address: string;
+
+  last_check_in: string;
 };

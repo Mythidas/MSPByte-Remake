@@ -12,7 +12,6 @@ import { Label } from "@/components/ui/label";
 import { CheckCircle2, Loader2, TestTube } from "lucide-react";
 import { toast } from "sonner";
 import { Spinner } from "@/components/Spinner";
-import { useAsyncData } from "@/lib/hooks/useAsync";
 import { SophosPartnerConfig } from "@workspace/shared/types/integrations/sophos-partner";
 import { getRow } from "@/lib/supabase/orm";
 import {

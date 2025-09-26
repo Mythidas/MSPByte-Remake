@@ -6,6 +6,7 @@ export type SophosPartnerConfig = {
 export type SophosTenantConfig = {
   api_host: string;
   tenant_name: string;
+  tenant_id: string;
 };
 
 export type SophosPartnerAPIResponse<T> = {
