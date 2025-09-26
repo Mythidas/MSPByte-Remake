@@ -33,33 +33,24 @@ export class SophosPartnerAdapter extends BaseAdapter {
       });
     }
 
-    try {
-      Debug.log({
-        module: "SophosPartnerAdapter",
-        context: "getRawData",
-        message: `Fetching data for tenant ${tenantID}, dataSource ${dataSource.id || "N/A"}`,
-      });
+    Debug.log({
+      module: "SophosPartnerAdapter",
+      context: "getRawData",
+      message: `Fetching data for tenant ${tenantID}, dataSource ${dataSource.id || "N/A"}`,
+    });
 
-      switch (eventData.entityType) {
-        case "endpoints": {
-          return await this.handleEndpointSync(dataSource);
-        }
+    switch (eventData.entityType) {
+      case "endpoints": {
+        return await this.handleEndpointSync(dataSource);
       }
-
-      return Debug.error({
-        module: "SophosPartnerAdapter",
-        context: "getRawData",
-        message: `Entity type not supported: ${eventData.entityType}`,
-        code: "SOPHOSPARTNER_FETCH_FAILED",
-      });
-    } catch (error) {
-      return Debug.error({
-        module: "SophosPartnerAdapter",
-        context: "getRawData",
-        message: `Failed to fetch data for tenant ${tenantID} stage ${eventData.stage}`,
-        code: "SOPHOSPARTNER_FETCH_FAILED",
-      });
     }
+
+    return Debug.error({
+      module: "SophosPartnerAdapter",
+      context: "getRawData",
+      message: `Entity type not supported: ${eventData.entityType}`,
+      code: "UNKNOWN_PIPELINE",
+    });
   }
 
   private async handleEndpointSync(

@@ -3,7 +3,11 @@ import { getRows, upsertRows } from "@workspace/shared/lib/db/orm";
 import Debug from "@workspace/shared/lib/Debug";
 import { APIResponse } from "@workspace/shared/types/api";
 import { Tables, TablesInsert } from "@workspace/shared/types/database";
-import { Company, Endpoint } from "@workspace/shared/types/database/normalized";
+import {
+  Company,
+  Endpoint,
+  Identity,
+} from "@workspace/shared/types/database/normalized";
 import {
   EntityType,
   IntegrationType,
@@ -25,6 +29,7 @@ export interface ProcessedEntityData<T = any> {
 
 export type CompanyData = ProcessedEntityData<Company>;
 export type EndpointData = ProcessedEntityData<Endpoint>;
+export type IdentityData = ProcessedEntityData<Identity>;
 
 export abstract class BaseProcessor<T = any> {
   protected entityType: EntityType;

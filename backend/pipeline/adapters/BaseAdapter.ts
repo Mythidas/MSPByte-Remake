@@ -9,7 +9,6 @@ import {
   EntityType,
   SyncEventPayload,
   FetchedEventPayload,
-  FailedEventPayload,
   DataFetchPayload,
   buildEventName,
   flowResolver,
@@ -51,6 +50,12 @@ export abstract class BaseAdapter {
       });
       return;
     }
+    Debug.log({
+      module: "BaseAdapter",
+      context: "handleJob",
+      message: `Processing job: ${job.id}`,
+    });
+
     const rawData: DataFetchPayload[] = [];
 
     if (syncEvent.dataSourceID) {
@@ -133,8 +138,8 @@ export abstract class BaseAdapter {
       Debug.error({
         module: "BaseAdapter",
         context: "handleJob",
-        message: `Failed to publish ${eventName}: ${err}`,
-        code: "NATS_FAILURE",
+        message: `Failed to publish: ${err}`,
+        code: "EVENT_FAILURE",
       });
     }
   }
@@ -142,42 +147,4 @@ export abstract class BaseAdapter {
   protected abstract getRawData(
     props: RawDataProps
   ): Promise<APIResponse<DataFetchPayload[]>>;
-
-  private async publishFailedEvent(
-    originalEvent: SyncEventPayload,
-    errorMessage: string,
-    errorCode: string
-  ): Promise<void> {
-    const failedEvent: FailedEventPayload = {
-      eventID: originalEvent.eventID,
-      tenantID: originalEvent.tenantID,
-      integrationID: originalEvent.integrationID,
-      integrationType: this.integrationType,
-      dataSourceID: originalEvent.dataSourceID,
-      entityType: originalEvent.entityType,
-      stage: "failed",
-      createdAt: new Date().toISOString(),
-      parentEventID: originalEvent.eventID,
-
-      error: {
-        code: errorCode,
-        message: errorMessage,
-        retryable: errorCode !== "UNSUPPORTED_ENTITY",
-      },
-      failedAt: "sync",
-    };
-
-    const eventName = buildEventName("failed", originalEvent.entityType);
-
-    try {
-      await natsClient.publish(eventName, failedEvent);
-    } catch (err) {
-      Debug.error({
-        module: "BaseAdapter",
-        context: "publishFailedEvent",
-        message: `Failed to publish failure event: ${err}`,
-        code: "NATS_FAILURE",
-      });
-    }
-  }
 }

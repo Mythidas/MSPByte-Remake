@@ -29,33 +29,24 @@ export class AutoTaskAdapter extends BaseAdapter {
       });
     }
 
-    try {
-      Debug.log({
-        module: "AutoTaskAdapter",
-        context: "getRawData",
-        message: `Fetching data for tenant ${tenantID}, dataSource ${dataSource.id || "N/A"}`,
-      });
+    Debug.log({
+      module: "AutoTaskAdapter",
+      context: "getRawData",
+      message: `Fetching data for tenant ${tenantID}, dataSource ${dataSource.id || "N/A"}`,
+    });
 
-      switch (eventData.entityType) {
-        case "companies": {
-          return await this.handleCompanySync(dataSource);
-        }
+    switch (eventData.entityType) {
+      case "companies": {
+        return await this.handleCompanySync(dataSource);
       }
-
-      return Debug.error({
-        module: "AutoTaskAdapter",
-        context: "getRawData",
-        message: `Stage not supported: ${eventData.stage}`,
-        code: "AUTOTASK_FETCH_FAILED",
-      });
-    } catch (error) {
-      return Debug.error({
-        module: "AutoTaskAdapter",
-        context: "getRawData",
-        message: `Failed to fetch data for tenant ${tenantID} stage ${eventData.stage}`,
-        code: "AUTOTASK_FETCH_FAILED",
-      });
     }
+
+    return Debug.error({
+      module: "AutoTaskAdapter",
+      context: "getRawData",
+      message: `Stage not supported: ${eventData.stage}`,
+      code: "UNKNOWN_PIPELINE",
+    });
   }
 
   private async handleCompanySync(

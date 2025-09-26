@@ -16,14 +16,14 @@ class NatsClient {
       Debug.log({
         module: "NatsClient",
         context: "connect",
-        message: "Connected to NATS server"
+        message: "Connected to NATS server",
       });
     } catch (error) {
       Debug.error({
         module: "NatsClient",
         context: "connect",
         message: "Failed to connect to NATS",
-        code: "NATS_CONNECT_FAILED"
+        code: "NATS_CONNECT_FAILED",
       });
       throw error;
     }
@@ -39,7 +39,7 @@ class NatsClient {
     Debug.log({
       module: "NatsClient",
       context: "publish",
-      message: `Published to ${subject}`
+      message: `Published to ${subject}`,
     });
   }
 
@@ -55,7 +55,7 @@ class NatsClient {
     Debug.log({
       module: "NatsClient",
       context: "subscribe",
-      message: `Subscribed to ${subject}`
+      message: `Subscribed to ${subject}`,
     });
 
     // Process messages
@@ -68,8 +68,8 @@ class NatsClient {
           Debug.error({
             module: "NatsClient",
             context: "subscribe",
-            message: `Error processing message from ${subject}`,
-            code: "NATS_MESSAGE_ERROR"
+            message: `Error processing message from ${subject}: ${error}`,
+            code: "NATS_MESSAGE_ERROR",
           });
         }
       }
@@ -85,7 +85,7 @@ class NatsClient {
       Debug.log({
         module: "NatsClient",
         context: "close",
-        message: "Disconnected from NATS server"
+        message: "Disconnected from NATS server",
       });
     }
   }

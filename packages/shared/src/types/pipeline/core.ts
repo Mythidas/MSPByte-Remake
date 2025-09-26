@@ -17,12 +17,11 @@ export type EntityType =
   | "contacts"
   | "tickets"
   | "assets"
+  | "identities"
   | "users"
   | "licenses"
   | "license_assignments"
-  | "billing_records"
-  | "alerts"
-  | "incidents";
+  | "billing_records";
 
 // Integration types for adapter identification
 export type IntegrationType =

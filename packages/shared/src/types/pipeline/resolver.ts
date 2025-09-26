@@ -32,7 +32,7 @@ export const flowResolver: FlowResolver = {
 
     // Fall back to standard flow
     const standardFlow = StandardFlows[entityType];
-    return standardFlow[currentStage] || null;
+    return standardFlow?.[currentStage] || null;
   },
 
   isValidTransition: (
@@ -187,8 +187,7 @@ export function parseEventName(
     "licenses",
     "license_assignments",
     "billing_records",
-    "alerts",
-    "incidents",
+    "identities",
   ];
 
   if (

@@ -22,3 +22,16 @@ export type Endpoint = {
 
   last_check_in: string;
 };
+
+export type Identity = {
+  external_id: string;
+
+  name: string;
+  email: string;
+  aliases: string[];
+  type: "member" | "guest";
+  enabled: boolean;
+
+  licenses: string[];
+  last_login_at: string;
+};

@@ -13,6 +13,9 @@ import { BaseAdapter } from "@workspace/pipeline/adapters/BaseAdapter";
 import { SophosPartnerAdapter } from "@workspace/pipeline/adapters/SophosPartnerAdapter";
 import { CompanyProcessor } from "@workspace/pipeline/processors/CompanyProcessor";
 import { EndpointProcessor } from "@workspace/pipeline/processors/EndpointProcessor";
+import { IdentityProcessor } from "@workspace/pipeline/processors/IdentityProcessor";
+import { IntegrationType } from "@workspace/shared/types/pipeline";
+import { Microsoft365Adapter } from "@workspace/pipeline/adapters/Microsoft365Adpater";
 
 // Compute __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -22,7 +25,7 @@ dotenv.config({ path: join(__dirname, "../../../.env.local") });
 
 class MSPByteBackend {
   private scheduler: Scheduler;
-  private adapters: Map<string, any>;
+  private adapters: Map<IntegrationType, BaseAdapter>;
   private processors: BaseProcessor[];
   private resolvers: BaseResolver[];
   private linkers: BaseLinker[];
@@ -32,11 +35,16 @@ class MSPByteBackend {
     this.scheduler = new Scheduler();
     this.adapters = new Map([
       ["autotask", new AutoTaskAdapter() as BaseAdapter],
-      ["sophos", new SophosPartnerAdapter()],
+      ["sophos-partner", new SophosPartnerAdapter()],
+      ["microsoft-365", new Microsoft365Adapter()],
     ]);
 
     // Initialize empty arrays - you'll add concrete implementations later
-    this.processors = [new CompanyProcessor(), new EndpointProcessor()];
+    this.processors = [
+      new CompanyProcessor(),
+      new EndpointProcessor(),
+      new IdentityProcessor(),
+    ];
     this.resolvers = [];
     this.linkers = [];
     this.workers = [];

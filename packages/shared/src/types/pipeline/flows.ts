@@ -30,8 +30,7 @@ export const StandardFlows: Record<EntityType, StandardFlow<EntityType>> = {
   users: defaultEntityFlow,
   licenses: defaultEntityFlow,
   billing_records: defaultEntityFlow,
-  alerts: defaultEntityFlow,
-  incidents: defaultEntityFlow,
+  identities: defaultEntityFlow,
 
   // Special case: license_assignments might not always need entity storage
   license_assignments: {
