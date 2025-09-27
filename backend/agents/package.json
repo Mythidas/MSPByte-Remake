@@ -1,10 +1,10 @@
 {
-  "name": "@workspace/services",
+  "name": "@workspace/agents",
   "version": "0.0.1",
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "tsx watch app.ts",
+    "dev": "tsx watch src/app.ts",
     "build": "tsc",
     "start": "node dist/app.js",
     "test": "vitest",
@@ -15,7 +15,6 @@
     "@workspace/pipeline": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "@supabase/supabase-js": "^2.38.0",
-    "fastify": "^4.24.3",
     "dotenv": "^17.2.2"
   },
   "devDependencies": {

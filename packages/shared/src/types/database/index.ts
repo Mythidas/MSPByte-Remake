@@ -140,7 +140,7 @@ export type UpdateRowConfig<T extends Table> = {
 
 export type UpsertRowConfig<T extends Table> = {
   rows: (TablesUpdate<T> | TablesInsert<T>)[];
-  onConlfict: Row<T>[];
+  onConflict: Row<T>[];
   filters?: Array<RowFilter<T> | undefined>;
   ors?: Array<[RowFilter<T>, RowFilter<T>] | undefined>;
 };

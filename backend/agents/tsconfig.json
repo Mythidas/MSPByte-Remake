@@ -11,5 +11,5 @@
       "@workspace/pipeline/*": ["../../backend/pipeline/src/*"]
     }
   },
-  "include": ["app.ts"]
+  "include": ["./src/**/*.ts", "src/app.ts"]
 }

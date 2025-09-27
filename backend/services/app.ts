@@ -2,13 +2,11 @@ import { AutoTaskAdapter } from "@workspace/pipeline/adapters/AutoTaskAdapter";
 import { BaseAdapter } from "@workspace/pipeline/adapters/BaseAdapter";
 import { Microsoft365Adapter } from "@workspace/pipeline/adapters/Microsoft365Adpater";
 import { SophosPartnerAdapter } from "@workspace/pipeline/adapters/SophosPartnerAdapter";
-import { BaseLinker } from "@workspace/pipeline/linkers/base";
 import { BaseProcessor } from "@workspace/pipeline/processors/BaseProcessor";
 import { CompanyProcessor } from "@workspace/pipeline/processors/CompanyProcessor";
 import { EndpointProcessor } from "@workspace/pipeline/processors/EndpointProcessor";
 import { GroupProcessor } from "@workspace/pipeline/processors/GroupProcessor";
 import { IdentityProcessor } from "@workspace/pipeline/processors/IdentityProcessor";
-import { BaseResolver } from "@workspace/pipeline/resolvers/base";
 import { Scheduler } from "@workspace/pipeline/scheduler";
 import { natsClient } from "@workspace/pipeline/helpers/nats.js";
 import { BaseWorker } from "@workspace/pipeline/workers/base";
@@ -17,12 +15,14 @@ import { IntegrationType } from "@workspace/shared/types/pipeline";
 import dotenv from "dotenv";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+import { BaseResolver } from "@workspace/pipeline/resolvers/BaseResolver";
+import { BaseLinker } from "@workspace/pipeline/linkers/BaseLinker";
 
 // Compute __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-dotenv.config({ path: join(__dirname, "../../../.env.local") });
+dotenv.config({ path: join(__dirname, "../../.env.local") });
 
 class MSPByteBackend {
   private scheduler: Scheduler;

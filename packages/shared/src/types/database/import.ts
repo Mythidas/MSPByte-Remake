@@ -14,6 +14,124 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_keys: {
+        Row: {
+          active: boolean
+          agent_id: string
+          created_at: string | null
+          id: string
+          key_hash: string
+          last_used_at: string | null
+          site_id: string
+          tenant_id: string
+        }
+        Insert: {
+          active: boolean
+          agent_id: string
+          created_at?: string | null
+          id?: string
+          key_hash: string
+          last_used_at?: string | null
+          site_id: string
+          tenant_id: string
+        }
+        Update: {
+          active?: boolean
+          agent_id?: string
+          created_at?: string | null
+          id?: string
+          key_hash?: string
+          last_used_at?: string | null
+          site_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_keys_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_keys_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_keys_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agents: {
+        Row: {
+          created_at: string | null
+          ext_address: string
+          guid: string
+          hostname: string
+          id: string
+          ip_address: string
+          last_checkin_at: string | null
+          last_online_at: string | null
+          online: boolean
+          site_id: string
+          tenant_id: string
+          updated_at: string | null
+          version: string
+        }
+        Insert: {
+          created_at?: string | null
+          ext_address: string
+          guid: string
+          hostname: string
+          id?: string
+          ip_address: string
+          last_checkin_at?: string | null
+          last_online_at?: string | null
+          online: boolean
+          site_id: string
+          tenant_id: string
+          updated_at?: string | null
+          version: string
+        }
+        Update: {
+          created_at?: string | null
+          ext_address?: string
+          guid?: string
+          hostname?: string
+          id?: string
+          ip_address?: string
+          last_checkin_at?: string | null
+          last_online_at?: string | null
+          online?: boolean
+          site_id?: string
+          tenant_id?: string
+          updated_at?: string | null
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agents_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_logs: {
         Row: {
           body: string | null
@@ -537,6 +655,54 @@ export type Database = {
           },
           {
             foreignKeyName: "scheduled_jobs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_agent_secrets: {
+        Row: {
+          active: boolean
+          created_at: string | null
+          id: string
+          secret_key_hash: string
+          site_id: string
+          tenant_id: string
+          updated_at: string | null
+          usage_count: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string | null
+          id?: string
+          secret_key_hash: string
+          site_id: string
+          tenant_id: string
+          updated_at?: string | null
+          usage_count?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string | null
+          id?: string
+          secret_key_hash?: string
+          site_id?: string
+          tenant_id?: string
+          updated_at?: string | null
+          usage_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_agent_secrets_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_agent_secrets_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"

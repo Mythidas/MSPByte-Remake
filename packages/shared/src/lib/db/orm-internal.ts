@@ -176,7 +176,7 @@ export async function internalUpsertRows<T extends Table>(
     supabase,
     table,
     config.rows,
-    config.onConlfict,
+    config.onConflict,
     (query) => {
       if (config.filters) {
         for (const filter of config.filters) {
