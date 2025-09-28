@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { LoaderIcon, AlertTriangleIcon } from "lucide-react";
-import { disableIntegration } from "../actions/disable-integration";
+import { disableIntegration } from "./actions/disable-integration";
 import { SubmitButton } from "@/components/SubmitButton";
 
 type Props = {

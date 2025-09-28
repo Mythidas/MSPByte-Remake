@@ -18,7 +18,9 @@ export function normalizeText(text: string): string {
     .trim();
 }
 
-export function generateUUID(): string {
+export function generateUUID(sentinel?: boolean): string {
+  if (sentinel) return "00000000-0000-0000-0000-000000000000";
+
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return crypto.randomUUID();
   }

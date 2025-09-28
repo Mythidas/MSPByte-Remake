@@ -1,0 +1,23 @@
+export type HaloPSASite = {
+  id: number;
+  name: string;
+  client_id: number;
+  client_name: string;
+  clientsite_name: string;
+  inactive: boolean;
+  sla_id: number;
+  phonenumber: string;
+  colour: string;
+  timezone: string;
+  invoice_address_isdelivery: boolean;
+  isstocklocation: boolean;
+  messagegroup_id: number;
+  use: string;
+  site_fields: any[];
+  itglue_id: string;
+  maincontact_id: number;
+  isinvoicesite: boolean;
+  site_item_tax_code: number;
+  default_currency_code: number;
+  default_client_currency_code: number;
+};

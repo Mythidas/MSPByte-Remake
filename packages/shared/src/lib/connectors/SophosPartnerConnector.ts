@@ -16,8 +16,8 @@ export default class SophosPartnerConnector {
 
   constructor(private config: SophosPartnerConfig) {}
 
-  async checkHealth(): Promise<boolean> {
-    return true;
+  async checkHealth(): Promise<APIResponse<true>> {
+    return { data: true };
   }
 
   async getTenants(): Promise<APIResponse<SophosPartnerTenant[]>> {

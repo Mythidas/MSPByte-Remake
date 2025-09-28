@@ -158,7 +158,6 @@ export async function GET(request: NextRequest) {
             })),
           } as Microsoft365DataSourceConfig,
           status: "connected",
-          last_sync_at: null, // Reset sync status to trigger fresh sync
         },
       });
 

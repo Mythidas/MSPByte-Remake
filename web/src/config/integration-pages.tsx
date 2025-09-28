@@ -1,5 +1,6 @@
 import AutoTaskConnectStep from "@/modules/integrations/autotask/AutoTaskConnectStep";
 import AutoTaskMapSitesStep from "@/modules/integrations/autotask/AutoTaskMapSitesStep";
+import HaloPSAConnectStep from "@/modules/integrations/halopsa/HaloPSAConnectStep";
 import Microsoft365ConnectStep from "@/modules/integrations/microsoft-365/Microsoft365ConnectStep";
 import SophosPartnerConnectStep from "@/modules/integrations/sophos-partner/SophosPartnerConnectStep";
 import SophosPartnerMapSitesStep from "@/modules/integrations/sophos-partner/SophosPartnerMapSitesStep";
@@ -32,6 +33,16 @@ const INTEGRATION_PAGES: Record<string, IntegrationConfig> = {
         name: "Map Sites",
         description: "Map Sites sycned from AutoTask instance",
         render: (props) => <AutoTaskMapSitesStep {...props} />,
+      },
+    ],
+  },
+  halopsa: {
+    fullDescription: "",
+    steps: [
+      {
+        name: "Connect",
+        description: "Link HaloPSA instance through API credentials",
+        render: (props) => <HaloPSAConnectStep {...props} />,
       },
     ],
   },

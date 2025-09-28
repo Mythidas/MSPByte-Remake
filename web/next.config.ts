@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
       new URL(
         "https://ww15.autotask.net/AutotaskOnyx/Content/Images/favicon-dark.ico"
       ),
+      new URL(
+        "https://usehalo.com/wp-content/uploads/2025/02/HALO_Icon_PSA_PNG1K.png"
+      ),
     ],
   },
 };

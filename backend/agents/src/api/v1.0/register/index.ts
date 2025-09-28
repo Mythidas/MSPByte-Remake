@@ -8,16 +8,14 @@ import Debug from "@workspace/shared/lib/Debug";
 import Encryption from "@workspace/shared/lib/Encryption";
 import { FastifyInstance } from "fastify";
 
-type ReqBody = {
-  secret?: string;
-  hostname?: string;
-  version?: string;
-  guid?: string;
-};
-
 export default async function (fastify: FastifyInstance) {
-  fastify.post("/", async (req) => {
-    const { secret, hostname, version, guid } = req.body as ReqBody;
+  fastify.get("/", async (req) => {
+    const { secret, hostname, version, guid } = req.query as {
+      secret?: string;
+      hostname?: string;
+      version?: string;
+      guid?: string;
+    };
 
     if (!secret || !hostname || !version) {
       return Debug.response(
@@ -126,11 +124,13 @@ export default async function (fastify: FastifyInstance) {
       );
     }
 
-    return Debug.response(
-      {
-        data: key,
+    return new Response(key, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Content-Length": Buffer.byteLength(key, "utf8").toString(),
+        Connection: "close", // important to prevent chunked
       },
-      200
-    );
+    });
   });
 }

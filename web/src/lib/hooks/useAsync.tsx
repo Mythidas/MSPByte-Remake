@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import Loader from "@/components/Loader";
 
 // Types for the async data hook
 export interface AsyncState<T> {
@@ -158,7 +159,7 @@ export function useAsyncRender<T>(
   options: UseAsyncRenderOptions = {}
 ): React.ReactNode {
   const {
-    LoadingComponent = DefaultLoadingComponent,
+    LoadingComponent = Loader,
     ErrorComponent = DefaultErrorComponent,
     WrapperComponent,
   } = options;
@@ -182,22 +183,6 @@ export function useAsyncRender<T>(
   }
 
   return content;
-}
-
-// Default components
-function DefaultLoadingComponent() {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <Skeleton className="h-12 w-12 rounded-lg" />
-        <div className="space-y-2">
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-4 w-32" />
-        </div>
-      </div>
-      <Skeleton className="h-32 w-full" />
-    </div>
-  );
 }
 
 function DefaultErrorComponent({ error }: { error: string }) {

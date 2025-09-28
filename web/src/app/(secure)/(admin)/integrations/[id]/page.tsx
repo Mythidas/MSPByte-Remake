@@ -11,7 +11,7 @@ import { getRow } from "@/lib/supabase/orm";
 import { AlertCircleIcon } from "lucide-react";
 import INTEGRATION_PAGES from "@/config/integration-pages";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import DisableIntegrationButton from "@/modules/integrations/components/DisableIntegrationButton";
+import DisableIntegrationButton from "@/modules/integrations/DisableIntegrationButton";
 import { getDataSourcesCount } from "@/modules/integrations/actions/disable-integration";
 
 type Props = {
