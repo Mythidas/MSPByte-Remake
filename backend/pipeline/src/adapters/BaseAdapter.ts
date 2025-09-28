@@ -1,18 +1,22 @@
-import { Scheduler } from "@workspace/pipeline/scheduler";
-import { natsClient } from "@workspace/pipeline/helpers/nats";
-import { getRow } from "@workspace/shared/lib/db/orm";
-import Debug from "@workspace/shared/lib/Debug";
-import { APIResponse } from "@workspace/shared/types/api";
-import { Tables } from "@workspace/shared/types/database";
+import { natsClient } from "@workspace/pipeline/helpers/nats.js";
+import { Scheduler } from "@workspace/pipeline/scheduler/index.js";
+import { getRow } from "@workspace/shared/lib/db/orm.js";
+import Debug from "@workspace/shared/lib/Debug.js";
+import { APIResponse } from "@workspace/shared/types/api.js";
+import { Tables } from "@workspace/shared/types/database/import.js";
 import {
   IntegrationType,
   EntityType,
+} from "@workspace/shared/types/pipeline/core.js";
+import {
   SyncEventPayload,
-  FetchedEventPayload,
   DataFetchPayload,
-  buildEventName,
+  FetchedEventPayload,
+} from "@workspace/shared/types/pipeline/events.js";
+import {
   flowResolver,
-} from "@workspace/shared/types/pipeline";
+  buildEventName,
+} from "@workspace/shared/types/pipeline/resolver.js";
 
 export type RawDataProps = {
   eventData: SyncEventPayload;

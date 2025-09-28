@@ -1,13 +1,13 @@
 import {
   BaseProcessor,
   EndpointData,
-} from "@workspace/pipeline/processors/BaseProcessor";
-import Debug from "@workspace/shared/lib/Debug";
-import { SophosPartnerEndpoint } from "@workspace/shared/types/integrations/sophos-partner/endpoints";
+} from "@workspace/pipeline/processors/BaseProcessor.js";
+import Debug from "@workspace/shared/lib/Debug.js";
+import { SophosPartnerEndpoint } from "@workspace/shared/types/integrations/sophos-partner/endpoints.js";
 import {
   DataFetchPayload,
   IntegrationType,
-} from "@workspace/shared/types/pipeline";
+} from "@workspace/shared/types/pipeline/index.js";
 
 export class EndpointProcessor extends BaseProcessor {
   constructor() {

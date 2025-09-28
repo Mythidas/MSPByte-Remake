@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { getRows, insertRows, updateRow } from "@/lib/supabase/orm";
 import { AutoTaskDataSourceConfig } from "@workspace/shared/types/integrations/autotask";
-import AutoTaskConnector from "@workspace/shared/lib/connectors/AutoTaskConnector";
+import { AutoTaskConnector } from "@workspace/shared/lib/connectors/AutoTaskConnector";
 import Encryption from "@workspace/shared/lib/Encryption";
 
 const autoTaskConfigSchema = z.object({

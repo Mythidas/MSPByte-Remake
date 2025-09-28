@@ -1,13 +1,13 @@
 import {
   BaseProcessor,
   CompanyData,
-} from "@workspace/pipeline/processors/BaseProcessor";
-import Debug from "@workspace/shared/lib/Debug";
-import { AutoTaskCompany } from "@workspace/shared/types/integrations/autotask/company";
+} from "@workspace/pipeline/processors/BaseProcessor.js";
+import Debug from "@workspace/shared/lib/Debug.js";
+import { AutoTaskCompany } from "@workspace/shared/types/integrations/autotask/company.js";
 import {
   DataFetchPayload,
   IntegrationType,
-} from "@workspace/shared/types/pipeline";
+} from "@workspace/shared/types/pipeline/index.js";
 
 export class CompanyProcessor extends BaseProcessor {
   constructor() {

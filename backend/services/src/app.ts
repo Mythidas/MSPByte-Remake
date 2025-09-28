@@ -1,22 +1,22 @@
-import { AutoTaskAdapter } from "@workspace/pipeline/adapters/AutoTaskAdapter";
-import { BaseAdapter } from "@workspace/pipeline/adapters/BaseAdapter";
-import { Microsoft365Adapter } from "@workspace/pipeline/adapters/Microsoft365Adpater";
-import { SophosPartnerAdapter } from "@workspace/pipeline/adapters/SophosPartnerAdapter";
-import { BaseProcessor } from "@workspace/pipeline/processors/BaseProcessor";
-import { CompanyProcessor } from "@workspace/pipeline/processors/CompanyProcessor";
-import { EndpointProcessor } from "@workspace/pipeline/processors/EndpointProcessor";
-import { GroupProcessor } from "@workspace/pipeline/processors/GroupProcessor";
-import { IdentityProcessor } from "@workspace/pipeline/processors/IdentityProcessor";
-import { Scheduler } from "@workspace/pipeline/scheduler";
+import { AutoTaskAdapter } from "@workspace/pipeline/adapters/AutoTaskAdapter.js";
+import { BaseAdapter } from "@workspace/pipeline/adapters/BaseAdapter.js";
+import { Microsoft365Adapter } from "@workspace/pipeline/adapters/Microsoft365Adpater.js";
+import { SophosPartnerAdapter } from "@workspace/pipeline/adapters/SophosPartnerAdapter.js";
 import { natsClient } from "@workspace/pipeline/helpers/nats.js";
-import { BaseWorker } from "@workspace/pipeline/workers/base";
-import Debug from "@workspace/shared/lib/Debug";
-import { IntegrationType } from "@workspace/shared/types/pipeline";
-import dotenv from "dotenv";
+import { BaseLinker } from "@workspace/pipeline/linkers/BaseLinker.js";
+import { BaseProcessor } from "@workspace/pipeline/processors/BaseProcessor.js";
+import { CompanyProcessor } from "@workspace/pipeline/processors/CompanyProcessor.js";
+import { EndpointProcessor } from "@workspace/pipeline/processors/EndpointProcessor.js";
+import { GroupProcessor } from "@workspace/pipeline/processors/GroupProcessor.js";
+import { IdentityProcessor } from "@workspace/pipeline/processors/IdentityProcessor.js";
+import { BaseResolver } from "@workspace/pipeline/resolvers/BaseResolver.js";
+import { Scheduler } from "@workspace/pipeline/scheduler/index.js";
+import { BaseWorker } from "@workspace/pipeline/workers/base.js";
+import Debug from "@workspace/shared/lib/Debug.js";
+import { IntegrationType } from "@workspace/shared/types/pipeline/core.js";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
-import { BaseResolver } from "@workspace/pipeline/resolvers/BaseResolver";
-import { BaseLinker } from "@workspace/pipeline/linkers/BaseLinker";
+import dotenv from "dotenv";
 
 // Compute __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);

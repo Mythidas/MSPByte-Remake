@@ -1,9 +1,9 @@
-import { HaloPSAConnector } from "@workspace/shared/lib/connectors/HaloPSAConnector";
-import { getRow } from "@workspace/shared/lib/db/orm";
-import Debug from "@workspace/shared/lib/Debug";
-import Encryption from "@workspace/shared/lib/Encryption";
-import { generateUUID } from "@workspace/shared/lib/utils";
-import { HaloPSAConfig } from "@workspace/shared/types/integrations/halopsa";
+import { HaloPSAConnector } from "@workspace/shared/lib/connectors/HaloPSAConnector.js";
+import { getRow } from "@workspace/shared/lib/db/orm.js";
+import Debug from "@workspace/shared/lib/Debug.js";
+import Encryption from "@workspace/shared/lib/Encryption.js";
+import { generateUUID } from "@workspace/shared/lib/utils.js";
+import { HaloPSAConfig } from "@workspace/shared/types/integrations/halopsa/index.js";
 import { FastifyInstance } from "fastify";
 
 export default async function (fastify: FastifyInstance) {

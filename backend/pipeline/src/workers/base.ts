@@ -1,6 +1,6 @@
-import Debug from "@workspace/shared/lib/Debug";
-import { natsClient } from "@workspace/pipeline/helpers/nats";
-import { insertRows, updateRow } from "@workspace/shared/lib/db/orm";
+import Debug from "@workspace/shared/lib/Debug.js";
+import { natsClient } from "@workspace/pipeline/helpers/nats.js";
+import { insertRows, updateRow } from "@workspace/shared/lib/db/orm.js";
 
 export abstract class BaseWorker {
   protected entityType: string;

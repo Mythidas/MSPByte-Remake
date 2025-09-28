@@ -1,8 +1,8 @@
 // Main pipeline type system exports
-export * from "./core";
-export * from "./flows";
-export * from "./events";
-export * from "./resolver";
+export * from "./core.js";
+export * from "./flows.js";
+export * from "./events.js";
+export * from "./resolver.js";
 
 // Convenience re-exports for common use cases
 export {
@@ -12,7 +12,7 @@ export {
   type IntegrationType,
   type BasePipelineEvent,
   type PipelineMetadata,
-} from "@workspace/shared/types/pipeline/core";
+} from "@workspace/shared/types/pipeline/core.js";
 
 export {
   type StandardFlow,
@@ -20,7 +20,7 @@ export {
   type FlowResolver,
   StandardFlows,
   CustomFlows,
-} from "@workspace/shared/types/pipeline/flows";
+} from "@workspace/shared/types/pipeline/flows.js";
 
 export {
   type PipelineEventPayload,
@@ -35,7 +35,7 @@ export {
   type LinkedEventPayload,
   type CompletedEventPayload,
   type FailedEventPayload,
-} from "@workspace/shared/types/pipeline/events";
+} from "@workspace/shared/types/pipeline/events.js";
 
 export {
   flowResolver,
@@ -49,4 +49,4 @@ export {
   isLinkedEvent,
   isCompletedEvent,
   isFailedEvent,
-} from "@workspace/shared/types/pipeline/resolver";
+} from "@workspace/shared/types/pipeline/resolver.js";

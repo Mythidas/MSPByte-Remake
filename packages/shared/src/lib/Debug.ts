@@ -1,4 +1,4 @@
-import { APIError } from "@workspace/shared/types/api";
+import { APIError } from "@workspace/shared/types/api.js";
 
 type APIResponse<T> =
   | {

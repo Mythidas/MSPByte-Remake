@@ -1,18 +1,18 @@
 import {
   BaseAdapter,
   RawDataProps,
-} from "@workspace/pipeline/adapters/BaseAdapter";
-import { DataFetchPayload } from "@workspace/shared/types/pipeline";
-import SophosPartnerConnector from "@workspace/shared/lib/connectors/SophosPartnerConnector";
+} from "@workspace/pipeline/adapters/BaseAdapter.js";
+import { getRow } from "@workspace/shared/lib/db/orm.js";
+import Debug from "@workspace/shared/lib/Debug.js";
+import Encryption from "@workspace/shared/lib/Encryption.js";
+import { APIResponse } from "@workspace/shared/types/api.js";
+import { Tables } from "@workspace/shared/types/database/import.js";
+import { DataFetchPayload } from "@workspace/shared/types/pipeline/events.js";
+import SophosPartnerConnector from "@workspace/shared/lib/connectors/SophosPartnerConnector.js";
 import {
   SophosPartnerConfig,
   SophosTenantConfig,
-} from "@workspace/shared/types/integrations/sophos-partner";
-import Debug from "@workspace/shared/lib/Debug";
-import { getRow } from "@workspace/shared/lib/db/orm";
-import Encryption from "@workspace/shared/lib/Encryption";
-import { APIResponse } from "@workspace/shared/types/api";
-import { Tables } from "@workspace/shared/types/database";
+} from "@workspace/shared/types/integrations/sophos-partner/index.js";
 
 export class SophosPartnerAdapter extends BaseAdapter {
   constructor() {

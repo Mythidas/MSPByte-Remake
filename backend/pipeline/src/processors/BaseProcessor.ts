@@ -1,14 +1,17 @@
-import { natsClient } from "@workspace/pipeline/helpers/nats";
-import { getRows, upsertRows } from "@workspace/shared/lib/db/orm";
-import Debug from "@workspace/shared/lib/Debug";
-import { APIResponse } from "@workspace/shared/types/api";
-import { Tables, TablesInsert } from "@workspace/shared/types/database";
+import { natsClient } from "@workspace/pipeline/helpers/nats.js";
+import { getRows, upsertRows } from "@workspace/shared/lib/db/orm.js";
+import Debug from "@workspace/shared/lib/Debug.js";
+import { APIResponse } from "@workspace/shared/types/api.js";
+import {
+  Tables,
+  TablesInsert,
+} from "@workspace/shared/types/database/index.js";
 import {
   Company,
   Endpoint,
   Group,
   Identity,
-} from "@workspace/shared/types/database/normalized";
+} from "@workspace/shared/types/database/normalized.js";
 import {
   EntityType,
   IntegrationType,
@@ -18,7 +21,7 @@ import {
   DataFetchPayload,
   buildEventName,
   flowResolver,
-} from "@workspace/shared/types/pipeline";
+} from "@workspace/shared/types/pipeline/index.js";
 
 export interface ProcessedEntityData<T = any> {
   normalized: T;

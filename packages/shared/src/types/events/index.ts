@@ -1,4 +1,4 @@
-import { AuthEvents } from "@workspace/shared/types/events/auth";
+import { AuthEvents } from "@workspace/shared/types/events/auth.js";
 import {
   PipelineEventPayload,
   EventName as PipelineEventName,

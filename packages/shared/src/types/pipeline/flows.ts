@@ -2,7 +2,7 @@ import {
   EntityType,
   PipelineStage,
   IntegrationType,
-} from "@workspace/shared/types/pipeline/core";
+} from "@workspace/shared/types/pipeline/core.js";
 
 // Standard flow definition - defines the normal progression through pipeline stages
 export type StandardFlow<E extends EntityType> = {

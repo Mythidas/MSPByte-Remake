@@ -7,7 +7,8 @@ import {
   tablesUpdateGeneric,
   tablesUpsertGeneric,
   tablesDeleteGeneric,
-} from "@workspace/shared/lib/db/generics";
+} from "@workspace/shared/lib/db/generics.js";
+import { Database } from "@workspace/shared/types/database/import.js";
 import {
   TableOrView,
   GetRowConfig,
@@ -17,8 +18,7 @@ import {
   UpdateRowConfig,
   UpsertRowConfig,
   DeleteRowConfig,
-} from "@workspace/shared/types/database";
-import { Database } from "@workspace/shared/types/database/import";
+} from "@workspace/shared/types/database/index.js";
 
 export async function internalGetRow<T extends TableOrView>(
   supabase: SupabaseClient<Database>,

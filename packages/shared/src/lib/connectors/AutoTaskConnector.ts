@@ -1,14 +1,14 @@
-import APIClient from "@workspace/shared/lib/APIClient";
-import Encryption from "@workspace/shared/lib/Encryption";
-import { APIResponse } from "@workspace/shared/types/api";
+import APIClient from "@workspace/shared/lib/APIClient.js";
+import Encryption from "@workspace/shared/lib/Encryption.js";
+import { APIResponse } from "@workspace/shared/types/api.js";
+import { AutoTaskCompany } from "@workspace/shared/types/integrations/autotask/company.js";
 import {
   AutoTaskDataSourceConfig,
-  AutoTaskResponse,
   AutoTaskSearch,
-} from "@workspace/shared/types/integrations/autotask";
-import { AutoTaskCompany } from "@workspace/shared/types/integrations/autotask/company";
+  AutoTaskResponse,
+} from "@workspace/shared/types/integrations/autotask/index.js";
 
-export default class AutoTaskConnector {
+export class AutoTaskConnector {
   constructor(private config: AutoTaskDataSourceConfig) {}
 
   async checkHealth(): Promise<boolean> {

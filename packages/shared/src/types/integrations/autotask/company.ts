@@ -1,4 +1,4 @@
-import { AutoTaskUserDefinedField } from "@workspace/shared/types/integrations/autotask";
+import { AutoTaskUserDefinedField } from "@workspace/shared/types/integrations/autotask/index.js";
 
 export type AutoTaskCompany = {
   id: number;

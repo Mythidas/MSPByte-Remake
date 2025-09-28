@@ -1,19 +1,19 @@
-import { PostgrestFilterBuilder } from "@supabase/postgrest-js";
 import { SupabaseClient } from "@supabase/supabase-js";
-import Debug from "@workspace/shared/lib/Debug";
-import { APIResponse } from "@workspace/shared/types/api";
+import Debug from "@workspace/shared/lib/Debug.js";
+import { APIResponse } from "@workspace/shared/types/api.js";
+import { Database } from "@workspace/shared/types/database/import.js";
 import {
   TableOrView,
   PaginationOptions,
   Row,
   DataResponse,
-  Tables,
   Filters,
   Table,
-  TablesInsert,
+  Tables,
   TablesUpdate,
-} from "@workspace/shared/types/database";
-import { Database } from "@workspace/shared/types/database/import";
+  TablesInsert,
+} from "@workspace/shared/types/database/index.js";
+import { PostgrestFilterBuilder } from "@supabase/postgrest-js";
 
 type RowType<T extends TableOrView> =
   T extends keyof Database["public"]["Tables"]

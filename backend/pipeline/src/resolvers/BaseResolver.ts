@@ -1,5 +1,5 @@
-import Debug from "@workspace/shared/lib/Debug";
-import { natsClient } from "@workspace/pipeline/helpers/nats";
+import Debug from "@workspace/shared/lib/Debug.js";
+import { natsClient } from "@workspace/pipeline/helpers/nats.js";
 
 export abstract class BaseResolver {
   protected entityType: string;

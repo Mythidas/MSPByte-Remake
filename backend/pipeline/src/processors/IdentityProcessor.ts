@@ -1,13 +1,13 @@
 import {
   BaseProcessor,
   IdentityData,
-} from "@workspace/pipeline/processors/BaseProcessor";
-import Debug from "@workspace/shared/lib/Debug";
-import { MSGraphIdentity } from "@workspace/shared/types/integrations/microsoft-365/identities";
+} from "@workspace/pipeline/processors/BaseProcessor.js";
+import Debug from "@workspace/shared/lib/Debug.js";
+import { MSGraphIdentity } from "@workspace/shared/types/integrations/microsoft-365/identities.js";
 import {
   DataFetchPayload,
   IntegrationType,
-} from "@workspace/shared/types/pipeline";
+} from "@workspace/shared/types/pipeline/index.js";
 
 export class IdentityProcessor extends BaseProcessor {
   constructor() {

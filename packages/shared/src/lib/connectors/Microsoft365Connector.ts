@@ -1,10 +1,10 @@
 import { ClientSecretCredential } from "@azure/identity";
 import { Client } from "@microsoft/microsoft-graph-client";
-import Debug from "@workspace/shared/lib/Debug";
-import { APIResponse } from "@workspace/shared/types/api";
-import { Microsoft365DataSourceConfig } from "@workspace/shared/types/integrations/microsoft-365";
-import { MSGraphGroup } from "@workspace/shared/types/integrations/microsoft-365/groups";
-import { MSGraphIdentity } from "@workspace/shared/types/integrations/microsoft-365/identities";
+import Debug from "@workspace/shared/lib/Debug.js";
+import { APIResponse } from "@workspace/shared/types/api.js";
+import { MSGraphGroup } from "@workspace/shared/types/integrations/microsoft-365/groups.js";
+import { MSGraphIdentity } from "@workspace/shared/types/integrations/microsoft-365/identities.js";
+import { Microsoft365DataSourceConfig } from "@workspace/shared/types/integrations/microsoft-365/index.js";
 
 export default class Microsoft365Connector {
   constructor(private config: Microsoft365DataSourceConfig) {}

@@ -17,7 +17,15 @@ const nextConfig: NextConfig = {
       ),
     ],
   },
-  transpilePackages: ["@workspace/ui"],
+  transpilePackages: ["@workspace/ui", "@workspace/shared"],
+  webpack: (config, { isServer }) => {
+    // Add custom resolver for .js extensions in TypeScript files
+    config.resolve.extensionAlias = {
+      '.js': ['.ts', '.tsx', '.js', '.jsx'],
+    };
+
+    return config;
+  },
 };
 
 export default nextConfig;

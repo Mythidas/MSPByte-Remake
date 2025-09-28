@@ -1,13 +1,13 @@
 import {
   BaseProcessor,
   GroupData,
-} from "@workspace/pipeline/processors/BaseProcessor";
-import Debug from "@workspace/shared/lib/Debug";
-import { MSGraphGroup } from "@workspace/shared/types/integrations/microsoft-365/groups";
+} from "@workspace/pipeline/processors/BaseProcessor.js";
+import Debug from "@workspace/shared/lib/Debug.js";
+import { MSGraphGroup } from "@workspace/shared/types/integrations/microsoft-365/groups.js";
 import {
   IntegrationType,
   DataFetchPayload,
-} from "@workspace/shared/types/pipeline";
+} from "@workspace/shared/types/pipeline/index.js";
 
 export class GroupProcessor extends BaseProcessor {
   constructor() {

@@ -5,8 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch app.ts",
-    "build": "tsc",
-    "start": "node dist/app.js",
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "start": "node dist/backend/services/src/app.js",
     "test": "vitest",
     "typecheck": "tsc --noEmit"
   },

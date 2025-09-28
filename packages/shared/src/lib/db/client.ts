@@ -1,5 +1,5 @@
 import { createClient as _createClient } from "@supabase/supabase-js";
-import { Database } from "@workspace/shared/types/database/import";
+import { Database } from "@workspace/shared/types/database/import.js";
 
 export const createPrivelagedClient = () => {
   return _createClient<Database>(

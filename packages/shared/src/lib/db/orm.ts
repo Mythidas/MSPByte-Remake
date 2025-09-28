@@ -1,3 +1,4 @@
+import { createPrivelagedClient } from "@workspace/shared/lib/db/client.js";
 import {
   internalGetRow,
   internalGetRows,
@@ -6,8 +7,7 @@ import {
   internalUpdateRow,
   internalUpsertRows,
   internalDeleteRows,
-} from "@workspace/shared/lib/db/orm-internal";
-import { createPrivelagedClient } from "@workspace/shared/lib/db/client";
+} from "@workspace/shared/lib/db/orm-internal.js";
 import {
   TableOrView,
   GetRowConfig,
@@ -17,7 +17,7 @@ import {
   UpdateRowConfig,
   UpsertRowConfig,
   DeleteRowConfig,
-} from "@workspace/shared/types/database";
+} from "@workspace/shared/types/database/index.js";
 
 export async function getRow<T extends TableOrView>(
   table: T,

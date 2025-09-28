@@ -1,14 +1,14 @@
-import APIClient from "@workspace/shared/lib/APIClient";
-import Debug from "@workspace/shared/lib/Debug";
-import Encryption from "@workspace/shared/lib/Encryption";
-import { APIResponse } from "@workspace/shared/types/api";
+import APIClient from "@workspace/shared/lib/APIClient.js";
+import Debug from "@workspace/shared/lib/Debug.js";
+import Encryption from "@workspace/shared/lib/Encryption.js";
+import { APIResponse } from "@workspace/shared/types/api.js";
+import { HaloPSAAsset } from "@workspace/shared/types/integrations/halopsa/assets.js";
 import {
   HaloPSAConfig,
   HaloPSAPagination,
-} from "@workspace/shared/types/integrations/halopsa/index";
-import { HaloPSAAsset } from "@workspace/shared/types/integrations/halopsa/assets";
-import { HaloPSASite } from "@workspace/shared/types/integrations/halopsa/sites";
-import { HaloPSANewTicket } from "@workspace/shared/types/integrations/halopsa/tickets";
+} from "@workspace/shared/types/integrations/halopsa/index.js";
+import { HaloPSASite } from "@workspace/shared/types/integrations/halopsa/sites.js";
+import { HaloPSANewTicket } from "@workspace/shared/types/integrations/halopsa/tickets.js";
 
 export class HaloPSAConnector {
   constructor(private config: HaloPSAConfig) {}

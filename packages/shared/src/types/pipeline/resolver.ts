@@ -1,14 +1,14 @@
-import { PipelineEventPayload } from "@workspace/shared/types/events/index";
+import { PipelineEventPayload } from "@workspace/shared/types/events/index.js";
 import {
   PipelineStage,
   EntityType,
   IntegrationType,
-} from "@workspace/shared/types/pipeline/core";
+} from "@workspace/shared/types/pipeline/core.js";
 import {
   FlowResolver,
   CustomFlows,
   StandardFlows,
-} from "@workspace/shared/types/pipeline/flows";
+} from "@workspace/shared/types/pipeline/flows.js";
 
 // Flow resolution implementation
 export const flowResolver: FlowResolver = {

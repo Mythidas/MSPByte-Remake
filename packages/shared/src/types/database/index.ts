@@ -1,4 +1,4 @@
-import { Database } from "@workspace/shared/types/database/import";
+import { Database } from "@workspace/shared/types/database/import.js";
 
 // types.ts
 export type Table = keyof Database["public"]["Tables"];

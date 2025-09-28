@@ -3,9 +3,9 @@ import {
   getRow,
   insertRows,
   upsertRows,
-} from "@workspace/shared/lib/db/orm";
-import Debug from "@workspace/shared/lib/Debug";
-import Encryption from "@workspace/shared/lib/Encryption";
+} from "@workspace/shared/lib/db/orm.js";
+import Debug from "@workspace/shared/lib/Debug.js";
+import Encryption from "@workspace/shared/lib/Encryption.js";
 import { FastifyInstance } from "fastify";
 
 export default async function (fastify: FastifyInstance) {

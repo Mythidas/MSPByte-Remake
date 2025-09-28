@@ -1,9 +1,9 @@
-import Debug from "@workspace/shared/lib/Debug";
-import { natsClient } from "@workspace/pipeline/helpers/nats";
-import { getRows, updateRow } from "@workspace/shared/lib/db/orm";
-import { Tables } from "@workspace/shared/types/database";
-import { generateUUID } from "@workspace/shared/lib/utils";
-import { SyncEventPayload } from "@workspace/shared/types/pipeline";
+import Debug from "@workspace/shared/lib/Debug.js";
+import { natsClient } from "@workspace/pipeline/helpers/nats.js";
+import { getRows, updateRow } from "@workspace/shared/lib/db/orm.js";
+import { Tables } from "@workspace/shared/types/database/index.js";
+import { generateUUID } from "@workspace/shared/lib/utils.js";
+import { SyncEventPayload } from "@workspace/shared/types/pipeline/index.js";
 
 export class Scheduler {
   private pollInterval: number = 10000; // 30 seconds

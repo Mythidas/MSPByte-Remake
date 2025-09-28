@@ -1,14 +1,14 @@
-import APIClient from "@workspace/shared/lib/APIClient";
-import Debug from "@workspace/shared/lib/Debug";
-import Encryption from "@workspace/shared/lib/Encryption";
-import { APIResponse } from "@workspace/shared/types/api";
+import APIClient from "@workspace/shared/lib/APIClient.js";
+import Debug from "@workspace/shared/lib/Debug.js";
+import Encryption from "@workspace/shared/lib/Encryption.js";
+import { APIResponse } from "@workspace/shared/types/api.js";
+import { SophosPartnerEndpoint } from "@workspace/shared/types/integrations/sophos-partner/endpoints.js";
 import {
-  SophosPartnerAPIResponse,
   SophosPartnerConfig,
+  SophosPartnerAPIResponse,
   SophosTenantConfig,
-} from "@workspace/shared/types/integrations/sophos-partner";
-import { SophosPartnerEndpoint } from "@workspace/shared/types/integrations/sophos-partner/endpoints";
-import { SophosPartnerTenant } from "@workspace/shared/types/integrations/sophos-partner/tenants";
+} from "@workspace/shared/types/integrations/sophos-partner/index.js";
+import { SophosPartnerTenant } from "@workspace/shared/types/integrations/sophos-partner/tenants.js";
 
 export default class SophosPartnerConnector {
   private token: string | null = null;

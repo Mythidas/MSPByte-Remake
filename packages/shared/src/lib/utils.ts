@@ -21,10 +21,22 @@ export function normalizeText(text: string): string {
 export function generateUUID(sentinel?: boolean): string {
   if (sentinel) return "00000000-0000-0000-0000-000000000000";
 
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID();
+  // Use browser crypto API if available
+  if (typeof window !== "undefined" && window.crypto && window.crypto.randomUUID) {
+    return window.crypto.randomUUID();
   }
 
+  // Use Node.js crypto if available (server-side)
+  if (typeof window === "undefined") {
+    try {
+      const { randomUUID } = require("node:crypto");
+      return randomUUID();
+    } catch {
+      // Fallback if node:crypto is not available
+    }
+  }
+
+  // Fallback implementation
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
     const v = c === "x" ? r : (r & 0x3) | 0x8;
@@ -36,13 +48,38 @@ export function generatePassword(length: number = 12): string {
   const chars =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()?+";
   let password = "";
-  const array = new Uint32Array(length);
-  crypto.getRandomValues(array);
 
-  for (let i = 0; i < length; i++) {
-    password += chars[array[i]! % chars.length];
+  // Use browser crypto API if available
+  if (typeof window !== "undefined" && window.crypto && window.crypto.getRandomValues) {
+    const array = new Uint32Array(length);
+    window.crypto.getRandomValues(array);
+
+    for (let i = 0; i < length; i++) {
+      password += chars[array[i]! % chars.length];
+    }
+    return password;
   }
 
+  // Use Node.js crypto if available (server-side)
+  if (typeof window === "undefined") {
+    try {
+      const { getRandomValues } = require("node:crypto");
+      const array = new Uint32Array(length);
+      getRandomValues(array);
+
+      for (let i = 0; i < length; i++) {
+        password += chars[array[i]! % chars.length];
+      }
+      return password;
+    } catch {
+      // Fallback if node:crypto is not available
+    }
+  }
+
+  // Fallback implementation using Math.random()
+  for (let i = 0; i < length; i++) {
+    password += chars[Math.floor(Math.random() * chars.length)];
+  }
   return password;
 }
 

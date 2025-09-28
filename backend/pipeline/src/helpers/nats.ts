@@ -1,5 +1,5 @@
 import { connect, NatsConnection, Subscription, StringCodec } from "nats";
-import Debug from "@workspace/shared/lib/Debug";
+import Debug from "@workspace/shared/lib/Debug.js";
 
 const sc = StringCodec();
 

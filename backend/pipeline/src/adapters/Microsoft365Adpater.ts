@@ -1,14 +1,14 @@
 import {
   BaseAdapter,
   RawDataProps,
-} from "@workspace/pipeline/adapters/BaseAdapter";
-import Debug from "@workspace/shared/lib/Debug";
-import { APIResponse } from "@workspace/shared/types/api";
-import { Tables } from "@workspace/shared/types/database";
-import { DataFetchPayload } from "@workspace/shared/types/pipeline";
-import { Microsoft365DataSourceConfig } from "@workspace/shared/types/integrations/microsoft-365";
-import Microsoft365Connector from "@workspace/shared/lib/connectors/Microsoft365Connector";
-import Encryption from "@workspace/shared/lib/Encryption";
+} from "@workspace/pipeline/adapters/BaseAdapter.js";
+import Debug from "@workspace/shared/lib/Debug.js";
+import Encryption from "@workspace/shared/lib/Encryption.js";
+import Microsoft365Connector from "@workspace/shared/lib/connectors/Microsoft365Connector.js";
+import { APIResponse } from "@workspace/shared/types/api.js";
+import { Tables } from "@workspace/shared/types/database/import.js";
+import { DataFetchPayload } from "@workspace/shared/types/pipeline/events.js";
+import { Microsoft365DataSourceConfig } from "@workspace/shared/types/integrations/microsoft-365/index.js";
 
 export class Microsoft365Adapter extends BaseAdapter {
   constructor() {

@@ -1,14 +1,14 @@
 import {
   BaseAdapter,
   RawDataProps,
-} from "@workspace/pipeline/adapters/BaseAdapter";
-import Debug from "@workspace/shared/lib/Debug";
-import { APIResponse } from "@workspace/shared/types/api";
-import AutoTaskConnector from "@workspace/shared/lib/connectors/AutoTaskConnector";
-import { AutoTaskDataSourceConfig } from "@workspace/shared/types/integrations/autotask";
-import Encryption from "@workspace/shared/lib/Encryption";
-import { DataFetchPayload } from "@workspace/shared/types/pipeline";
-import { Tables } from "@workspace/shared/types/database";
+} from "@workspace/pipeline/adapters/BaseAdapter.js";
+import Debug from "@workspace/shared/lib/Debug.js";
+import Encryption from "@workspace/shared/lib/Encryption.js";
+import { APIResponse } from "@workspace/shared/types/api.js";
+import { Tables } from "@workspace/shared/types/database/import.js";
+import { AutoTaskDataSourceConfig } from "@workspace/shared/types/integrations/autotask/index.js";
+import { DataFetchPayload } from "@workspace/shared/types/pipeline/events.js";
+import { AutoTaskConnector } from "@workspace/shared/lib/connectors/AutoTaskConnector.js";
 
 export class AutoTaskAdapter extends BaseAdapter {
   constructor() {
