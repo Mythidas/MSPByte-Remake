@@ -4,6 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "docker run -p 4222:4222 -ti nats:latest"
+    "dev": "docker run -p 4222:4222 -ti nats:latest",
+    "start": "docker run -p 4222:4222 -ti nats:latest"
   }
 }
