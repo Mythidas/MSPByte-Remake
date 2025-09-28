@@ -47,16 +47,16 @@ export const handleAuth = async (request: NextRequest) => {
       });
     }
 
-    // re-write landing page
+    // re-write landing page for root path
     if (error && request.nextUrl.pathname === "/") {
       const url = request.nextUrl.clone();
       url.pathname = "/landing";
       return NextResponse.rewrite(url);
     }
 
-    // auth routes
-    if (error && !request.nextUrl.pathname.startsWith("/auth")) {
-      return NextResponse.redirect(new URL("/", request.url));
+    // redirect to auth for protected routes when not authenticated
+    if (error && !request.nextUrl.pathname.startsWith("/auth") && !request.nextUrl.pathname.startsWith("/landing") && !request.nextUrl.pathname.startsWith("/api")) {
+      return NextResponse.redirect(new URL("/auth/login", request.url));
     }
 
     // redirect authed users
@@ -68,8 +68,19 @@ export const handleAuth = async (request: NextRequest) => {
   } catch (err) {
     console.error(`[Middleware] Failed to check auth: ${err}`);
 
-    const url = request.nextUrl.clone();
-    url.pathname = "/landing";
-    return NextResponse.rewrite(url);
+    // Only rewrite to landing if accessing root path
+    if (request.nextUrl.pathname === "/") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/landing";
+      return NextResponse.rewrite(url);
+    }
+
+    // For other paths, redirect to login
+    if (!request.nextUrl.pathname.startsWith("/auth") && !request.nextUrl.pathname.startsWith("/landing") && !request.nextUrl.pathname.startsWith("/api")) {
+      return NextResponse.redirect(new URL("/auth/login", request.url));
+    }
+
+    // For auth/landing/api routes, let them through
+    return NextResponse.next();
   }
 };
