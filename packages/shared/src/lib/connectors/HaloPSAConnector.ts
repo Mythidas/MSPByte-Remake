@@ -1,10 +1,12 @@
 import APIClient from "@workspace/shared/lib/APIClient";
 import Debug from "@workspace/shared/lib/Debug";
+import Encryption from "@workspace/shared/lib/Encryption";
 import { APIResponse } from "@workspace/shared/types/api";
 import {
   HaloPSAConfig,
   HaloPSAPagination,
 } from "@workspace/shared/types/integrations/halopsa";
+import { HaloPSAAsset } from "@workspace/shared/types/integrations/halopsa/assets";
 import { HaloPSASite } from "@workspace/shared/types/integrations/halopsa/sites";
 import { HaloPSANewTicket } from "@workspace/shared/types/integrations/halopsa/tickets";
 
@@ -67,6 +69,61 @@ export class HaloPSAConnector {
     };
   }
 
+  async getAssets(siteID: string) {
+    type APISchema = HaloPSAPagination & { assets: HaloPSAAsset[] };
+
+    const { data: token, error: tokenError } = await this.getToken();
+    if (tokenError) return { error: tokenError };
+
+    const params = new URLSearchParams();
+    params.set("cf_display_values_only", "true");
+    params.set("includeinactive", "false");
+    params.set("site_id", siteID);
+    params.set("includecolumns", "false");
+    params.set("showcounts", "true");
+    params.set("paginate", "true");
+    params.set("page_size", "50");
+    params.set("page_no", "1");
+
+    const assets: HaloPSAAsset[] = [];
+
+    const { data, error } = await APIClient.fetch<APISchema>(
+      `${this.config.url}/api/asset?${params}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    if (error) return { error };
+    assets.push(...data.assets);
+    params.set("page_no", `${data.page_no + 1}`);
+
+    while (assets.length < data.record_count) {
+      const refetch = await APIClient.fetch<APISchema>(
+        `${this.config.url}/api/asset?${params}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (refetch.data) {
+        assets.push(...refetch.data.assets);
+        params.set("page_no", `${refetch.data.page_no + 1}`);
+      } else break;
+    }
+
+    return {
+      data: assets,
+    };
+  }
+
   async createTicket(ticket: HaloPSANewTicket): Promise<APIResponse<string>> {
     const { data: token, error: tokenError } = await this.getToken();
     if (tokenError) return { error: tokenError };
@@ -91,7 +148,7 @@ export class HaloPSAConnector {
       {
         method: "POST",
         headers: {
-          Auhtorization: `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json-patch+json",
         },
         body: JSON.stringify([
@@ -126,7 +183,7 @@ export class HaloPSAConnector {
 
     if (error) return { error };
     return {
-      data: data.id,
+      data: String(data.id),
     };
   }
 
@@ -140,7 +197,7 @@ export class HaloPSAConnector {
     formData.append("image_upload_key", "");
     formData.append("file", file, "upload.png");
 
-    const { data, error } = await APIClient.fetch<string>(
+    const { data, error } = await APIClient.fetch<{ link: string }>(
       `${this.config.url}/api/attachment/image`,
       {
         method: "POST",
@@ -153,7 +210,7 @@ export class HaloPSAConnector {
     );
 
     if (error) return { error };
-    return { data };
+    return { data: data.link };
   }
 
   private async getToken(): Promise<APIResponse<string>> {
@@ -167,7 +224,8 @@ export class HaloPSAConnector {
         body: new URLSearchParams({
           grant_type: "client_credentials",
           client_id: this.config.client_id,
-          client_secret: this.config.client_secret,
+          client_secret:
+            (await Encryption.decrypt(this.config.client_secret)) || "",
           scope: "all",
         }),
       },

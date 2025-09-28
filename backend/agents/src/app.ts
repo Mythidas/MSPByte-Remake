@@ -4,7 +4,6 @@ import { fileURLToPath } from "url";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import autoload from "@fastify/autoload";
-import Encryption from "@workspace/shared/lib/Encryption";
 
 // Compute __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -13,7 +12,7 @@ const __dirname = dirname(__filename);
 dotenv.config({ path: join(__dirname, "../../../.env.local") });
 
 // Initialize Fastify server
-const fastify = Fastify({ logger: true });
+const fastify = Fastify({ logger: false });
 
 // Register CORS for agent communication
 await fastify.register(cors, {
@@ -24,9 +23,6 @@ await fastify.register(autoload, {
   dir: join(import.meta.dirname, "api"),
   options: {},
 });
-
-const key = Encryption.genKey();
-const hash = Encryption.sha256(key);
 
 await fastify.listen({ port: 3001, host: "0.0.0.0" });
 
