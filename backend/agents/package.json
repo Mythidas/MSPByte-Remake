@@ -21,6 +21,7 @@
     "tsx": "^4.6.0",
     "typescript": "^5.2.2",
     "@types/node": "^20.8.0",
-    "vitest": "^1.0.0"
+    "vitest": "^1.0.0",
+    "@types/minimatch": "^6.0.0"
   }
 }

@@ -6,6 +6,6 @@
       "@workspace/shared/*": ["../../packages/shared/src/*"]
     }
   },
-  "include": ["**/*.ts"],
+  "include": ["**/*.ts", "**/*.tsx", "**/*.css", "**/*.mjs"],
   "exclude": ["node_modules", "dist"]
 }

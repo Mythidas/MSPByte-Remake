@@ -13,6 +13,7 @@
     "./workers/*": "./src/workers/*"
   },
   "devDependencies": {
-    "@workspace/shared": "workspace:*"
+    "@workspace/shared": "workspace:*",
+    "@types/minimatch": "^6.0.0"
   }
 }
