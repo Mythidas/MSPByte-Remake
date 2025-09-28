@@ -4,6 +4,8 @@
     "outDir": "./dist",
     "baseUrl": ".",
     "rootDir": "../..",
+    "module": "es2022",
+    "moduleResolution": "bundler",
     "paths": {
       "@workspace/shared/*": ["../../packages/shared/src/*"],
       "@workspace/services/*": ["../../backend/services/src/*"],

@@ -5,7 +5,7 @@ import { APIResponse } from "@workspace/shared/types/api";
 import {
   HaloPSAConfig,
   HaloPSAPagination,
-} from "@workspace/shared/types/integrations/halopsa";
+} from "@workspace/shared/types/integrations/halopsa/index";
 import { HaloPSAAsset } from "@workspace/shared/types/integrations/halopsa/assets";
 import { HaloPSASite } from "@workspace/shared/types/integrations/halopsa/sites";
 import { HaloPSANewTicket } from "@workspace/shared/types/integrations/halopsa/tickets";

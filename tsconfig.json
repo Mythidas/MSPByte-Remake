@@ -1,11 +1,3 @@
 {
-  "files": [],
-  "references": [
-    {
-      "path": "./web"
-    },
-    {
-      "path": "./packages/typescript-config"
-    }
-  ]
+  "extends": "@workspace/typescript-config/base.json"
 }

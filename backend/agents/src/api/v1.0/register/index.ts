@@ -100,7 +100,7 @@ export default async function (fastify: FastifyInstance) {
         {
           tenant_id: site.tenant_id,
           site_id: site.site_id,
-          agent_id: agent.id,
+          agent_id: agent?.id || "",
           key_hash: hash,
           active: true,
         },
@@ -109,7 +109,7 @@ export default async function (fastify: FastifyInstance) {
 
     if (keyResult.error) {
       await deleteRows("agents", {
-        filters: [["id", "eq", agent.id]],
+        filters: [["id", "eq", agent?.id || ""]],
       });
       return Debug.response(
         {

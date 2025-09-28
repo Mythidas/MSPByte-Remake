@@ -4,23 +4,13 @@
   "extends": "./base.json",
   "compilerOptions": {
     "target": "ES2015",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "ES6"
-    ],
+    "lib": ["dom", "dom.iterable", "ES6"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "declaration": true,
     "outDir": "./dist"
   },
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "dist",
-    "build",
-    "node_modules"
-  ]
+  "include": ["src"],
+  "exclude": ["dist", "build", "node_modules"]
 }

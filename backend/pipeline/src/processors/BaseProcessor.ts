@@ -191,7 +191,7 @@ export abstract class BaseProcessor<T = any> {
 
     return await upsertRows("entities", {
       rows: records,
-      onConlfict: [
+      onConflict: [
         "tenant_id",
         "entity_type",
         "integration_id",

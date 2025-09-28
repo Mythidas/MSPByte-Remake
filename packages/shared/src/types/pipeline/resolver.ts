@@ -1,4 +1,4 @@
-import { PipelineEventPayload } from "@workspace/shared/types/events";
+import { PipelineEventPayload } from "@workspace/shared/types/events/index";
 import {
   PipelineStage,
   EntityType,
@@ -79,7 +79,7 @@ export const flowResolver: FlowResolver = {
 
 // Helper function to evaluate custom flow conditions
 function evaluateConditions(
-  conditions: NonNullable<CustomFlows[0]["conditions"]>,
+  conditions: NonNullable<(typeof CustomFlows)[0]["conditions"]>,
   metadata?: any
 ): boolean {
   if (

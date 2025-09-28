@@ -1,37 +1,32 @@
-const { resolve } = require("node:path");
+import js from "@eslint/js"
+import eslintConfigPrettier from "eslint-config-prettier"
+import onlyWarn from "eslint-plugin-only-warn"
+import turboPlugin from "eslint-plugin-turbo"
+import tseslint from "typescript-eslint"
 
-const project = resolve(process.cwd(), "tsconfig.json");
-
-/** @type {import("eslint").Linter.Config} */
-module.exports = {
-  extends: [
-    "eslint:recommended",
-    "@typescript-eslint/recommended",
-    "prettier"
-  ],
-  plugins: ["@typescript-eslint"],
-  globals: {
-    React: true,
-    JSX: true,
-  },
-  env: {
-    node: true,
-  },
-  settings: {
-    "import/resolver": {
-      typescript: {
-        project,
-      },
+/**
+ * A shared ESLint configuration for the repository.
+ *
+ * @type {import("eslint").Linter.Config}
+ * */
+export const config = [
+  js.configs.recommended,
+  eslintConfigPrettier,
+  ...tseslint.configs.recommended,
+  {
+    plugins: {
+      turbo: turboPlugin,
+    },
+    rules: {
+      "turbo/no-undeclared-env-vars": "warn",
     },
   },
-  ignorePatterns: [
-    ".*.js",
-    "node_modules/",
-    "dist/",
-  ],
-  overrides: [
-    {
-      files: ["*.js?(x)", "*.ts?(x)"],
+  {
+    plugins: {
+      onlyWarn,
     },
-  ],
-};
+  },
+  {
+    ignores: ["dist/**"],
+  },
+]
