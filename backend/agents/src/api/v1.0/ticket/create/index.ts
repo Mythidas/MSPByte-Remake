@@ -8,14 +8,15 @@ import { FastifyInstance } from "fastify";
 
 export default async function (fastify: FastifyInstance) {
   fastify.post("/", async (req) => {
-    const apiKey = req.headers["x-api-key"] as string;
-    if (!apiKey || !apiKey.startsWith("Bearer ")) {
+    const siteID = req.headers["x-site-id"] as string;
+    const deviceID = req.headers["x-device-id"] as string;
+    if (!siteID || !deviceID) {
       return Debug.response(
         {
           error: {
             module: "v1.0/ticket/create",
             context: "POST",
-            message: "API key invalid format",
+            message: "API headers invalid",
             code: "401",
           },
         },
@@ -23,38 +24,14 @@ export default async function (fastify: FastifyInstance) {
       );
     }
 
-    const apiKeyHash = Encryption.sha256(apiKey.replace("Bearer ", "").trim());
-    const { data: agentKey, error: agentKeyError } = await getRow(
-      "agent_keys",
-      {
-        filters: [
-          ["key_hash", "eq", apiKeyHash],
-          ["active", "eq", "true"],
-        ],
-      }
-    );
-
-    if (agentKeyError) {
-      return Debug.response(
-        {
-          error: {
-            module: "v1.0/ticket/create",
-            context: "POST",
-            message: "API key invalid or stale",
-            code: "401",
-          },
-        },
-        401
-      );
-    }
-
-    const { data: agent } = await getRow("agents", {
-      filters: [["id", "eq", agentKey.agent_id]],
-    });
-
-    const { data: site } = await getRow("sites", {
-      filters: [["id", "eq", agentKey.site_id]],
-    });
+    const [{ data: agent }, { data: site }] = await Promise.all([
+      getRow("agents", {
+        filters: [["id", "eq", deviceID]],
+      }),
+      getRow("sites", {
+        filters: [["id", "eq", siteID]],
+      }),
+    ]);
 
     // TODO: Hard coded for current implementation... Will need a tenant settings or site settings to determine proper PSA
     const { data: dataSource } = await getRow("data_sources", {
@@ -79,7 +56,9 @@ export default async function (fastify: FastifyInstance) {
     }
 
     const connector = new HaloPSAConnector(dataSource.config as HaloPSAConfig);
-    const { data: assets } = await connector.getAssets(site.psa_company_id);
+    const { data: assets } = await connector.getAssets(
+      site?.psa_company_id || ""
+    );
     if (!assets) {
       return Debug.response(
         {
@@ -96,8 +75,8 @@ export default async function (fastify: FastifyInstance) {
 
     const body = JSON.parse(req.body as string) as {
       screenshot?: {
-        content: string;
         name: string;
+        data: string;
       };
       link?: string;
       summary: string;
@@ -110,19 +89,19 @@ export default async function (fastify: FastifyInstance) {
       impact: string;
       urgency: string;
 
-      rmm_uid?: string;
+      rmm_id?: string;
     };
 
     const asset = assets.find((a) => {
-      if (body.rmm_uid) {
-        return a.datto_id === body.rmm_uid;
+      if (body.rmm_id) {
+        return a.datto_id === body.rmm_id;
       }
 
       return a.inventory_number === agent.hostname;
     });
 
     if (body.screenshot) {
-      const binary = atob(body.screenshot.content);
+      const binary = atob(body.screenshot.data);
       const len = binary.length;
       const bytes = new Uint8Array(len);
       for (let i = 0; i < len; i++) {
@@ -164,11 +143,11 @@ export default async function (fastify: FastifyInstance) {
       );
     }
 
-    return new Response(ticketID, {
-      status: 200,
-      headers: {
-        Connection: "close", // important to prevent chunked
+    return Debug.response(
+      {
+        data: ticketID,
       },
-    });
+      200
+    );
   });
 }
