@@ -3,6 +3,7 @@ mod device_registration;
 
 use base64::engine::general_purpose;
 use base64::Engine;
+use tauri_plugin_notification::NotificationExt;
 use std::path::PathBuf;
 use tauri::{
     menu::{Menu, MenuItem},
@@ -117,8 +118,19 @@ fn create_support_window(app: &AppHandle) {
 fn handle_support_window(app: &AppHandle, screenshot: bool) {
     let app_handle = app.clone();
 
+    app.notification().builder().title("Support Ticket").body("Taking Screenshot...").show().unwrap();
+
     tauri::async_runtime::spawn(async move {
-        // Ensure window exists (or create it)
+        let mut screenshot_path: Option<PathBuf> = None;
+
+        // Step 1: Take screenshot first (if requested)
+        if screenshot {
+            if let Ok(path) = take_screenshot(app_handle.clone()).await {
+                screenshot_path = Some(path);
+            }
+        }
+
+        // Step 2: Ensure window exists (create if needed)
         let window = if let Some(window) = app_handle.get_webview_window("support") {
             let _ = window.show();
             let _ = window.set_focus();
@@ -130,18 +142,13 @@ fn handle_support_window(app: &AppHandle, screenshot: bool) {
                 .expect("support window should exist after creation")
         };
 
-        if screenshot {
-            let _ = window.emit_to(EventTarget::Any, "taking_screenshot", "");
-        }
-
-        // Take screenshot
-        if screenshot {
-            if let Ok(path) = take_screenshot(app_handle.clone()).await {
-                let _ = window.emit_to(EventTarget::Any, "use_screenshot", path);
-            }
+        // Step 3: If screenshot was taken, notify window
+        if let Some(path) = screenshot_path {
+            let _ = window.emit_to(EventTarget::Any, "use_screenshot", path);
         }
     });
 }
+
 
 async fn take_screenshot(app: AppHandle) -> Result<PathBuf, PathBuf> {
     // Get first available window (your desktop)
