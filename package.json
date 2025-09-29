@@ -12,7 +12,8 @@
     "build": "turbo build",
     "dev": "turbo dev",
     "lint": "turbo lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "gendb:schema": "bunx supabase gen types typescript --project-id lrgaygjiyukdhhdbszjk --schema public,views > ./packages/shared/src/types/database/import.ts"
   },
   "devDependencies": {
     "@types/minimatch": "^6.0.0",

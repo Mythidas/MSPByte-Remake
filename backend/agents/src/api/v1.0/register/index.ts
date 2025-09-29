@@ -1,30 +1,29 @@
-import {
-  deleteRows,
-  getRow,
-  insertRows,
-  upsertRows,
-} from "@workspace/shared/lib/db/orm.js";
+import { getRow, upsertRows } from "@workspace/shared/lib/db/orm.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import Encryption from "@workspace/shared/lib/Encryption.js";
 import { FastifyInstance } from "fastify";
 
 export default async function (fastify: FastifyInstance) {
-  fastify.get("/", async (req) => {
-    const { secret, hostname, version, guid } = req.query as {
-      secret?: string;
-      hostname?: string;
-      version?: string;
-      guid?: string;
-    };
+  fastify.post("/", async (req) => {
+    const { site_id, hostname, version, guid, serial, mac, platform } =
+      req.body as string as {
+        site_id?: string;
+        hostname?: string;
+        version?: string;
+        guid?: string;
+        platform?: string;
+        serial?: string;
+        mac?: string;
+      };
 
-    if (!secret || !hostname || !version) {
+    if (!site_id || !hostname || !version || !platform) {
       return Debug.response(
         {
           error: {
             module: "v1.0/register",
             context: "POST",
             message:
-              "Secret, Hostname and Version are required for registration",
+              "Site, Hostname, Platform and Version are required for registration",
             code: "400",
           },
         },
@@ -32,27 +31,21 @@ export default async function (fastify: FastifyInstance) {
       );
     }
 
-    const secretHash = Encryption.sha256(secret);
-    const { data: site, error: siteError } = await getRow(
-      "site_agent_secrets",
-      {
-        filters: [
-          ["secret_key_hash", "eq", secretHash],
-          ["active", "is", true],
-        ],
-      }
-    );
-    if (siteError) {
+    const { data: site } = await getRow("sites", {
+      filters: [["id", "eq", site_id]],
+    });
+
+    if (!site) {
       return Debug.response(
         {
           error: {
             module: "v1.0/register",
             context: "POST",
-            message: "Failed to find valid site or invalid secret",
+            message: "Invalid site_uid provided",
             code: "400",
           },
         },
-        404
+        400
       );
     }
 
@@ -60,19 +53,19 @@ export default async function (fastify: FastifyInstance) {
       rows: [
         {
           tenant_id: site.tenant_id,
-          site_id: site.site_id,
+          site_id: site.id,
 
           // TODO: Make GUID as solid as possible to avoid duplicate devices
           guid:
             guid ||
-            Encryption.sha256(
-              JSON.stringify({ hostname, siteID: site.site_id })
-            ),
+            Encryption.sha256(JSON.stringify({ hostname, siteID: site.id })),
           hostname: hostname,
+          platform: platform,
           ip_address: "",
           ext_address: "",
           online: true,
           version: version,
+          mac_address: mac,
         },
       ],
       onConflict: ["guid"],
@@ -92,45 +85,14 @@ export default async function (fastify: FastifyInstance) {
       );
     }
 
-    const agent = result.data[0];
-    const key = Encryption.genKey();
-    const hash = Encryption.sha256(key);
-    const keyResult = await insertRows("agent_keys", {
-      rows: [
-        {
-          tenant_id: site.tenant_id,
-          site_id: site.site_id,
-          agent_id: agent?.id || "",
-          key_hash: hash,
-          active: true,
+    return Debug.response(
+      {
+        data: {
+          device_id: result.data[0].id,
+          guid: result.data[0].guid,
         },
-      ],
-    });
-
-    if (keyResult.error) {
-      await deleteRows("agents", {
-        filters: [["id", "eq", agent?.id || ""]],
-      });
-      return Debug.response(
-        {
-          error: {
-            module: "v1.0/register",
-            context: "POST",
-            message: "Failed to create agent encryption",
-            code: "500",
-          },
-        },
-        500
-      );
-    }
-
-    return new Response(key, {
-      status: 200,
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "Content-Length": Buffer.byteLength(key, "utf8").toString(),
-        Connection: "close", // important to prevent chunked
       },
-    });
+      200
+    );
   });
 }

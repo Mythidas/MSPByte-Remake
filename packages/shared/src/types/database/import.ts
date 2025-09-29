@@ -14,72 +14,20 @@ export type Database = {
   }
   public: {
     Tables: {
-      agent_keys: {
-        Row: {
-          active: boolean
-          agent_id: string
-          created_at: string | null
-          id: string
-          key_hash: string
-          last_used_at: string | null
-          site_id: string
-          tenant_id: string
-        }
-        Insert: {
-          active: boolean
-          agent_id: string
-          created_at?: string | null
-          id?: string
-          key_hash: string
-          last_used_at?: string | null
-          site_id: string
-          tenant_id: string
-        }
-        Update: {
-          active?: boolean
-          agent_id?: string
-          created_at?: string | null
-          id?: string
-          key_hash?: string
-          last_used_at?: string | null
-          site_id?: string
-          tenant_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "agent_keys_agent_id_fkey"
-            columns: ["agent_id"]
-            isOneToOne: false
-            referencedRelation: "agents"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "agent_keys_site_id_fkey"
-            columns: ["site_id"]
-            isOneToOne: false
-            referencedRelation: "sites"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "agent_keys_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       agents: {
         Row: {
           created_at: string | null
-          ext_address: string
+          ext_address: string | null
           guid: string
           hostname: string
           id: string
-          ip_address: string
+          ip_address: string | null
           last_checkin_at: string | null
           last_online_at: string | null
+          mac_address: string | null
           online: boolean
+          platform: string
+          registered_at: string | null
           site_id: string
           tenant_id: string
           updated_at: string | null
@@ -87,14 +35,17 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
-          ext_address: string
+          ext_address?: string | null
           guid: string
           hostname: string
           id?: string
-          ip_address: string
+          ip_address?: string | null
           last_checkin_at?: string | null
           last_online_at?: string | null
+          mac_address?: string | null
           online: boolean
+          platform?: string
+          registered_at?: string | null
           site_id: string
           tenant_id: string
           updated_at?: string | null
@@ -102,14 +53,17 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
-          ext_address?: string
+          ext_address?: string | null
           guid?: string
           hostname?: string
           id?: string
-          ip_address?: string
+          ip_address?: string | null
           last_checkin_at?: string | null
           last_online_at?: string | null
+          mac_address?: string | null
           online?: boolean
+          platform?: string
+          registered_at?: string | null
           site_id?: string
           tenant_id?: string
           updated_at?: string | null
@@ -259,6 +213,13 @@ export type Database = {
             columns: ["integration_id"]
             isOneToOne: false
             referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_sources_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
             referencedColumns: ["id"]
           },
           {
@@ -662,63 +623,15 @@ export type Database = {
           },
         ]
       }
-      site_agent_secrets: {
-        Row: {
-          active: boolean
-          created_at: string | null
-          id: string
-          secret_key_hash: string
-          site_id: string
-          tenant_id: string
-          updated_at: string | null
-          usage_count: number
-        }
-        Insert: {
-          active?: boolean
-          created_at?: string | null
-          id?: string
-          secret_key_hash: string
-          site_id: string
-          tenant_id: string
-          updated_at?: string | null
-          usage_count?: number
-        }
-        Update: {
-          active?: boolean
-          created_at?: string | null
-          id?: string
-          secret_key_hash?: string
-          site_id?: string
-          tenant_id?: string
-          updated_at?: string | null
-          usage_count?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "site_agent_secrets_site_id_fkey"
-            columns: ["site_id"]
-            isOneToOne: false
-            referencedRelation: "sites"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "site_agent_secrets_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       sites: {
         Row: {
           created_at: string
           id: string
           metadata: Json | null
           name: string
-          psa_company_id: string
-          psa_integration_id: string
-          psa_parent_company_id: string
+          psa_company_id: string | null
+          psa_integration_id: string | null
+          psa_parent_company_id: string | null
           slug: string
           status: string
           tenant_id: string
@@ -729,9 +642,9 @@ export type Database = {
           id?: string
           metadata?: Json | null
           name: string
-          psa_company_id: string
-          psa_integration_id: string
-          psa_parent_company_id: string
+          psa_company_id?: string | null
+          psa_integration_id?: string | null
+          psa_parent_company_id?: string | null
           slug?: string
           status: string
           tenant_id: string
@@ -742,15 +655,22 @@ export type Database = {
           id?: string
           metadata?: Json | null
           name?: string
-          psa_company_id?: string
-          psa_integration_id?: string
-          psa_parent_company_id?: string
+          psa_company_id?: string | null
+          psa_integration_id?: string | null
+          psa_parent_company_id?: string | null
           slug?: string
           status?: string
           tenant_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "sites_psa_integration_id_fkey"
+            columns: ["psa_integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sites_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -999,7 +919,15 @@ export type Database = {
           tenant_id: string | null
           updated_at: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sites_psa_integration_id_fkey"
+            columns: ["psa_integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations_view"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sophos_partner_sites_view: {
         Row: {
