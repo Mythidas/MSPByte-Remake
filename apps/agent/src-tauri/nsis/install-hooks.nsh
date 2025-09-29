@@ -13,11 +13,13 @@
 !include "FileFunc.nsh"
 !include "LogicLib.nsh"
 !include "WinMessages.nsh"
+!include "StrFunc.nsh"
 
 ; Insert function declarations
 !insertmacro GetTime
 !insertmacro GetParameters
 !insertmacro GetOptions
+${StrRep}
 
 ; Global variables
 Var SiteSecret
@@ -25,39 +27,78 @@ Var ApiHost
 Var InstallTimestamp
 Var LogFile
 
-; Robust logging function - always writes and flushes immediately
+; PowerShell-based logging function - simple and reliable
 Function LogWrite
     ; Input: $R9 = message to log
-    ; Uses: $R8 = temp file handle
     Push $R8
+    Push $R7
 
-    ; Always try to log, ignore errors
-    ClearErrors
-    FileOpen $R8 $LogFile a
-    IfErrors log_skip 0
-
-    ; Get timestamp for each log entry
-    ${GetTime} "" "L" $0 $1 $2 $3 $4 $5 $6
-    FileWrite $R8 "[$4:$5:$6] $R9$\r$\n"
+    ; Create a temporary PowerShell script file
+    StrCpy $R7 "$TEMP\nsis_log_$$.ps1"
+    FileOpen $R8 $R7 w
+    FileWrite $R8 '$$timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss.fff"$\r$\n'
+    FileWrite $R8 '$$logPath = "$LogFile"$\r$\n'
+    FileWrite $R8 '$$message = "[$timestamp] $R9"$\r$\n'
+    FileWrite $R8 'Add-Content -Path $$logPath -Value $$message -Encoding UTF8 -Force$\r$\n'
+    FileWrite $R8 'Write-Host "LOGGED: $$message"$\r$\n'
     FileClose $R8
 
-    log_skip:
+    ; Execute the PowerShell script
+    nsExec::ExecToStack 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$R7"'
+    Pop $R8  ; Exit code
+    Pop $R8  ; Output
+
+    ; Clean up the temporary script
+    Delete $R7
+
+    Pop $R7
+    Pop $R8
+FunctionEnd
+
+; Uninstaller version of LogWrite function
+Function un.LogWrite
+    ; Input: $R9 = message to log
+    Push $R8
+    Push $R7
+
+    ; Create a temporary PowerShell script file
+    StrCpy $R7 "$TEMP\nsis_log_$$.ps1"
+    FileOpen $R8 $R7 w
+    FileWrite $R8 '$$timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss.fff"$\r$\n'
+    FileWrite $R8 '$$logPath = "$LogFile"$\r$\n'
+    FileWrite $R8 '$$message = "[$timestamp] $R9"$\r$\n'
+    FileWrite $R8 'Add-Content -Path $$logPath -Value $$message -Encoding UTF8 -Force$\r$\n'
+    FileWrite $R8 'Write-Host "LOGGED: $$message"$\r$\n'
+    FileClose $R8
+
+    ; Execute the PowerShell script
+    nsExec::ExecToStack 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$R7"'
+    Pop $R8  ; Exit code
+    Pop $R8  ; Output
+
+    ; Clean up the temporary script
+    Delete $R7
+
+    Pop $R7
     Pop $R8
 FunctionEnd
 
 !macro NSIS_HOOK_PREINSTALL
-    ; Initialize log file with unique timestamp
+    ; Initialize log file with unique timestamp in ProgramData
     ${GetTime} "" "L" $0 $1 $2 $3 $4 $5 $6
-    StrCpy $LogFile "$TEMP\${APP_NAME}_install_$2$1$0_$4$5$6.log"
 
-    ; Create initial log file
+    ; Create logs directory first
+    CreateDirectory "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}"
+    CreateDirectory "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\logs"
+
+    StrCpy $LogFile "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\logs\install_$2$1$0_$4$5$6.log"
+
+    ; Initialize log file with header using simple file operations
     FileOpen $9 $LogFile w
-    FileWrite $9 ""
+    FileWrite $9 "=== MSPAgent Installation Log ===$\r$\n"
     FileClose $9
 
-    ; Log startup
-    StrCpy $R9 "=== ${APP_NAME} Installation Log ==="
-    Call LogWrite
+    ; Log startup information
     StrCpy $R9 "Started: $2-$1-$0 $4:$5:$6"
     Call LogWrite
     StrCpy $R9 "Log file: $LogFile"
@@ -100,36 +141,43 @@ FunctionEnd
 !macroend
 
 !macro NSIS_HOOK_POSTINSTALL
-    ; Log post-install
-    FileOpen $9 $LogFile a
-    FileWrite $9 "$\r$\n=== Post-Install ===$\r$\n"
-    FileWrite $9 "Application installed successfully$\r$\n"
-    FileWrite $9 "Installation directory: $INSTDIR$\r$\n"
-    ${GetTime} "" "L" $0 $1 $2 $3 $4 $5 $6
-    FileWrite $9 "Finished: $2-$1-$0 $4:$5:$6$\r$\n"
-    FileClose $9
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL
-    ; Log uninstall start
-    StrCpy $LogFile "$TEMP\${APP_NAME}_uninstall.log"
+    ; Initialize uninstall log file with unique timestamp in ProgramData
+    ${GetTime} "" "L" $0 $1 $2 $3 $4 $5 $6
+
+    ; Ensure logs directory exists (it should from install, but just in case)
+    CreateDirectory "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}"
+    CreateDirectory "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\logs"
+
+    StrCpy $LogFile "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\logs\uninstall_$2$1$0_$4$5$6.log"
+
+    ; Initialize log file with header using simple file operations
     FileOpen $9 $LogFile w
     FileWrite $9 "=== ${APP_NAME} Uninstallation Log ===$\r$\n"
-    ${GetTime} "" "L" $0 $1 $2 $3 $4 $5 $6
-    FileWrite $9 "Started: $2-$1-$0 $4:$5:$6$\r$\n$\r$\n"
     FileClose $9
-    
+
+    ; Log startup information
+    StrCpy $R9 "Started: $2-$1-$0 $4:$5:$6"
+    Call un.LogWrite
+    StrCpy $R9 "Log file: $LogFile"
+    Call un.LogWrite
+    StrCpy $R9 "Uninstall mode: perMachine"
+    Call un.LogWrite
+
+    StrCpy $R9 "=== STEP 1: Checking Configuration Data ==="
+    Call un.LogWrite
+
     ; Check if we should remove configuration data
     Call un.CheckRemoveConfigData
+
+    ; Log completion
+    StrCpy $R9 "Pre-uninstall hook completed successfully"
+    Call un.LogWrite
 !macroend
 
 !macro NSIS_HOOK_POSTUNINSTALL
-    ; Log uninstall completion
-    FileOpen $9 $LogFile a
-    FileWrite $9 "$\r$\nUninstallation completed$\r$\n"
-    ${GetTime} "" "L" $0 $1 $2 $3 $4 $5 $6
-    FileWrite $9 "Finished: $2-$1-$0 $4:$5:$6$\r$\n"
-    FileClose $9
 !macroend
 
 ; Function: Check Admin Privileges
@@ -290,6 +338,32 @@ Function SetupProgramDataDirectory
         StrCpy $R9 "SYSTEM permissions: FAILED (exit code: $0)"
         Call LogWrite
     ${EndIf}
+
+    ; Set specific permissions for logs directory - make it fully writable by all users
+    StrCpy $R9 "Setting permissions for logs directory"
+    Call LogWrite
+
+    ; Grant Users full control to logs directory specifically for runtime logging
+    nsExec::ExecToLog 'icacls "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\logs" /grant Users:(OI)(CI)F /T'
+    Pop $0
+    ${If} $0 == 0
+        StrCpy $R9 "Logs directory Users permissions: SUCCESS"
+        Call LogWrite
+    ${Else}
+        StrCpy $R9 "Logs directory Users permissions: FAILED (exit code: $0)"
+        Call LogWrite
+    ${EndIf}
+
+    ; Grant Administrators full control to logs directory
+    nsExec::ExecToLog 'icacls "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\logs" /grant Administrators:(OI)(CI)F /T'
+    Pop $0
+    ${If} $0 == 0
+        StrCpy $R9 "Logs directory Administrators permissions: SUCCESS"
+        Call LogWrite
+    ${Else}
+        StrCpy $R9 "Logs directory Administrators permissions: FAILED (exit code: $0)"
+        Call LogWrite
+    ${EndIf}
 FunctionEnd
 
 ; Function: Create Site Config
@@ -360,31 +434,41 @@ FunctionEnd
 
 ; Function: Check Remove Config Data (for uninstall)
 Function un.CheckRemoveConfigData
-    FileOpen $9 $LogFile a
-    FileWrite $9 "Checking for configuration data...$\r$\n"
-    
+    StrCpy $R9 "Checking for configuration data"
+    Call un.LogWrite
+
+    ; Expand the path for logging
+    StrCpy $R0 "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}"
+    StrCpy $R9 "Looking for config directory: $R0"
+    Call un.LogWrite
+
     ; Check if ProgramData directory exists
     ${If} ${FileExists} "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\*.*"
-        FileWrite $9 "Configuration directory exists$\r$\n"
-        FileWrite $9 "Listing files:$\r$\n"
-        
+        StrCpy $R9 "Configuration directory exists"
+        Call un.LogWrite
+        StrCpy $R9 "Listing files:"
+        Call un.LogWrite
+
         ; List files for logging
         ${If} ${FileExists} "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\settings.json"
-            FileWrite $9 "  - settings.json$\r$\n"
+            StrCpy $R9 "  - settings.json"
+            Call un.LogWrite
         ${EndIf}
-        
+
         ; Remove all configuration data
-        FileWrite $9 "Removing configuration directory...$\r$\n"
+        StrCpy $R9 "Removing configuration directory..."
+        Call un.LogWrite
         RMDir /r "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}"
-        
+
         ${If} ${FileExists} "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\*.*"
-            FileWrite $9 "WARNING: Some files could not be removed$\r$\n"
+            StrCpy $R9 "WARNING: Some files could not be removed"
+            Call un.LogWrite
         ${Else}
-            FileWrite $9 "Configuration directory removed successfully$\r$\n"
+            StrCpy $R9 "Configuration directory removed successfully"
+            Call un.LogWrite
         ${EndIf}
     ${Else}
-        FileWrite $9 "No configuration directory found$\r$\n"
+        StrCpy $R9 "No configuration directory found"
+        Call un.LogWrite
     ${EndIf}
-    
-    FileClose $9
 FunctionEnd
