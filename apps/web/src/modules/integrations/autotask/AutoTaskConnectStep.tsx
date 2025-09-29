@@ -22,7 +22,7 @@ import {
   testAutoTaskConnection,
   type AutoTaskConfigInput,
 } from "./actions/config";
-import { Spinner } from "@/components/Spinner";
+import { Spinner } from "@workspace/ui/components/Spinner";
 
 const formSchema = z.object({
   server: z.string().min(1, "Server is required"),

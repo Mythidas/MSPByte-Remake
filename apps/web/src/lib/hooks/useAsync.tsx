@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { AlertCircle } from "lucide-react";
-import Loader from "@/components/Loader";
+import Loader from "@workspace/ui/components/Loader";
 
 // Types for the async data hook
 export interface AsyncState<T> {

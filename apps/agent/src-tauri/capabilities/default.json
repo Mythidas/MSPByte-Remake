@@ -3,11 +3,26 @@
   "identifier": "default",
   "description": "Capability for the main window",
   "windows": [
-    "main"
+    "support"
   ],
   "permissions": [
     "core:default",
     "opener:default",
-    "store:default"
+    "store:default",
+    "dialog:default",
+    "fs:default",
+    "notification:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        {
+          "url": "http://192.168.1.73:3001"
+        },
+        {
+          "url": "https://agent.mspbyte.pro"
+        }
+      ]
+    },
+    "http:default"
   ]
 }

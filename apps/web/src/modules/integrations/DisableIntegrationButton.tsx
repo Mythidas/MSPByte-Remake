@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@workspace/ui/components/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +14,7 @@ import {
 import { toast } from "sonner";
 import { LoaderIcon, AlertTriangleIcon } from "lucide-react";
 import { disableIntegration } from "./actions/disable-integration";
-import { SubmitButton } from "@/components/SubmitButton";
+import { SubmitButton } from "@workspace/ui/components/SubmitButton";
 
 type Props = {
   integrationId: string;

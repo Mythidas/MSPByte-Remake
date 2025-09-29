@@ -16,7 +16,7 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { CheckCircle2, Loader2, TestTube } from "lucide-react";
 import { toast } from "sonner";
-import { Spinner } from "@/components/Spinner";
+import { Spinner } from "@workspace/ui/components/Spinner";
 import { SophosPartnerConfig } from "@workspace/shared/types/integrations/sophos-partner";
 import { getRow } from "@/lib/supabase/orm";
 import {

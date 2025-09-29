@@ -22,7 +22,7 @@ import {
   DataTableFilter,
   DataTableSort,
 } from "@/lib/types/datatable";
-import { Spinner } from "@/components/Spinner";
+import { Spinner } from "@workspace/ui/components/Spinner";
 
 export function DataTable<T>({ ...props }: DataTableProps<T>) {
   return (
