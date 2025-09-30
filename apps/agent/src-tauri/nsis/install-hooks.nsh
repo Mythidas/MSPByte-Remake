@@ -14,6 +14,7 @@
 !include "LogicLib.nsh"
 !include "WinMessages.nsh"
 !include "StrFunc.nsh"
+!include "Version.nsh"
 
 ; Insert function declarations
 !insertmacro GetTime
@@ -92,7 +93,7 @@ FunctionEnd
     CreateDirectory "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}"
     CreateDirectory "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\logs"
 
-    StrCpy $LogFile "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\logs\install_$2$1$0_$4$5$6.log"
+    StrCpy $LogFile "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\logs\install_${APP_VERSION}.log"
 
     ; Initialize log file with header using simple file operations
     FileOpen $9 $LogFile w
@@ -186,7 +187,7 @@ FunctionEnd
     CreateDirectory "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}"
     CreateDirectory "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\logs"
 
-    StrCpy $LogFile "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\logs\uninstall_$2$1$0_$4$5$6.log"
+    StrCpy $LogFile "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\logs\uninstall_${APP_VERSION}.log"
 
     ; Initialize log file with header using simple file operations
     FileOpen $9 $LogFile w

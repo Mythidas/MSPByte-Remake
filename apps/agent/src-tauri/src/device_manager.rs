@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+#[cfg(target_os = "windows")]
+use std::process::Command;
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Settings {
     pub site_id: String,
