@@ -29,6 +29,7 @@ import { Spinner } from "@workspace/ui/components/Spinner.tsx";
 import { getSettings } from "@/lib/agent.ts";
 import { getRegistryValue } from "@/lib/registry.ts";
 import { APIResponse } from "@workspace/shared/types/api.ts";
+import { hideWindow } from "@/lib/window.ts";
 
 const formSchema = z.object({
   summary: z.string().min(1, "Title is required"),
@@ -153,10 +154,7 @@ export default function Support() {
       ) {
         throw "Invalid settings. Please restart agent.";
       }
-      const rmmId = await getRegistryValue(
-        "\\SOFTWARE\\CentraStage",
-        "DeviceID"
-      );
+      const rmmId = await getRegistryValue("SOFTWARE\\CentraStage", "DeviceID");
 
       const res = await fetch(`${settings.api_host}/v1.0/ticket/create`, {
         method: "POST",
@@ -166,18 +164,25 @@ export default function Support() {
         },
         body: JSON.stringify({
           ...formData,
-          screenshot,
-          rmm_id: rmmId,
+          screenshot_url: undefined,
+          screenshot_blob: undefined,
+
+          screenshot: {
+            ...screenshot,
+            url: undefined,
+          },
+          rmm_id: rmmId.data,
         }),
       });
-      const ret: APIResponse<string> = await res.json();
 
       if (!res.ok) {
-        throw ret.error?.message;
+        throw "API Fetch Error";
       }
+      const ret: APIResponse<string> = await res.json();
 
       alert(`Support ticket created successfully! Ticket ID: ${ret.data}`);
       form.reset();
+      await hideWindow("support");
     } catch (err) {
       toast.error(`Failed to submit ticket: ${err}`);
     } finally {

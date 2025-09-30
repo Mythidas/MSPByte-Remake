@@ -3,7 +3,6 @@ mod device_registration;
 
 use base64::engine::general_purpose;
 use base64::Engine;
-use tauri_plugin_notification::NotificationExt;
 use std::path::PathBuf;
 use tauri::{
     menu::{Menu, MenuItem},
@@ -99,6 +98,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_settings_info,
             check_registration_status,
+            hide_window,
             read_file_text,
             read_file_base64,
             read_registry_value
@@ -117,8 +117,6 @@ fn create_support_window(app: &AppHandle) {
 
 fn handle_support_window(app: &AppHandle, screenshot: bool) {
     let app_handle = app.clone();
-
-    app.notification().builder().title("Support Ticket").body("Taking Screenshot...").show().unwrap();
 
     tauri::async_runtime::spawn(async move {
         let mut screenshot_path: Option<PathBuf> = None;
@@ -160,6 +158,15 @@ async fn take_screenshot(app: AppHandle) -> Result<PathBuf, PathBuf> {
     let path = get_monitor_screenshot(app, monitors[0].id).await.unwrap();
 
     Ok(path)
+}
+
+#[tauri::command]
+fn hide_window(app: tauri::AppHandle, label: &str) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window(label) {
+        window.hide().map_err(|e| e.to_string())
+    } else {
+        Err(format!("No window found with label '{}'", label))
+    }
 }
 
 #[tauri::command]
