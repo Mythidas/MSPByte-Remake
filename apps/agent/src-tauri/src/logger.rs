@@ -58,11 +58,17 @@ pub fn log_message(level: LogLevel, message: &str) -> Result<(), Box<dyn std::er
 
     file.write_all(log_entry.as_bytes())?;
 
+    match level {
+        LogLevel::Info => println!("{}", log_entry),
+        LogLevel::Warn => eprintln!("{}", log_entry),
+        LogLevel::Error => eprintln!("{}", log_entry)
+    }
+
     Ok(())
 }
 
 #[tauri::command]
-pub fn log_to_file(level: String, message: String) -> Result<(), String> {
+pub fn log_to_file(level: String, message: String) {
     let log_level = LogLevel::from(level);
-    log_message(log_level, &message).map_err(|e| e.to_string())
+    log_message(log_level, &message).expect("File could not be written to")
 }

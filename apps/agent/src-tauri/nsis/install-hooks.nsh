@@ -4,6 +4,8 @@
 !define APP_NAME "MSPAgent"
 !define APP_COMPANY "MSPByte"
 !define CONFIG_DIR_NAME "MSPAgent"  ; Folder name in ProgramData
+!define APP_VERSION "0.1.3"
+!define API_HOST "https://agent.mspbyte.pro"
 
 ; =============================================================================
 ; Tauri NSIS Hook - Pre-Install
@@ -14,7 +16,6 @@
 !include "LogicLib.nsh"
 !include "WinMessages.nsh"
 !include "StrFunc.nsh"
-!include "Version.nsh"
 
 ; Insert function declarations
 !insertmacro GetTime
@@ -109,7 +110,7 @@ FunctionEnd
     Call LogWrite
 
     ; Set local vars
-    StrCpy $ApiHost "https://agent.mspbyte.pro"
+    StrCpy $ApiHost "${API_HOST}"
     StrCpy $R9 "API Host set to: $ApiHost"
     Call LogWrite
 

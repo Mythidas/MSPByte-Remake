@@ -30,21 +30,21 @@ pub fn run() {
             // Check and register device on first launch
             tauri::async_runtime::spawn(async move {
                 if !is_device_registered().await {
-                    println!("First launch detected, registering device...");
+                    log_to_file("INFO".to_string(), "First launch detected, registering device...".to_string());
 
                     match register_device_with_server().await {
                         Ok(response) => {
-                            println!("Device registered successfully");
-                            println!("Device ID: {}", response.data.device_id);
-                            println!("GUID: {}", response.data.guid);
+                            log_to_file(String::from("INFO"), String::from("Device registered successfully"));
+                            log_to_file(String::from("INFO"), format!("Device ID: {}", response.data.device_id));
+                            log_to_file(String::from("INFO"), format!("GUID: {}", response.data.guid));
                         }
                         Err(e) => {
-                            eprintln!("Failed to register device: {}", e);
-                            eprintln!("Will retry on next launch");
+                            log_to_file(String::from("ERROR"), format!("Failed to regiter device: {}", e));
+                            log_to_file(String::from("ERROR"), String::from("Will retry on next launch"));
                         }
                     }
                 } else {
-                    println!("Device already registered");
+                    log_to_file(String::from("INFO"), "Device already registered".to_string());
                 }
             });
 
