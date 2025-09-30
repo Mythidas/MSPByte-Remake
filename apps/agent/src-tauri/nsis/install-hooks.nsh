@@ -400,6 +400,25 @@ Function SetupProgramDataDirectory
         StrCpy $R9 "Logs directory Administrators permissions: FAILED (exit code: $0)"
         Call LogWrite
     ${EndIf}
+
+    ; Create runtime log files with open permissions
+    StrCpy $R9 "Creating runtime log files with open permissions"
+    Call LogWrite
+
+    FileOpen $8 "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\logs\runtime_${APP_VERSION}.log" w
+    FileWrite $8 "=== MSPAgent Runtime Log ===$\r$\n"
+    FileClose $8
+
+    ; Set permissions on runtime log file to allow Users to write
+    nsExec::ExecToLog 'icacls "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\logs\runtime_${APP_VERSION}.log" /grant Users:(M)'
+    Pop $0
+    ${If} $0 == 0
+        StrCpy $R9 "Runtime log file Users permissions: SUCCESS"
+        Call LogWrite
+    ${Else}
+        StrCpy $R9 "Runtime log file Users permissions: FAILED (exit code: $0)"
+        Call LogWrite
+    ${EndIf}
 FunctionEnd
 
 ; Function: Create Site Config

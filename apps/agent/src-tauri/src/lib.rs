@@ -1,5 +1,6 @@
 mod device_manager;
 mod device_registration;
+mod logger;
 
 use base64::engine::general_purpose;
 use base64::Engine;
@@ -13,6 +14,7 @@ use tauri_plugin_screenshots::{get_monitor_screenshot, get_screenshotable_monito
 
 use device_manager::{get_settings, is_device_registered};
 use device_registration::register_device_with_server;
+use logger::log_to_file;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -101,7 +103,8 @@ pub fn run() {
             hide_window,
             read_file_text,
             read_file_base64,
-            read_registry_value
+            read_registry_value,
+            log_to_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
