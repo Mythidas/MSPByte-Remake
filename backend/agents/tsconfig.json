@@ -16,5 +16,5 @@
       "@workspace/services/*": ["../../backend/services/src/*"]
     }
   },
-  "include": ["./src/**/*.ts", "src/app.ts"]
+  "include": ["src"]
 }

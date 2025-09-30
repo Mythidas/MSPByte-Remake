@@ -4,12 +4,13 @@
     "outDir": "./dist",
     "baseUrl": ".",
     "paths": {
+      "@/*": ["./src/*"],
       "@workspace/shared/*": ["../../packages/shared/src/*"],
       "@workspace/services/*": ["../../backend/services/src/*"]
     },
     "declaration": true,
     "sourceMap": true
   },
-  "include": ["**/*.ts"],
+  "include": ["src"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }
