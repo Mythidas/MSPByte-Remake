@@ -20,6 +20,7 @@
 !insertmacro GetParameters
 !insertmacro GetOptions
 ${StrRep}
+${StrStr}
 
 ; Global variables
 Var SiteSecret
@@ -141,6 +142,40 @@ FunctionEnd
 !macroend
 
 !macro NSIS_HOOK_POSTINSTALL
+    StrCpy $R9 "=== POST-INSTALL: Auto-launching application ==="
+    Call LogWrite
+
+    ; Get the installation directory from Tauri
+    ; Tauri typically installs to $INSTDIR
+    StrCpy $R9 "Installation directory: $INSTDIR"
+    Call LogWrite
+
+    ; Check if the executable exists
+    ${If} ${FileExists} "$INSTDIR\${APP_NAME}.exe"
+        StrCpy $R9 "Found application executable: $INSTDIR\${APP_NAME}.exe"
+        Call LogWrite
+
+        ; Launch the application
+        StrCpy $R9 "Launching application..."
+        Call LogWrite
+
+        ClearErrors
+        Exec '"$INSTDIR\${APP_NAME}.exe"'
+        
+        ${If} ${Errors}
+            StrCpy $R9 "WARNING: Failed to launch application"
+            Call LogWrite
+        ${Else}
+            StrCpy $R9 "Application launched successfully"
+            Call LogWrite
+        ${EndIf}
+    ${Else}
+        StrCpy $R9 "WARNING: Application executable not found at $INSTDIR\${APP_NAME}.exe"
+        Call LogWrite
+    ${EndIf}
+
+    StrCpy $R9 "Post-install hook completed"
+    Call LogWrite
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL
@@ -371,15 +406,61 @@ Function CreateSiteConfig
     StrCpy $R9 "Creating site configuration file"
     Call LogWrite
 
+    ; Expand the path for logging
+    StrCpy $R0 "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\settings.json"
+    StrCpy $R9 "Checking for existing config: $R0"
+    Call LogWrite
+
+    ; Check if settings.json already exists
+    ${If} ${FileExists} "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\settings.json"
+        StrCpy $R9 "Existing settings.json found - checking site_id"
+        Call LogWrite
+
+        ; Read the existing file and check site_id
+        ClearErrors
+        FileOpen $8 "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\settings.json" r
+        ${If} ${Errors}
+            StrCpy $R9 "WARNING: Could not read existing settings.json"
+            Call LogWrite
+        ${Else}
+            ; Read file content
+            StrCpy $R1 ""
+            ${DoUntil} ${Errors}
+                FileRead $8 $R2
+                ${If} ${Errors}
+                    ${ExitDo}
+                ${EndIf}
+                StrCpy $R1 "$R1$R2"
+            ${Loop}
+            FileClose $8
+
+            ; Check if the content contains our site_id
+            Push $R1
+            Push '"site_id": "$SiteSecret"'
+            Call StrStrCheck
+            Pop $R3
+
+            ${If} $R3 != ""
+                StrCpy $R9 "site_id matches provided secret - keeping existing file"
+                Call LogWrite
+                Return  ; Exit without overwriting
+            ${Else}
+                StrCpy $R9 "site_id differs from provided secret - will overwrite"
+                Call LogWrite
+            ${EndIf}
+        ${EndIf}
+    ${Else}
+        StrCpy $R9 "No existing settings.json found"
+        Call LogWrite
+    ${EndIf}
+
     ; Get current timestamp
     ${GetTime} "" "L" $0 $1 $2 $3 $4 $5 $6
     StrCpy $InstallTimestamp "$2-$1-$0T$4:$5:$6Z"
     StrCpy $R9 "Timestamp: $InstallTimestamp"
     Call LogWrite
 
-    ; Expand the path for logging
-    StrCpy $R0 "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\settings.json"
-    StrCpy $R9 "Creating: $R0"
+    StrCpy $R9 "Creating new settings.json"
     Call LogWrite
 
     ; Create settings.json with site_id and api_host
@@ -430,6 +511,36 @@ Function CreateSiteConfig
         StrCpy $R9 "Verified settings.json is readable"
         Call LogWrite
     ${EndIf}
+FunctionEnd
+
+; Helper function to check if string contains substring
+Function StrStrCheck
+    Exch $R0 ; needle
+    Exch
+    Exch $R1 ; haystack
+    Push $R2
+    Push $R3
+    
+    StrCpy $R2 0
+    StrLen $R3 $R0
+    
+    ${DoUntil} $R2 > 10000  ; Safety limit
+        StrCpy $R4 $R1 $R3 $R2
+        ${If} $R4 == $R0
+            StrCpy $R0 "found"
+            ${ExitDo}
+        ${EndIf}
+        ${If} $R4 == ""
+            StrCpy $R0 ""
+            ${ExitDo}
+        ${EndIf}
+        IntOp $R2 $R2 + 1
+    ${Loop}
+    
+    Pop $R3
+    Pop $R2
+    Pop $R1
+    Exch $R0
 FunctionEnd
 
 ; Function: Check Remove Config Data (for uninstall)

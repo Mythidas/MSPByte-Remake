@@ -374,7 +374,7 @@ export default function Support() {
                 <img
                   src={screenshot.url}
                   alt="Screenshot preview"
-                  className="w-full h-60 object-contain"
+                  className="w-full h-52 object-contain"
                 />
               </div>
             )}

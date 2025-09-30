@@ -3,4 +3,3 @@ members = [
   "apps/agent/src-tauri"
 ]
 resolver = "2"  # workspace-level resolver
-target-dir = "target"  # optional
