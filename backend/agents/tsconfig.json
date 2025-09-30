@@ -11,6 +11,7 @@
     "esModuleInterop": true,
     "allowImportingTsExtensions": false, // Ensure this is false
     "paths": {
+      "@/*": ["./src/*"],
       "@workspace/shared/*": ["../../packages/shared/src/*"],
       "@workspace/services/*": ["../../backend/services/src/*"]
     }

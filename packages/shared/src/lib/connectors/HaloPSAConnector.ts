@@ -81,6 +81,7 @@ export class HaloPSAConnector {
     params.set("site_id", siteID);
     params.set("includecolumns", "false");
     params.set("showcounts", "true");
+    params.set("idonly", "true");
     params.set("paginate", "true");
     params.set("page_size", "50");
     params.set("page_no", "1");
@@ -143,8 +144,15 @@ export class HaloPSAConnector {
     details.push(`Details: ${ticket.details}`);
     const details_html = `<p>${details.join("<br>")}<br>${images}</p>`;
 
+    const params = new URLSearchParams();
+    params.set("includedetails", "false");
+    params.set("includetickettype", "false");
+    params.set("includeuser", "false");
+    params.set("includepriority", "false");
+    params.set("idonly", "true");
+
     const { data, error } = await APIClient.fetch<{ id: string }>(
-      `${this.config.url}/api/tickets`,
+      `${this.config.url}/api/tickets?${params}`,
       {
         method: "POST",
         headers: {
@@ -172,9 +180,8 @@ export class HaloPSAConnector {
             utcoffset: 300,
             form_id: "newticket-1",
             dont_do_rules: true,
-            return_this: true,
-            attachments: [],
-            phonenumber: "Unknown",
+            return_this: false,
+            phonenumber: ticket.user.phone,
             assets: ticket.assets.map((a) => ({ id: a })),
           },
         ]),

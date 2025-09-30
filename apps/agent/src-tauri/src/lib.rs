@@ -161,12 +161,16 @@ async fn take_screenshot(app: AppHandle) -> Result<PathBuf, PathBuf> {
 }
 
 #[tauri::command]
-fn hide_window(app: tauri::AppHandle, label: &str) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window(label) {
-        window.hide().map_err(|e| e.to_string())
-    } else {
-        Err(format!("No window found with label '{}'", label))
-    }
+fn hide_window(app: tauri::AppHandle, label: String) -> Result<(), String> {
+    std::thread::spawn(move || {
+        if let Some(window) = app.get_webview_window(&label) {
+            if window.is_visible().unwrap_or(false) {
+                std::thread::sleep(std::time::Duration::from_millis(50));
+                let _ = window.hide();
+            }
+        }
+    });
+    Ok(())
 }
 
 #[tauri::command]
@@ -194,15 +198,15 @@ fn read_file_base64(path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-fn read_registry_value(path: &str, key: &str) -> Result<String, String> {
+fn read_registry_value(_path: &str, _key: &str) -> Result<String, String> {
     #[cfg(target_os = "windows")]
     {
         use winreg::enums::*;
         use winreg::RegKey;
         
         let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-        let subkey = hklm.open_subkey(path).map_err(|e| e.to_string())?;
-        let result: String = subkey.get_value(key).map_err(|e| e.to_string())?;
+        let subkey = hklm.open_subkey(_path).map_err(|e| e.to_string())?;
+        let result: String = subkey.get_value(_key).map_err(|e| e.to_string())?;
         Ok(result)
     }
 

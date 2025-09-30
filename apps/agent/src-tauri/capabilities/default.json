@@ -2,9 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": [
-    "support"
-  ],
+  "windows": ["support"],
   "permissions": [
     "core:default",
     "opener:default",
@@ -20,6 +18,9 @@
         },
         {
           "url": "https://agent.mspbyte.pro"
+        },
+        {
+          "url": "http://localhost:3001"
         }
       ]
     },

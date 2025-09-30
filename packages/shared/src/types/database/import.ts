@@ -14,6 +14,85 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_api_logs: {
+        Row: {
+          agent_id: string
+          created_at: string | null
+          endpoint: string
+          error_message: string | null
+          external_id: string | null
+          id: string
+          method: Database["public"]["Enums"]["http_method"]
+          psa_site_id: string | null
+          req_metadata: Json
+          res_metadata: Json
+          rmm_device_id: string | null
+          site_id: string
+          status_code: number
+          tenant_id: string
+          time_elapsed_ms: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string | null
+          endpoint: string
+          error_message?: string | null
+          external_id?: string | null
+          id?: string
+          method: Database["public"]["Enums"]["http_method"]
+          psa_site_id?: string | null
+          req_metadata: Json
+          res_metadata: Json
+          rmm_device_id?: string | null
+          site_id: string
+          status_code: number
+          tenant_id: string
+          time_elapsed_ms?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string | null
+          endpoint?: string
+          error_message?: string | null
+          external_id?: string | null
+          id?: string
+          method?: Database["public"]["Enums"]["http_method"]
+          psa_site_id?: string | null
+          req_metadata?: Json
+          res_metadata?: Json
+          rmm_device_id?: string | null
+          site_id?: string
+          status_code?: number
+          tenant_id?: string
+          time_elapsed_ms?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_api_logs_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_api_logs_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_api_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agents: {
         Row: {
           created_at: string | null
@@ -771,7 +850,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      http_method: "GET" | "POST" | "PUT" | "DELETE"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1096,7 +1175,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      http_method: ["GET", "POST", "PUT", "DELETE"],
+    },
   },
   views: {
     Enums: {},
