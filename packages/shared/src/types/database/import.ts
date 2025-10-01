@@ -102,9 +102,7 @@ export type Database = {
           id: string
           ip_address: string | null
           last_checkin_at: string | null
-          last_online_at: string | null
           mac_address: string | null
-          online: boolean
           platform: string
           registered_at: string | null
           site_id: string
@@ -120,9 +118,7 @@ export type Database = {
           id?: string
           ip_address?: string | null
           last_checkin_at?: string | null
-          last_online_at?: string | null
           mac_address?: string | null
-          online: boolean
           platform?: string
           registered_at?: string | null
           site_id: string
@@ -138,9 +134,7 @@ export type Database = {
           id?: string
           ip_address?: string | null
           last_checkin_at?: string | null
-          last_online_at?: string | null
           mac_address?: string | null
-          online?: boolean
           platform?: string
           registered_at?: string | null
           site_id?: string

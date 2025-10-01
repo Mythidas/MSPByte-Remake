@@ -1,20 +1,22 @@
 mod device_manager;
 mod device_registration;
+mod heartbeat;
 mod logger;
+mod test_ticket_sender;
 
 use base64::engine::general_purpose;
 use base64::Engine;
 use std::path::PathBuf;
-use tauri::{
-    menu::{Menu, MenuItem},
-    tray::TrayIconBuilder,
-    AppHandle, Emitter, EventTarget, Manager, WebviewUrl, WebviewWindowBuilder,
-};
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
+use tauri::{AppHandle, Emitter, EventTarget, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_screenshots::{get_monitor_screenshot, get_screenshotable_monitors};
 
 use device_manager::{get_settings, is_device_registered};
 use device_registration::register_device_with_server;
+use heartbeat::start_heartbeat_task;
 use logger::log_to_file;
+use test_ticket_sender::start_test_ticket_sender;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -27,6 +29,17 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_screenshots::init())
         .setup(|app| {
+            // Create atomic flags for background task control
+            let heartbeat_running = Arc::new(AtomicBool::new(true));
+            let heartbeat_flag = heartbeat_running.clone();
+
+            let test_ticket_running = Arc::new(AtomicBool::new(true));
+            let test_ticket_flag = test_ticket_running.clone();
+
+            // Store the flags in app state for cleanup
+            app.manage(heartbeat_running);
+            app.manage(test_ticket_running);
+
             // Check and register device on first launch
             tauri::async_runtime::spawn(async move {
                 if !is_device_registered().await {
@@ -67,46 +80,57 @@ pub fn run() {
                         "Device already registered".to_string(),
                     );
                 }
+
+                // TODO: Delete in production
+                // Start background tasks after registration check
+                start_heartbeat_task(heartbeat_flag.clone());
+
+                // Start test ticket sender (TEMPORARY - for testing)
+                log_to_file(
+                    String::from("INFO"),
+                    String::from("Starting test ticket sender for backend testing"),
+                );
+                start_test_ticket_sender(test_ticket_flag);
             });
 
             // Create the tray application
-            let request_support_sc_i = MenuItem::with_id(
-                app,
-                "request_support_sc",
-                "Take Screenshot and Request Support",
-                true,
-                None::<&str>,
-            )?;
-            let request_support_i = MenuItem::with_id(
-                app,
-                "request_support",
-                "Request Support",
-                true,
-                None::<&str>,
-            )?;
-            let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            // let request_support_sc_i = MenuItem::with_id(
+            //     app,
+            //     "request_support_sc",
+            //     "Take Screenshot and Request Support",
+            //     true,
+            //     None::<&str>,
+            // )?;
+            // let request_support_i = MenuItem::with_id(
+            //     app,
+            //     "request_support",
+            //     "Request Support",
+            //     true,
+            //     None::<&str>,
+            // )?;
+            // let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
 
-            // Create menu with items
-            let menu =
-                Menu::with_items(app, &[&request_support_sc_i, &request_support_i, &quit_i])?;
+            // // Create menu with items
+            // let menu =
+            //     Menu::with_items(app, &[&request_support_sc_i, &request_support_i, &quit_i])?;
 
-            // Build tray icon with menu
-            let _tray = TrayIconBuilder::new()
-                .icon(app.default_window_icon().unwrap().clone())
-                .menu(&menu)
-                .on_menu_event(|app, event| match event.id.as_ref() {
-                    "request_support_sc" => {
-                        handle_support_window(app, true);
-                    }
-                    "request_support" => {
-                        handle_support_window(app, false);
-                    }
-                    "quit" => {
-                        app.exit(0);
-                    }
-                    _ => {}
-                })
-                .build(app)?;
+            // // Build tray icon with menu
+            // let _tray = TrayIconBuilder::new()
+            //     .icon(app.default_window_icon().unwrap().clone())
+            //     .menu(&menu)
+            //     .on_menu_event(|app, event| match event.id.as_ref() {
+            //         "request_support_sc" => {
+            //             handle_support_window(app, true);
+            //         }
+            //         "request_support" => {
+            //             handle_support_window(app, false);
+            //         }
+            //         "quit" => {
+            //             app.exit(0);
+            //         }
+            //         _ => {}
+            //     })
+            //     .build(app)?;
 
             Ok(())
         })

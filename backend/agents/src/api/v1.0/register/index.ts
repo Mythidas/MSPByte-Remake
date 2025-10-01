@@ -1,18 +1,17 @@
 import { getRow, upsertRows } from "@workspace/shared/lib/db/orm.js";
 import Debug from "@workspace/shared/lib/Debug.js";
-import Encryption from "@workspace/shared/lib/Encryption.js";
+import { generateAgentGuid } from "@workspace/shared/lib/utils.js";
 import { FastifyInstance } from "fastify";
 
 export default async function (fastify: FastifyInstance) {
   fastify.post("/", async (req) => {
-    const { site_id, hostname, version, guid, serial, mac, platform } =
+    const { site_id, hostname, version, guid, mac, platform } =
       req.body as string as {
         site_id?: string;
         hostname?: string;
         version?: string;
         guid?: string;
         platform?: string;
-        serial?: string;
         mac?: string;
       };
 
@@ -49,21 +48,19 @@ export default async function (fastify: FastifyInstance) {
       );
     }
 
+    // Generate GUID using the new utility function
+    const calculatedGuid = generateAgentGuid(guid, mac, hostname, site.id);
+
     const result = await upsertRows("agents", {
       rows: [
         {
           tenant_id: site.tenant_id,
           site_id: site.id,
-
-          // TODO: Make GUID as solid as possible to avoid duplicate devices
-          guid:
-            guid ||
-            Encryption.sha256(JSON.stringify({ hostname, siteID: site.id })),
+          guid: calculatedGuid,
           hostname: hostname,
           platform: platform,
           ip_address: "",
           ext_address: "",
-          online: true,
           version: version,
           mac_address: mac,
         },

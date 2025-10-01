@@ -86,3 +86,42 @@ export function generatePassword(length: number = 12): string {
 export function isNextJS() {
   return typeof window !== "undefined" && (window as any).__NEXT_DATA__;
 }
+
+/**
+ * Generates a deterministic GUID for agent identification.
+ * Prioritizes MAC address for uniqueness, falling back to hostname + site_id.
+ * Always respects user-provided GUID if available.
+ *
+ * @param providedGuid - GUID provided by the agent (highest priority)
+ * @param macAddress - MAC address of the agent (most unique identifier)
+ * @param hostname - Hostname of the agent
+ * @param siteId - Site ID where the agent is registered
+ * @returns A SHA256 hash representing the agent's GUID
+ */
+export function generateAgentGuid(
+  providedGuid: string | undefined,
+  macAddress: string | undefined,
+  hostname: string,
+  siteId: string
+): string {
+  // Always respect user-provided GUID first
+  if (providedGuid) {
+    return providedGuid;
+  }
+
+  // Prioritize MAC address as it's the most unique hardware identifier
+  if (macAddress && macAddress.trim() !== "") {
+    const crypto = require("node:crypto");
+    return crypto
+      .createHash("sha256")
+      .update(JSON.stringify({ mac: macAddress, siteId }))
+      .digest("hex");
+  }
+
+  // Fallback to hostname + siteId
+  const crypto = require("node:crypto");
+  return crypto
+    .createHash("sha256")
+    .update(JSON.stringify({ hostname, siteId }))
+    .digest("hex");
+}
