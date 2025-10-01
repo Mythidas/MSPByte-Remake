@@ -4,7 +4,7 @@
 !define APP_NAME "MSPAgent"
 !define APP_COMPANY "MSPByte"
 !define CONFIG_DIR_NAME "MSPAgent"  ; Folder name in ProgramData
-!define APP_VERSION "0.1.3"
+!define APP_VERSION "0.1.4"
 !define API_HOST "https://agent.mspbyte.pro"
 
 ; =============================================================================
@@ -96,12 +96,9 @@ FunctionEnd
 
     StrCpy $LogFile "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\logs\install_${APP_VERSION}.log"
 
-    ; Initialize log file with header using simple file operations
-    FileOpen $9 $LogFile w
-    FileWrite $9 "=== MSPAgent Installation Log ===$\r$\n"
-    FileClose $9
-
-    ; Log startup information
+    ; Log startup information (LogWrite will create the file)
+    StrCpy $R9 "=== MSPAgent Installation Log ==="
+    Call LogWrite
     StrCpy $R9 "Started: $2-$1-$0 $4:$5:$6"
     Call LogWrite
     StrCpy $R9 "Log file: $LogFile"
@@ -149,51 +146,137 @@ FunctionEnd
     
     ; Check if we're in silent mode (RMM deployment)
     ${If} ${Silent}
-        StrCpy $R9 "Silent install detected - checking for logged-in users"
+        StrCpy $R9 "Silent install detected - attempting to launch for logged-in users"
         Call LogWrite
-        
-        ; Check if explorer.exe is running (means user is logged in)
-        ClearErrors
-        nsExec::ExecToStack 'tasklist /FI "IMAGENAME eq explorer.exe" /NH'
-        Pop $0 ; return code
+
+        ; Create PowerShell script to launch app for all active user sessions
+        StrCpy $R7 "$TEMP\launch_${APP_NAME}_$$.ps1"
+        FileOpen $R8 $R7 w
+        FileWrite $R8 '# Launch application for all active user sessions$\r$\n'
+        FileWrite $R8 'Add-Type -TypeDefinition @"$\r$\n'
+        FileWrite $R8 'using System;$\r$\n'
+        FileWrite $R8 'using System.Runtime.InteropServices;$\r$\n'
+        FileWrite $R8 'public class ProcessStarter {$\r$\n'
+        FileWrite $R8 '    [DllImport("wtsapi32.dll", SetLastError = true)]$\r$\n'
+        FileWrite $R8 '    public static extern bool WTSQueryUserToken(int sessionId, out IntPtr token);$\r$\n'
+        FileWrite $R8 '    [DllImport("advapi32.dll", SetLastError = true)]$\r$\n'
+        FileWrite $R8 '    public static extern bool DuplicateTokenEx(IntPtr hExistingToken, uint dwDesiredAccess,$\r$\n'
+        FileWrite $R8 '        IntPtr lpTokenAttributes, int ImpersonationLevel, int TokenType, out IntPtr phNewToken);$\r$\n'
+        FileWrite $R8 '    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Auto)]$\r$\n'
+        FileWrite $R8 '    public static extern bool CreateProcessAsUser(IntPtr hToken, string lpApplicationName,$\r$\n'
+        FileWrite $R8 '        string lpCommandLine, IntPtr lpProcessAttributes, IntPtr lpThreadAttributes,$\r$\n'
+        FileWrite $R8 '        bool bInheritHandles, uint dwCreationFlags, IntPtr lpEnvironment,$\r$\n'
+        FileWrite $R8 '        string lpCurrentDirectory, ref STARTUPINFO lpStartupInfo,$\r$\n'
+        FileWrite $R8 '        out PROCESS_INFORMATION lpProcessInformation);$\r$\n'
+        FileWrite $R8 '    [DllImport("userenv.dll", SetLastError = true)]$\r$\n'
+        FileWrite $R8 '    public static extern bool CreateEnvironmentBlock(out IntPtr lpEnvironment, IntPtr hToken, bool bInherit);$\r$\n'
+        FileWrite $R8 '    [DllImport("userenv.dll", SetLastError = true)]$\r$\n'
+        FileWrite $R8 '    public static extern bool DestroyEnvironmentBlock(IntPtr lpEnvironment);$\r$\n'
+        FileWrite $R8 '    [DllImport("kernel32.dll", SetLastError = true)]$\r$\n'
+        FileWrite $R8 '    public static extern bool CloseHandle(IntPtr hObject);$\r$\n'
+        FileWrite $R8 '    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]$\r$\n'
+        FileWrite $R8 '    public struct STARTUPINFO {$\r$\n'
+        FileWrite $R8 '        public int cb; public IntPtr lpReserved; public IntPtr lpDesktop;$\r$\n'
+        FileWrite $R8 '        public IntPtr lpTitle; public int dwX; public int dwY;$\r$\n'
+        FileWrite $R8 '        public int dwXSize; public int dwYSize; public int dwXCountChars;$\r$\n'
+        FileWrite $R8 '        public int dwYCountChars; public int dwFillAttribute; public int dwFlags;$\r$\n'
+        FileWrite $R8 '        public short wShowWindow; public short cbReserved2;$\r$\n'
+        FileWrite $R8 '        public IntPtr lpReserved2; public IntPtr hStdInput;$\r$\n'
+        FileWrite $R8 '        public IntPtr hStdOutput; public IntPtr hStdError;$\r$\n'
+        FileWrite $R8 '    }$\r$\n'
+        FileWrite $R8 '    [StructLayout(LayoutKind.Sequential)]$\r$\n'
+        FileWrite $R8 '    public struct PROCESS_INFORMATION {$\r$\n'
+        FileWrite $R8 '        public IntPtr hProcess; public IntPtr hThread;$\r$\n'
+        FileWrite $R8 '        public int dwProcessId; public int dwThreadId;$\r$\n'
+        FileWrite $R8 '    }$\r$\n'
+        FileWrite $R8 '}$\r$\n'
+        FileWrite $R8 '"@$\r$\n'
+        FileWrite $R8 '$\r$\n'
+        FileWrite $R8 'try {$\r$\n'
+        FileWrite $R8 '    $$sessions = Get-Process -Name explorer -ErrorAction SilentlyContinue | Select-Object -ExpandProperty SessionId -Unique$\r$\n'
+        FileWrite $R8 '    $\r$\n'
+        FileWrite $R8 '    if ($$sessions) {$\r$\n'
+        FileWrite $R8 '        Write-Host "Found $$($$sessions.Count) active session(s): $$sessions"$\r$\n'
+        FileWrite $R8 '        foreach ($$sessionId in $$sessions) {$\r$\n'
+        FileWrite $R8 '            Write-Host "Launching for session $$sessionId..."$\r$\n'
+        FileWrite $R8 '            $$userToken = [IntPtr]::Zero$\r$\n'
+        FileWrite $R8 '            $$dupToken = [IntPtr]::Zero$\r$\n'
+        FileWrite $R8 '            $$envBlock = [IntPtr]::Zero$\r$\n'
+        FileWrite $R8 '            try {$\r$\n'
+        FileWrite $R8 '                if (![ProcessStarter]::WTSQueryUserToken($$sessionId, [ref]$$userToken)) {$\r$\n'
+        FileWrite $R8 '                    Write-Host "Failed to get user token (Error: $$([Runtime.InteropServices.Marshal]::GetLastWin32Error()))"$\r$\n'
+        FileWrite $R8 '                    continue$\r$\n'
+        FileWrite $R8 '                }$\r$\n'
+        FileWrite $R8 '                # TOKEN_DUPLICATE=2, TOKEN_QUERY=8, TOKEN_ASSIGN_PRIMARY=1, TOKEN_ADJUST_PRIVILEGES=32$\r$\n'
+        FileWrite $R8 '                $$TOKEN_ALL_ACCESS = 0xF01FF$\r$\n'
+        FileWrite $R8 '                if (![ProcessStarter]::DuplicateTokenEx($$userToken, $$TOKEN_ALL_ACCESS, [IntPtr]::Zero, 2, 1, [ref]$$dupToken)) {$\r$\n'
+        FileWrite $R8 '                    Write-Host "Failed to duplicate token (Error: $$([Runtime.InteropServices.Marshal]::GetLastWin32Error()))"$\r$\n'
+        FileWrite $R8 '                    continue$\r$\n'
+        FileWrite $R8 '                }$\r$\n'
+        FileWrite $R8 '                if (![ProcessStarter]::CreateEnvironmentBlock([ref]$$envBlock, $$dupToken, $$false)) {$\r$\n'
+        FileWrite $R8 '                    Write-Host "Failed to create environment block (Error: $$([Runtime.InteropServices.Marshal]::GetLastWin32Error()))"$\r$\n'
+        FileWrite $R8 '                    continue$\r$\n'
+        FileWrite $R8 '                }$\r$\n'
+        FileWrite $R8 '                $$si = New-Object ProcessStarter+STARTUPINFO$\r$\n'
+        FileWrite $R8 '                $$si.cb = [Runtime.InteropServices.Marshal]::SizeOf($$si)$\r$\n'
+        FileWrite $R8 '                $$si.lpDesktop = [Runtime.InteropServices.Marshal]::StringToHGlobalUni("winsta0\default")$\r$\n'
+        FileWrite $R8 '                $$pi = New-Object ProcessStarter+PROCESS_INFORMATION$\r$\n'
+        FileWrite $R8 '                # CREATE_UNICODE_ENVIRONMENT=0x400, CREATE_NO_WINDOW=0x08000000, NORMAL_PRIORITY_CLASS=0x20$\r$\n'
+        FileWrite $R8 '                $$flags = 0x400$\r$\n'
+        FileWrite $R8 '                $$result = [ProcessStarter]::CreateProcessAsUser($$dupToken, "$INSTDIR\${APP_NAME}.exe",$\r$\n'
+        FileWrite $R8 '                    $$null, [IntPtr]::Zero, [IntPtr]::Zero, $$false, $$flags, $$envBlock,$\r$\n'
+        FileWrite $R8 '                    "$INSTDIR", [ref]$$si, [ref]$$pi)$\r$\n'
+        FileWrite $R8 '                if ($$result) {$\r$\n'
+        FileWrite $R8 '                    Write-Host "Successfully launched for session $$sessionId (PID: $$($$pi.dwProcessId))"$\r$\n'
+        FileWrite $R8 '                    [ProcessStarter]::CloseHandle($$pi.hProcess)$\r$\n'
+        FileWrite $R8 '                    [ProcessStarter]::CloseHandle($$pi.hThread)$\r$\n'
+        FileWrite $R8 '                } else {$\r$\n'
+        FileWrite $R8 '                    Write-Host "Failed to launch (Error: $$([Runtime.InteropServices.Marshal]::GetLastWin32Error()))"$\r$\n'
+        FileWrite $R8 '                }$\r$\n'
+        FileWrite $R8 '            } finally {$\r$\n'
+        FileWrite $R8 '                if ($$envBlock -ne [IntPtr]::Zero) { [ProcessStarter]::DestroyEnvironmentBlock($$envBlock) }$\r$\n'
+        FileWrite $R8 '                if ($$dupToken -ne [IntPtr]::Zero) { [ProcessStarter]::CloseHandle($$dupToken) }$\r$\n'
+        FileWrite $R8 '                if ($$userToken -ne [IntPtr]::Zero) { [ProcessStarter]::CloseHandle($$userToken) }$\r$\n'
+        FileWrite $R8 '            }$\r$\n'
+        FileWrite $R8 '        }$\r$\n'
+        FileWrite $R8 '        exit 0$\r$\n'
+        FileWrite $R8 '    } else {$\r$\n'
+        FileWrite $R8 '        Write-Host "No active user sessions found"$\r$\n'
+        FileWrite $R8 '        exit 1$\r$\n'
+        FileWrite $R8 '    }$\r$\n'
+        FileWrite $R8 '} catch {$\r$\n'
+        FileWrite $R8 '    Write-Host "Error: $$($_.Exception.Message)"$\r$\n'
+        FileWrite $R8 '    Write-Host "Stack: $$($_.ScriptStackTrace)"$\r$\n'
+        FileWrite $R8 '    exit 2$\r$\n'
+        FileWrite $R8 '}$\r$\n'
+        FileClose $R8
+
+        StrCpy $R9 "Created PowerShell launch script: $R7"
+        Call LogWrite
+
+        ; Execute the PowerShell script
+        nsExec::ExecToStack 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$R7"'
+        Pop $0 ; exit code
         Pop $1 ; output
-        
-        ; Simple check: if return code is 0, explorer was found
+
+        StrCpy $R9 "PowerShell exit code: $0"
+        Call LogWrite
+        StrCpy $R9 "PowerShell output: $1"
+        Call LogWrite
+
         ${If} $0 == 0
-            StrCpy $R9 "User detected - creating scheduled task to launch app"
+            StrCpy $R9 "Application launched successfully for user sessions"
             Call LogWrite
-            
-            ; Create a one-time scheduled task that runs immediately as the interactive user
-            ; /RU INTERACTIVE runs as the logged-in user
-            ; /IT allows interaction with desktop
-            ; /V1 uses old task scheduler format for better compatibility
-            nsExec::ExecToLog 'schtasks /Create /F /TN "Launch_${APP_NAME}_Once" /TR "\"$INSTDIR\${APP_NAME}.exe\"" /SC ONCE /ST 00:00 /RU INTERACTIVE /IT /V1'
-            Pop $0
-            
-            ${If} $0 == 0
-                StrCpy $R9 "Task created successfully, running now..."
-                Call LogWrite
-                
-                ; Run the task immediately
-                nsExec::ExecToLog 'schtasks /Run /TN "Launch_${APP_NAME}_Once"'
-                Pop $0
-                
-                ; Wait a moment for the app to launch
-                Sleep 2000
-                
-                ; Delete the task
-                nsExec::ExecToLog 'schtasks /Delete /TN "Launch_${APP_NAME}_Once" /F'
-                
-                StrCpy $R9 "Application launched via scheduled task"
-                Call LogWrite
-            ${Else}
-                StrCpy $R9 "WARNING: Failed to create scheduled task"
-                Call LogWrite
-            ${EndIf}
+        ${ElseIf} $0 == 1
+            StrCpy $R9 "No active user sessions found - app will launch on next login"
+            Call LogWrite
         ${Else}
-            StrCpy $R9 "No user logged in - skipping auto-launch"
+            StrCpy $R9 "WARNING: Failed to launch application (error code: $0)"
             Call LogWrite
         ${EndIf}
+
+        ; Clean up the temporary script
+        Delete $R7
     ${Else}
         ; Interactive install - launch normally
         StrCpy $R9 "Interactive install - launching application directly"
@@ -230,12 +313,9 @@ FunctionEnd
 
     StrCpy $LogFile "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\logs\uninstall_${APP_VERSION}.log"
 
-    ; Initialize log file with header using simple file operations
-    FileOpen $9 $LogFile w
-    FileWrite $9 "=== ${APP_NAME} Uninstallation Log ===$\r$\n"
-    FileClose $9
-
-    ; Log startup information
+    ; Log startup information (LogWrite will create the file)
+    StrCpy $R9 "=== ${APP_NAME} Uninstallation Log ==="
+    Call un.LogWrite
     StrCpy $R9 "Started: $2-$1-$0 $4:$5:$6"
     Call un.LogWrite
     StrCpy $R9 "Log file: $LogFile"
@@ -442,12 +522,12 @@ Function SetupProgramDataDirectory
         Call LogWrite
     ${EndIf}
 
-    ; Create runtime log files with open permissions
-    StrCpy $R9 "Creating runtime log files with open permissions"
+    ; Create runtime log file with open permissions
+    StrCpy $R9 "Creating runtime log file with open permissions"
     Call LogWrite
 
+    ; Create empty file (application will write its own header)
     FileOpen $8 "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\logs\runtime_${APP_VERSION}.log" w
-    FileWrite $8 "=== MSPAgent Runtime Log ===$\r$\n"
     FileClose $8
 
     ; Set permissions on runtime log file to allow Users to write
