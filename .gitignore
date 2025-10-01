@@ -36,3 +36,6 @@ npm-debug.log*
 .DS_Store
 *.pem
 .claude
+
+bun.lock
+Cargo.lock

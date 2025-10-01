@@ -134,7 +134,7 @@ FunctionEnd
 
     ; Create site configuration
     Call CreateSiteConfig
-    
+
     ; Log completion
     StrCpy $R9 "Pre-install hook completed successfully"
     Call LogWrite
@@ -143,7 +143,7 @@ FunctionEnd
 !macro NSIS_HOOK_POSTINSTALL
     StrCpy $R9 "=== POST-INSTALL: Installation completed ==="
     Call LogWrite
-    
+
     ; Check if we're in silent mode (RMM deployment)
     ${If} ${Silent}
         StrCpy $R9 "Silent install detected - attempting to launch for logged-in users"
@@ -245,18 +245,16 @@ FunctionEnd
         FileWrite $R8 '                if ($$userToken -ne [IntPtr]::Zero) { [ProcessStarter]::CloseHandle($$userToken) }$\r$\n'
         FileWrite $R8 '            }$\r$\n'
         FileWrite $R8 '        }$\r$\n'
-        FileWrite $R8 '        if ($$launchedAny) {$\r$\n'
-        FileWrite $R8 '            exit 0$\r$\n'
-        FileWrite $R8 '        }$\r$\n'
         FileWrite $R8 '    } else {$\r$\n'
         FileWrite $R8 '        Write-Host "No active user sessions found"$\r$\n'
         FileWrite $R8 '    }$\r$\n'
-        FileWrite $R8 '    # Fallback: If no sessions launched (e.g., Error 1314 from non-SYSTEM admin), try simple launch$\r$\n'
-        FileWrite $R8 '    if (!$$launchedAny) {$\r$\n'
-        FileWrite $R8 '        Write-Host "Falling back to simple process launch for current user"$\r$\n'
-        FileWrite $R8 '        Start-Process -FilePath "$INSTDIR\${APP_NAME}.exe" -WorkingDirectory "$INSTDIR"$\r$\n'
-        FileWrite $R8 '        Write-Host "Launched via Start-Process"$\r$\n'
+        FileWrite $R8 '    # Only exit success if we actually launched; otherwise rely on registry autostart$\r$\n'
+        FileWrite $R8 '    if ($$launchedAny) {$\r$\n'
+        FileWrite $R8 '        Write-Host "Successfully launched for at least one user session"$\r$\n'
         FileWrite $R8 '        exit 0$\r$\n'
+        FileWrite $R8 '    } else {$\r$\n'
+        FileWrite $R8 '        Write-Host "Could not launch - app will start on next user login via registry autostart"$\r$\n'
+        FileWrite $R8 '        exit 1$\r$\n'
         FileWrite $R8 '    }$\r$\n'
         FileWrite $R8 '} catch {$\r$\n'
         FileWrite $R8 '    Write-Host "Error: $$($_.Exception.Message)"$\r$\n'
@@ -295,11 +293,11 @@ FunctionEnd
         ; Interactive install - launch normally
         StrCpy $R9 "Interactive install - launching application directly"
         Call LogWrite
-        
+
         ${If} ${FileExists} "$INSTDIR\${APP_NAME}.exe"
             ClearErrors
             Exec '"$INSTDIR\${APP_NAME}.exe"'
-            
+
             ${If} ${Errors}
                 StrCpy $R9 "WARNING: Failed to launch application"
                 Call LogWrite
@@ -492,7 +490,7 @@ Function SetupProgramDataDirectory
 
     StrCpy $R9 "Directory created successfully"
     Call LogWrite
-    
+
     ; Set permissions using icacls (built-in Windows command)
     StrCpy $R9 "Setting permissions using icacls"
     Call LogWrite
@@ -670,7 +668,7 @@ Function CreateSiteConfig
 
     StrCpy $R9 "settings.json created successfully"
     Call LogWrite
-    
+
     ; Set permissions on settings.json using icacls
     StrCpy $R9 "Setting permissions on settings.json"
     Call LogWrite
@@ -707,10 +705,10 @@ Function StrStrCheck
     Exch $R1 ; haystack
     Push $R2
     Push $R3
-    
+
     StrCpy $R2 0
     StrLen $R3 $R0
-    
+
     ${DoUntil} $R2 > 10000  ; Safety limit
         StrCpy $R4 $R1 $R3 $R2
         ${If} $R4 == $R0
@@ -723,7 +721,7 @@ Function StrStrCheck
         ${EndIf}
         IntOp $R2 $R2 + 1
     ${Loop}
-    
+
     Pop $R3
     Pop $R2
     Pop $R1
