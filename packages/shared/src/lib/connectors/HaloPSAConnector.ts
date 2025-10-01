@@ -81,7 +81,6 @@ export class HaloPSAConnector {
     params.set("site_id", siteID);
     params.set("includecolumns", "false");
     params.set("showcounts", "true");
-    params.set("idonly", "true");
     params.set("paginate", "true");
     params.set("page_size", "50");
     params.set("page_no", "1");
