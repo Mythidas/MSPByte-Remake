@@ -244,25 +244,27 @@ export default async function (fastify: FastifyInstance) {
         });
       }
 
+      const ticketInfo = {
+        siteId: Number(site.psa_company_id),
+        clientId: Number(site.psa_parent_company_id),
+        summary: body.summary,
+        details: body.description || "",
+        user: {
+          name: body.name,
+          email: body.email,
+          phone: body.phone,
+        },
+        impact: body.impact,
+        urgency: body.urgency,
+        assets: asset ? [asset.id] : [], // TODO: Find assets,
+        images: body.link ? [body.link] : [],
+      };
+
       // Create ticket in PSA
       const { data: createdTicketID } = await perf.trackSpan(
         "psa_create_ticket",
         async () => {
-          return await connector.createTicket({
-            siteId: Number(site.psa_company_id),
-            clientId: Number(site.psa_parent_company_id),
-            summary: body.summary,
-            details: body.description || "",
-            user: {
-              name: body.name,
-              email: body.email,
-              phone: body.phone,
-            },
-            impact: body.impact,
-            urgency: body.urgency,
-            assets: asset ? [asset.id] : [], // TODO: Find assets,
-            images: body.link ? [body.link] : [],
-          });
+          return await connector.createTicket(ticketInfo);
         }
       );
 
@@ -307,10 +309,7 @@ export default async function (fastify: FastifyInstance) {
           statusCode: 200,
           externalId: String(ticketID),
           requestMetadata: {
-            summary: body.summary,
-            impact: body.impact,
-            urgency: body.urgency,
-            has_screenshot: !!body.screenshot,
+            ...ticketInfo,
           },
           responseMetadata: {
             ticket_id: ticketID,
@@ -344,13 +343,14 @@ export default async function (fastify: FastifyInstance) {
               {
                 endpoint: "/v1.0/ticket/create",
                 method: "POST",
-                deviceId: deviceID,
-                siteId: siteID,
+                deviceId: agent.id,
+                siteId: agent.site_id,
                 tenantId: agent.tenant_id,
               },
               {
                 statusCode,
                 errorMessage,
+                requestMetadata: {},
               },
               perf
             );
