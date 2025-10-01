@@ -198,7 +198,7 @@ export default function Support() {
       formDataToSend.append("urgency", formData.urgency);
       formDataToSend.append("name", formData.name);
       formDataToSend.append("email", formData.email);
-      formDataToSend.append("phone", formData.phone);
+      formDataToSend.append("phone", formData.phone.replace(/\D/g, ""));
       if (rmmId) {
         formDataToSend.append("rmm_id", rmmId);
       }

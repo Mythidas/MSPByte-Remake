@@ -328,6 +328,15 @@ FunctionEnd
     StrCpy $R9 "Shortcuts removed from all user profiles"
     Call LogWrite
 
+    ; Add auto-start registry key for all users (HKLM)
+    StrCpy $R9 "Adding auto-start registry key"
+    Call LogWrite
+
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Run" "${APP_NAME}" '"$INSTDIR\${APP_NAME}.exe"'
+
+    StrCpy $R9 "Auto-start registry key added"
+    Call LogWrite
+
     StrCpy $R9 "Post-install hook completed"
     Call LogWrite
 !macroend
@@ -352,7 +361,15 @@ FunctionEnd
     StrCpy $R9 "Uninstall mode: perMachine"
     Call un.LogWrite
 
-    StrCpy $R9 "=== STEP 1: Checking Configuration Data ==="
+    StrCpy $R9 "=== STEP 1: Removing Auto-Start Registry Key ==="
+    Call un.LogWrite
+
+    ; Remove auto-start registry key
+    DeleteRegValue HKLM "Software\Microsoft\Windows\CurrentVersion\Run" "${APP_NAME}"
+    StrCpy $R9 "Auto-start registry key removed"
+    Call un.LogWrite
+
+    StrCpy $R9 "=== STEP 2: Checking Configuration Data ==="
     Call un.LogWrite
 
     ; Check if we should remove configuration data
