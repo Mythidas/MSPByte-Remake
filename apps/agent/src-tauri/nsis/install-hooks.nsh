@@ -192,6 +192,7 @@ FunctionEnd
         FileWrite $R8 '}$\r$\n'
         FileWrite $R8 '"@$\r$\n'
         FileWrite $R8 '$\r$\n'
+        FileWrite $R8 '$$launchedAny = $$false$\r$\n'
         FileWrite $R8 'try {$\r$\n'
         FileWrite $R8 '    $$sessions = Get-Process -Name explorer -ErrorAction SilentlyContinue | Select-Object -ExpandProperty SessionId -Unique$\r$\n'
         FileWrite $R8 '    $\r$\n'
@@ -204,7 +205,11 @@ FunctionEnd
         FileWrite $R8 '            $$envBlock = [IntPtr]::Zero$\r$\n'
         FileWrite $R8 '            try {$\r$\n'
         FileWrite $R8 '                if (![ProcessStarter]::WTSQueryUserToken($$sessionId, [ref]$$userToken)) {$\r$\n'
-        FileWrite $R8 '                    Write-Host "Failed to get user token (Error: $$([Runtime.InteropServices.Marshal]::GetLastWin32Error()))"$\r$\n'
+        FileWrite $R8 '                    $$errorCode = [Runtime.InteropServices.Marshal]::GetLastWin32Error()$\r$\n'
+        FileWrite $R8 '                    Write-Host "Failed to get user token (Error: $$errorCode)"$\r$\n'
+        FileWrite $R8 '                    if ($$errorCode -eq 1314) {$\r$\n'
+        FileWrite $R8 '                        Write-Host "Error 1314: SE_TCB_NAME privilege required (only SYSTEM has this)"$\r$\n'
+        FileWrite $R8 '                    }$\r$\n'
         FileWrite $R8 '                    continue$\r$\n'
         FileWrite $R8 '                }$\r$\n'
         FileWrite $R8 '                # TOKEN_DUPLICATE=2, TOKEN_QUERY=8, TOKEN_ASSIGN_PRIMARY=1, TOKEN_ADJUST_PRIVILEGES=32$\r$\n'
@@ -228,6 +233,7 @@ FunctionEnd
         FileWrite $R8 '                    "$INSTDIR", [ref]$$si, [ref]$$pi)$\r$\n'
         FileWrite $R8 '                if ($$result) {$\r$\n'
         FileWrite $R8 '                    Write-Host "Successfully launched for session $$sessionId (PID: $$($$pi.dwProcessId))"$\r$\n'
+        FileWrite $R8 '                    $$launchedAny = $$true$\r$\n'
         FileWrite $R8 '                    [ProcessStarter]::CloseHandle($$pi.hProcess)$\r$\n'
         FileWrite $R8 '                    [ProcessStarter]::CloseHandle($$pi.hThread)$\r$\n'
         FileWrite $R8 '                } else {$\r$\n'
@@ -239,10 +245,18 @@ FunctionEnd
         FileWrite $R8 '                if ($$userToken -ne [IntPtr]::Zero) { [ProcessStarter]::CloseHandle($$userToken) }$\r$\n'
         FileWrite $R8 '            }$\r$\n'
         FileWrite $R8 '        }$\r$\n'
-        FileWrite $R8 '        exit 0$\r$\n'
+        FileWrite $R8 '        if ($$launchedAny) {$\r$\n'
+        FileWrite $R8 '            exit 0$\r$\n'
+        FileWrite $R8 '        }$\r$\n'
         FileWrite $R8 '    } else {$\r$\n'
         FileWrite $R8 '        Write-Host "No active user sessions found"$\r$\n'
-        FileWrite $R8 '        exit 1$\r$\n'
+        FileWrite $R8 '    }$\r$\n'
+        FileWrite $R8 '    # Fallback: If no sessions launched (e.g., Error 1314 from non-SYSTEM admin), try simple launch$\r$\n'
+        FileWrite $R8 '    if (!$$launchedAny) {$\r$\n'
+        FileWrite $R8 '        Write-Host "Falling back to simple process launch for current user"$\r$\n'
+        FileWrite $R8 '        Start-Process -FilePath "$INSTDIR\${APP_NAME}.exe" -WorkingDirectory "$INSTDIR"$\r$\n'
+        FileWrite $R8 '        Write-Host "Launched via Start-Process"$\r$\n'
+        FileWrite $R8 '        exit 0$\r$\n'
         FileWrite $R8 '    }$\r$\n'
         FileWrite $R8 '} catch {$\r$\n'
         FileWrite $R8 '    Write-Host "Error: $$($_.Exception.Message)"$\r$\n'
@@ -254,8 +268,8 @@ FunctionEnd
         StrCpy $R9 "Created PowerShell launch script: $R7"
         Call LogWrite
 
-        ; Execute the PowerShell script
-        nsExec::ExecToStack 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$R7"'
+        ; Execute the PowerShell script (with hidden window to prevent console flash)
+        nsExec::ExecToStack 'powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "$R7"'
         Pop $0 ; exit code
         Pop $1 ; output
 
@@ -298,6 +312,21 @@ FunctionEnd
             Call LogWrite
         ${EndIf}
     ${EndIf}
+
+    ; Remove desktop and start menu shortcuts (tray-only app)
+    StrCpy $R9 "Removing desktop and start menu shortcuts"
+    Call LogWrite
+
+    ; Delete desktop shortcuts (both current user and all users/public)
+    Delete "$DESKTOP\${APP_NAME}.lnk"
+    Delete "$COMMONDESKTOP\${APP_NAME}.lnk"
+
+    ; Delete start menu shortcuts (both current user and all users/public)
+    RMDir /r "$SMPROGRAMS\${APP_NAME}"
+    RMDir /r "$COMMONPROGRAMS\${APP_NAME}"
+
+    StrCpy $R9 "Shortcuts removed from all user profiles"
+    Call LogWrite
 
     StrCpy $R9 "Post-install hook completed"
     Call LogWrite

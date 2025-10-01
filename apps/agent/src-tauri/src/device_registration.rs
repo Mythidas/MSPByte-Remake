@@ -50,8 +50,6 @@ pub async fn register_device_with_server(
         mac: mac.clone(),
     };
 
-    println!("Sending to: {}", api_url);
-
     let client = reqwest::Client::new();
     let response = client
         .post(&api_url)
@@ -61,11 +59,9 @@ pub async fn register_device_with_server(
         .await?;
 
     let status = response.status();
-    println!("Response status: {}", status);
 
     if status.is_success() {
         let response_text = response.text().await?;
-        println!("Response body: {}", response_text);
 
         let result: RegistrationResponse = serde_json::from_str(&response_text)?;
 
@@ -83,7 +79,6 @@ pub async fn register_device_with_server(
             .text()
             .await
             .unwrap_or_else(|_| "Unknown error".to_string());
-        println!("Error response: {}", error_text);
         Err(format!("Registration failed ({}): {}", status, error_text).into())
     }
 }

@@ -58,11 +58,8 @@ pub fn log_message(level: LogLevel, message: &str) -> Result<(), Box<dyn std::er
 
     file.write_all(log_entry.as_bytes())?;
 
-    match level {
-        LogLevel::Info => println!("{}", log_entry),
-        LogLevel::Warn => eprintln!("{}", log_entry),
-        LogLevel::Error => eprintln!("{}", log_entry),
-    }
+    // Console output removed to prevent CMD window flashing on Windows GUI apps
+    // All logs are written to file only
 
     Ok(())
 }
