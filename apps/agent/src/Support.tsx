@@ -22,14 +22,32 @@ import {
   SelectItem,
 } from "@workspace/ui/components/select.tsx";
 import { Button } from "@workspace/ui/components/button.tsx";
-import { chooseImageDialog, readFileBase64 } from "@/lib/file.ts";
+import {
+  chooseImageDialog,
+  readFileBase64,
+  takeScreenshot,
+} from "@/lib/file.ts";
 import { listen } from "@tauri-apps/api/event";
 import { fetch } from "@tauri-apps/plugin-http";
 import { Spinner } from "@workspace/ui/components/Spinner.tsx";
 import { getSettings } from "@/lib/agent.ts";
 import { getRegistryValue } from "@/lib/registry.ts";
 import { APIResponse } from "@workspace/shared/types/api.ts";
-import { hideWindow } from "@/lib/window.ts";
+import { hideWindow, showWindow } from "@/lib/window.ts";
+
+const phoneSchema = z
+  .string()
+  .min(1, "Phone # is required")
+  .refine(
+    (val) => {
+      // Remove everything that's not a digit
+      const digits = val.replace(/\D/g, "");
+      return digits.length === 10;
+    },
+    {
+      message: "Phone number must be 10 digits",
+    }
+  );
 
 const formSchema = z.object({
   summary: z.string().min(1, "Title is required"),
@@ -39,7 +57,7 @@ const formSchema = z.object({
 
   name: z.string().min(1, "Name is required"),
   email: z.email().min(1, "Email is required"),
-  phone: z.string().min(1, "Phone # is required"),
+  phone: phoneSchema,
 
   screenshot: z.string().optional(),
   screenshot_url: z.string().optional(),
@@ -49,7 +67,6 @@ type FormSchema = z.infer<typeof formSchema>;
 
 export default function Support() {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingScreenshot, setIsLoadingSceenshot] = useState(false);
 
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
@@ -79,13 +96,8 @@ export default function Support() {
       }
     });
 
-    const loadingPromise = listen("taking_screenshot", async () => {
-      setIsLoadingSceenshot(true);
-    });
-
     return () => {
       usePromise.then((unlisten) => unlisten());
-      loadingPromise.then((unlisten) => unlisten());
     };
   }, []);
 
@@ -103,7 +115,6 @@ export default function Support() {
   useEffect(() => {
     if (formValues.screenshot) {
       (async () => {
-        setIsLoadingSceenshot(false);
         const { data: base64 } = await readFileBase64(formValues.screenshot!);
 
         if (base64) {
@@ -197,6 +208,12 @@ export default function Support() {
       return;
     }
 
+    form.setValue("screenshot", path);
+  };
+
+  const handleScreenshot = async () => {
+    const { data: path } = await takeScreenshot();
+    await showWindow("support");
     form.setValue("screenshot", path);
   };
 
@@ -345,26 +362,21 @@ export default function Support() {
                 type="button"
                 variant="outline"
                 onClick={handleFileSelect}
-                disabled={isSubmitting || isLoadingScreenshot}
+                disabled={isSubmitting}
                 className="w-1/2"
               >
-                {screenshot ? (
-                  screenshot.name
-                ) : isLoadingScreenshot ? (
-                  <span className="flex gap-2 items-center justify-center">
-                    <Spinner size={20} />
-                    <p>Loading Image</p>
-                  </span>
-                ) : (
-                  "Choose Image"
-                )}
+                {screenshot ? screenshot.name : "Choose Image"}
               </Button>
-              {screenshot && (
+              {!!screenshot ? (
                 <Button
                   variant="destructive"
                   onClick={() => form.setValue("screenshot", undefined)}
                 >
-                  Clear
+                  Clear Screenshot
+                </Button>
+              ) : (
+                <Button type="button" onClick={handleScreenshot}>
+                  Take Screenshot
                 </Button>
               )}
             </div>

@@ -3,6 +3,23 @@ import { open } from "@tauri-apps/plugin-dialog";
 import Debug from "@workspace/shared/lib/Debug.ts";
 import { APIResponse } from "@workspace/shared/types/api.ts";
 
+export async function takeScreenshot(): Promise<APIResponse<string>> {
+  try {
+    const result = await invoke<string>("take_screenshot");
+
+    return {
+      data: result,
+    };
+  } catch (err) {
+    return Debug.error({
+      module: "File",
+      context: "takeScreenshot",
+      message: `Failed to take screenshot: ${err}`,
+      code: "FILE_ERROR",
+    });
+  }
+}
+
 export async function chooseImageDialog(): Promise<APIResponse<string>> {
   try {
     const file = await open({

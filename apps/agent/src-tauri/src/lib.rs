@@ -123,6 +123,8 @@ pub fn run() {
             get_settings_info,
             check_registration_status,
             hide_window,
+            show_window,
+            take_screenshot,
             read_file_text,
             read_file_base64,
             read_registry_value,
@@ -143,12 +145,13 @@ fn create_support_window(app: &AppHandle) {
 fn handle_support_window(app: &AppHandle, screenshot: bool) {
     let app_handle = app.clone();
 
+    log_to_file(String::from("INFO"), format!("Opening support window with screenshot set to {}", screenshot));
     tauri::async_runtime::spawn(async move {
         let mut screenshot_path: Option<PathBuf> = None;
 
         // Step 1: Take screenshot first (if requested)
         if screenshot {
-            if let Ok(path) = take_screenshot(app_handle.clone()).await {
+            if let Ok(path) = take_screenshot_internal(app_handle.clone()).await {
                 screenshot_path = Some(path);
             }
         }
@@ -172,68 +175,181 @@ fn handle_support_window(app: &AppHandle, screenshot: bool) {
     });
 }
 
-async fn take_screenshot(app: AppHandle) -> Result<PathBuf, PathBuf> {
-    // Get first available window (your desktop)
-    let monitors = get_screenshotable_monitors().await.unwrap();
-    if monitors.is_empty() {
-        return Err("No screenshotable windows found".into());
+async fn take_screenshot_internal(app: AppHandle) -> Result<PathBuf, String> {
+    log_to_file(String::from("INFO"), String::from("Starting screenshot capture"));
+
+    // Hide window if it exists
+    if let Some(window) = app.get_webview_window("support") {
+        log_to_file(String::from("INFO"), String::from("Hiding support window before screenshot"));
+        let _ = window.hide();
+        // Give time for window to hide
+        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+    } else {
+        log_to_file(String::from("INFO"), String::from("No support window to hide"));
     }
 
-    let path = get_monitor_screenshot(app, monitors[0].id).await.unwrap();
+    // Get first available monitor
+    log_to_file(String::from("INFO"), String::from("Getting screenshotable monitors"));
+    let monitors = get_screenshotable_monitors().await
+        .map_err(|e| {
+            let err_msg = format!("Failed to get monitors: {}", e);
+            log_to_file(String::from("ERROR"), err_msg.clone());
+            err_msg
+        })?;
 
+    if monitors.is_empty() {
+        let err_msg = String::from("No screenshotable monitors found");
+        log_to_file(String::from("ERROR"), err_msg.clone());
+        return Err(err_msg);
+    }
+
+    log_to_file(String::from("INFO"), format!("Found {} monitor(s), capturing from first monitor", monitors.len()));
+    let path = get_monitor_screenshot(app, monitors[0].id).await
+        .map_err(|e| {
+            let err_msg = format!("Failed to capture screenshot: {}", e);
+            log_to_file(String::from("ERROR"), err_msg.clone());
+            err_msg
+        })?;
+
+    log_to_file(String::from("INFO"), format!("Screenshot saved to: {}", path.display()));
     Ok(path)
 }
 
 #[tauri::command]
 fn hide_window(app: tauri::AppHandle, label: String) -> Result<(), String> {
-    std::thread::spawn(move || {
-        if let Some(window) = app.get_webview_window(&label) {
-            if window.is_visible().unwrap_or(false) {
-                std::thread::sleep(std::time::Duration::from_millis(50));
-                let _ = window.hide();
-            }
-        }
-    });
+    log_to_file(String::from("INFO"), format!("Hiding window: {}", label));
+    if let Some(window) = app.get_webview_window(&label) {
+        window.hide().map_err(|e| {
+            let err_msg = format!("Failed to hide window {}: {}", label, e);
+            log_to_file(String::from("ERROR"), err_msg.clone());
+            err_msg
+        })?;
+        log_to_file(String::from("INFO"), format!("Successfully hidden window: {}", label));
+    } else {
+        log_to_file(String::from("WARN"), format!("Window not found: {}", label));
+    }
     Ok(())
 }
 
 #[tauri::command]
+fn show_window(app: tauri::AppHandle, label: String) -> Result<(), String> {
+    log_to_file(String::from("INFO"), format!("Showing window: {}", label));
+    if let Some(window) = app.get_webview_window(&label) {
+        window.show().map_err(|e| {
+            let err_msg = format!("Failed to show window {}: {}", label, e);
+            log_to_file(String::from("ERROR"), err_msg.clone());
+            err_msg
+        })?;
+        window.set_focus().map_err(|e| {
+            let err_msg = format!("Failed to focus window {}: {}", label, e);
+            log_to_file(String::from("ERROR"), err_msg.clone());
+            err_msg
+        })?;
+        log_to_file(String::from("INFO"), format!("Successfully shown window: {}", label));
+    } else {
+        log_to_file(String::from("INFO"), format!("Window {} not found, creating new window", label));
+        create_support_window(&app);
+        if let Some(window) = app.get_webview_window(&label) {
+            window.show().map_err(|e| {
+                let err_msg = format!("Failed to show newly created window {}: {}", label, e);
+                log_to_file(String::from("ERROR"), err_msg.clone());
+                err_msg
+            })?;
+            window.set_focus().map_err(|e| {
+                let err_msg = format!("Failed to focus newly created window {}: {}", label, e);
+                log_to_file(String::from("ERROR"), err_msg.clone());
+                err_msg
+            })?;
+            log_to_file(String::from("INFO"), format!("Successfully created and shown window: {}", label));
+        } else {
+            let err_msg = format!("Failed to get window {} after creation", label);
+            log_to_file(String::from("ERROR"), err_msg.clone());
+            return Err(err_msg);
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn take_screenshot(app: tauri::AppHandle) -> Result<String, String> {
+    log_to_file(String::from("INFO"), String::from("take_screenshot command invoked"));
+    let path = take_screenshot_internal(app).await?;
+    let path_str = path.to_string_lossy().to_string();
+    log_to_file(String::from("INFO"), format!("Returning screenshot path: {}", path_str));
+    Ok(path_str)
+}
+
+#[tauri::command]
 async fn get_settings_info() -> Result<device_manager::Settings, String> {
-    get_settings().await.map_err(|e| e.to_string())
+    log_to_file(String::from("INFO"), String::from("get_settings_info command invoked"));
+    get_settings().await.map_err(|e| {
+        let err_msg = format!("Failed to get settings: {}", e);
+        log_to_file(String::from("ERROR"), err_msg.clone());
+        err_msg
+    })
 }
 
 #[tauri::command]
 async fn check_registration_status() -> Result<bool, String> {
-    Ok(is_device_registered().await)
+    log_to_file(String::from("INFO"), String::from("check_registration_status command invoked"));
+    let is_registered = is_device_registered().await;
+    log_to_file(String::from("INFO"), format!("Device registration status: {}", is_registered));
+    Ok(is_registered)
 }
 
 #[tauri::command]
 fn read_file_text(path: String) -> Result<String, String> {
-    std::fs::read_to_string(path).map_err(|e| e.to_string())
+    log_to_file(String::from("INFO"), format!("read_file_text command invoked for: {}", path));
+    std::fs::read_to_string(&path).map_err(|e| {
+        let err_msg = format!("Failed to read file {}: {}", path, e);
+        log_to_file(String::from("ERROR"), err_msg.clone());
+        err_msg
+    })
 }
 
 #[tauri::command]
 fn read_file_base64(path: String) -> Result<String, String> {
+    log_to_file(String::from("INFO"), format!("read_file_base64 command invoked for: {}", path));
     std::fs::read(&path)
-        .map_err(|e| e.to_string())
-        .map(|bytes| general_purpose::STANDARD.encode(bytes))
+        .map_err(|e| {
+            let err_msg = format!("Failed to read file {}: {}", path, e);
+            log_to_file(String::from("ERROR"), err_msg.clone());
+            err_msg
+        })
+        .map(|bytes| {
+            log_to_file(String::from("INFO"), format!("Successfully encoded {} bytes to base64", bytes.len()));
+            general_purpose::STANDARD.encode(bytes)
+        })
 }
 
 #[tauri::command]
 fn read_registry_value(_path: &str, _key: &str) -> Result<String, String> {
+    log_to_file(String::from("INFO"), format!("read_registry_value command invoked: path={}, key={}", _path, _key));
+
     #[cfg(target_os = "windows")]
     {
         use winreg::enums::*;
         use winreg::RegKey;
 
         let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-        let subkey = hklm.open_subkey(_path).map_err(|e| e.to_string())?;
-        let result: String = subkey.get_value(_key).map_err(|e| e.to_string())?;
+        let subkey = hklm.open_subkey(_path).map_err(|e| {
+            let err_msg = format!("Failed to open registry path {}: {}", _path, e);
+            log_to_file(String::from("ERROR"), err_msg.clone());
+            err_msg
+        })?;
+        let result: String = subkey.get_value(_key).map_err(|e| {
+            let err_msg = format!("Failed to read registry key {}: {}", _key, e);
+            log_to_file(String::from("ERROR"), err_msg.clone());
+            err_msg
+        })?;
+        log_to_file(String::from("INFO"), format!("Successfully read registry value for {}/{}", _path, _key));
         Ok(result)
     }
 
     #[cfg(not(target_os = "windows"))]
     {
-        Err("Registry only works on Windows".into())
+        let err_msg = String::from("Registry only works on Windows");
+        log_to_file(String::from("ERROR"), err_msg.clone());
+        Err(err_msg)
     }
 }
