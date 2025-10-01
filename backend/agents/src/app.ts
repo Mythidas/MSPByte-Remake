@@ -33,7 +33,8 @@ await fastify.register(autoload, {
   options: {},
 });
 
-await fastify.listen({ port: 3001, host: "0.0.0.0" });
+const port = process.env.PORT || 3001;
+await fastify.listen({ port: port as number, host: "0.0.0.0" });
 
 process.on("SIGTERM", () => fastify.close());
 process.on("SIGINT", () => fastify.close());
