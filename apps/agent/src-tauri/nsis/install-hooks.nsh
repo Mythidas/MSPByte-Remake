@@ -144,36 +144,76 @@ FunctionEnd
 !macroend
 
 !macro NSIS_HOOK_POSTINSTALL
-    StrCpy $R9 "=== POST-INSTALL: Auto-launching application ==="
+    StrCpy $R9 "=== POST-INSTALL: Installation completed ==="
     Call LogWrite
-
-    ; Get the installation directory from Tauri
-    ; Tauri typically installs to $INSTDIR
-    StrCpy $R9 "Installation directory: $INSTDIR"
-    Call LogWrite
-
-    ; Check if the executable exists
-    ${If} ${FileExists} "$INSTDIR\${APP_NAME}.exe"
-        StrCpy $R9 "Found application executable: $INSTDIR\${APP_NAME}.exe"
+    
+    ; Check if we're in silent mode (RMM deployment)
+    ${If} ${Silent}
+        StrCpy $R9 "Silent install detected - checking for logged-in users"
         Call LogWrite
-
-        ; Launch the application
-        StrCpy $R9 "Launching application..."
-        Call LogWrite
-
-        ClearErrors
-        Exec '"$INSTDIR\${APP_NAME}.exe"'
         
-        ${If} ${Errors}
-            StrCpy $R9 "WARNING: Failed to launch application"
+        ; Check if explorer.exe is running (means user is logged in)
+        ClearErrors
+        nsExec::ExecToStack 'tasklist /FI "IMAGENAME eq explorer.exe" /NH'
+        Pop $0 ; return code
+        Pop $1 ; output
+        
+        ; Simple check: if return code is 0, explorer was found
+        ${If} $0 == 0
+            StrCpy $R9 "User detected - creating scheduled task to launch app"
             Call LogWrite
+            
+            ; Create a one-time scheduled task that runs immediately as the interactive user
+            ; /RU INTERACTIVE runs as the logged-in user
+            ; /IT allows interaction with desktop
+            ; /V1 uses old task scheduler format for better compatibility
+            nsExec::ExecToLog 'schtasks /Create /F /TN "Launch_${APP_NAME}_Once" /TR "\"$INSTDIR\${APP_NAME}.exe\"" /SC ONCE /ST 00:00 /RU INTERACTIVE /IT /V1'
+            Pop $0
+            
+            ${If} $0 == 0
+                StrCpy $R9 "Task created successfully, running now..."
+                Call LogWrite
+                
+                ; Run the task immediately
+                nsExec::ExecToLog 'schtasks /Run /TN "Launch_${APP_NAME}_Once"'
+                Pop $0
+                
+                ; Wait a moment for the app to launch
+                Sleep 2000
+                
+                ; Delete the task
+                nsExec::ExecToLog 'schtasks /Delete /TN "Launch_${APP_NAME}_Once" /F'
+                
+                StrCpy $R9 "Application launched via scheduled task"
+                Call LogWrite
+            ${Else}
+                StrCpy $R9 "WARNING: Failed to create scheduled task"
+                Call LogWrite
+            ${EndIf}
         ${Else}
-            StrCpy $R9 "Application launched successfully"
+            StrCpy $R9 "No user logged in - skipping auto-launch"
             Call LogWrite
         ${EndIf}
     ${Else}
-        StrCpy $R9 "WARNING: Application executable not found at $INSTDIR\${APP_NAME}.exe"
+        ; Interactive install - launch normally
+        StrCpy $R9 "Interactive install - launching application directly"
         Call LogWrite
+        
+        ${If} ${FileExists} "$INSTDIR\${APP_NAME}.exe"
+            ClearErrors
+            Exec '"$INSTDIR\${APP_NAME}.exe"'
+            
+            ${If} ${Errors}
+                StrCpy $R9 "WARNING: Failed to launch application"
+                Call LogWrite
+            ${Else}
+                StrCpy $R9 "Application launched successfully"
+                Call LogWrite
+            ${EndIf}
+        ${Else}
+            StrCpy $R9 "WARNING: Application executable not found"
+            Call LogWrite
+        ${EndIf}
     ${EndIf}
 
     StrCpy $R9 "Post-install hook completed"

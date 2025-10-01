@@ -49,8 +49,8 @@
       "timestampUrl": null,
       "tsp": false,
       "webviewInstallMode": {
-        "silent": true,
-        "type": "embedBootstrapper"
+        "type": "embedBootstrapper",
+        "silent": true
       }
     }
   }
