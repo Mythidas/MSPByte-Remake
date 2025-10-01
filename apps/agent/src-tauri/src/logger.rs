@@ -61,7 +61,7 @@ pub fn log_message(level: LogLevel, message: &str) -> Result<(), Box<dyn std::er
     match level {
         LogLevel::Info => println!("{}", log_entry),
         LogLevel::Warn => eprintln!("{}", log_entry),
-        LogLevel::Error => eprintln!("{}", log_entry)
+        LogLevel::Error => eprintln!("{}", log_entry),
     }
 
     Ok(())

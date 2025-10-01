@@ -19,6 +19,7 @@ use logger::log_to_file;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_fs::init())
@@ -30,21 +31,42 @@ pub fn run() {
             // Check and register device on first launch
             tauri::async_runtime::spawn(async move {
                 if !is_device_registered().await {
-                    log_to_file("INFO".to_string(), "First launch detected, registering device...".to_string());
+                    log_to_file(
+                        "INFO".to_string(),
+                        "First launch detected, registering device...".to_string(),
+                    );
 
                     match register_device_with_server().await {
                         Ok(response) => {
-                            log_to_file(String::from("INFO"), String::from("Device registered successfully"));
-                            log_to_file(String::from("INFO"), format!("Device ID: {}", response.data.device_id));
-                            log_to_file(String::from("INFO"), format!("GUID: {}", response.data.guid));
+                            log_to_file(
+                                String::from("INFO"),
+                                String::from("Device registered successfully"),
+                            );
+                            log_to_file(
+                                String::from("INFO"),
+                                format!("Device ID: {}", response.data.device_id),
+                            );
+                            log_to_file(
+                                String::from("INFO"),
+                                format!("GUID: {}", response.data.guid),
+                            );
                         }
                         Err(e) => {
-                            log_to_file(String::from("ERROR"), format!("Failed to regiter device: {}", e));
-                            log_to_file(String::from("ERROR"), String::from("Will retry on next launch"));
+                            log_to_file(
+                                String::from("ERROR"),
+                                format!("Failed to regiter device: {}", e),
+                            );
+                            log_to_file(
+                                String::from("ERROR"),
+                                String::from("Will retry on next launch"),
+                            );
                         }
                     }
                 } else {
-                    log_to_file(String::from("INFO"), "Device already registered".to_string());
+                    log_to_file(
+                        String::from("INFO"),
+                        "Device already registered".to_string(),
+                    );
                 }
             });
 
@@ -150,7 +172,6 @@ fn handle_support_window(app: &AppHandle, screenshot: bool) {
     });
 }
 
-
 async fn take_screenshot(app: AppHandle) -> Result<PathBuf, PathBuf> {
     // Get first available window (your desktop)
     let monitors = get_screenshotable_monitors().await.unwrap();
@@ -178,9 +199,7 @@ fn hide_window(app: tauri::AppHandle, label: String) -> Result<(), String> {
 
 #[tauri::command]
 async fn get_settings_info() -> Result<device_manager::Settings, String> {
-    get_settings()
-        .await
-        .map_err(|e| e.to_string())
+    get_settings().await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -206,7 +225,7 @@ fn read_registry_value(_path: &str, _key: &str) -> Result<String, String> {
     {
         use winreg::enums::*;
         use winreg::RegKey;
-        
+
         let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
         let subkey = hklm.open_subkey(_path).map_err(|e| e.to_string())?;
         let result: String = subkey.get_value(_key).map_err(|e| e.to_string())?;
