@@ -3,6 +3,7 @@ import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import multipart from "@fastify/multipart";
 import autoload from "@fastify/autoload";
 
 // Compute __dirname equivalent
@@ -19,6 +20,14 @@ await fastify.register(cors, {
   origin: true, // Allow all origins for agents
   credentials: true,
 });
+
+// Register multipart for file uploads
+await fastify.register(multipart, {
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max file size
+  },
+});
+
 await fastify.register(autoload, {
   dir: join(import.meta.dirname, "api"),
   options: {},

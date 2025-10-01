@@ -127,6 +127,7 @@ pub fn run() {
             take_screenshot,
             read_file_text,
             read_file_base64,
+            read_file_binary,
             read_registry_value,
             log_to_file
         ])
@@ -319,6 +320,21 @@ fn read_file_base64(path: String) -> Result<String, String> {
         .map(|bytes| {
             log_to_file(String::from("INFO"), format!("Successfully encoded {} bytes to base64", bytes.len()));
             general_purpose::STANDARD.encode(bytes)
+        })
+}
+
+#[tauri::command]
+fn read_file_binary(path: String) -> Result<Vec<u8>, String> {
+    log_to_file(String::from("INFO"), format!("read_file_binary command invoked for: {}", path));
+    std::fs::read(&path)
+        .map_err(|e| {
+            let err_msg = format!("Failed to read file {}: {}", path, e);
+            log_to_file(String::from("ERROR"), err_msg.clone());
+            err_msg
+        })
+        .map(|bytes| {
+            log_to_file(String::from("INFO"), format!("Successfully read {} bytes as binary", bytes.len()));
+            bytes
         })
 }
 

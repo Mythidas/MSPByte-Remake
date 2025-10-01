@@ -90,8 +90,66 @@ export default async function (fastify: FastifyInstance) {
         dataSource.config as HaloPSAConfig
       );
 
-      // Parse and validate request body
-      const body = perf.trackSpanSync("parse_request_body", () => {
+      // Parse and validate request body (multipart/form-data or JSON)
+      const body = await perf.trackSpan("parse_request_body", async () => {
+        const contentType = req.headers["content-type"] || "";
+
+        // Handle multipart/form-data
+        if (contentType.includes("multipart/form-data")) {
+          const formData: Record<string, any> = {};
+          let screenshotFile: { filename: string; data: Buffer } | null = null;
+
+          // Check if req has multipart method
+          if (!req.isMultipart || !req.isMultipart()) {
+            throw new Error("Request is not multipart");
+          }
+
+          const parts = req.parts();
+
+          for await (const part of parts) {
+            if (part.type === "file") {
+              if (part.fieldname === "screenshot") {
+                const chunks: Buffer[] = [];
+                for await (const chunk of part.file) {
+                  chunks.push(chunk);
+                }
+                screenshotFile = {
+                  filename: part.filename,
+                  data: Buffer.concat(chunks),
+                };
+              }
+            } else {
+              // Field type - has value property
+              formData[part.fieldname] = (part as any).value;
+            }
+          }
+
+          // If screenshot file exists, add it to formData
+          if (screenshotFile) {
+            formData.screenshot = {
+              name: screenshotFile.filename,
+              data: screenshotFile.data.toString("base64"),
+            };
+          }
+
+          return formData as {
+            screenshot?: {
+              name?: string;
+              data?: string;
+            };
+            link?: string;
+            summary: string;
+            description?: string;
+            name: string;
+            email: string;
+            phone: string;
+            impact: string;
+            urgency: string;
+            rmm_id?: string;
+          };
+        }
+
+        // Handle JSON (legacy support)
         return JSON.parse(req.body as string) as {
           screenshot?: {
             name?: string;
@@ -100,14 +158,11 @@ export default async function (fastify: FastifyInstance) {
           link?: string;
           summary: string;
           description?: string;
-
           name: string;
           email: string;
           phone: string;
-
           impact: string;
           urgency: string;
-
           rmm_id?: string;
         };
       });

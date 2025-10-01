@@ -50,6 +50,34 @@ export async function chooseImageDialog(): Promise<APIResponse<string>> {
   }
 }
 
+export async function logToFile(
+  level: "INFO" | "WARN" | "ERROR",
+  message: string
+): Promise<APIResponse<undefined>> {
+  try {
+    await invoke("log_to_file", {
+      level,
+      message,
+    });
+
+    return {
+      data: undefined,
+    };
+  } catch (err) {
+    // Don't use Debug.error here to avoid infinite loop
+    console.error(`Failed to log to file: ${err}`);
+    return {
+      error: {
+        module: "File",
+        context: "logToFile",
+        code: "LOG_ERROR",
+        message: `Failed to write to log file: ${err}`,
+        time: new Date().toISOString(),
+      },
+    };
+  }
+}
+
 export async function readFileText(path: string): Promise<APIResponse<string>> {
   try {
     const content = await invoke<string>("read_file_text", {
@@ -84,6 +112,27 @@ export async function readFileBase64(
     return Debug.error({
       module: "File",
       context: "readFileBase64",
+      message: `Failed to read file: ${err}`,
+      code: "FILE_ERROR",
+    });
+  }
+}
+
+export async function readFileBinary(
+  path: string
+): Promise<APIResponse<number[]>> {
+  try {
+    const content = await invoke<number[]>("read_file_binary", {
+      path,
+    });
+
+    return {
+      data: content,
+    };
+  } catch (err) {
+    return Debug.error({
+      module: "File",
+      context: "readFileBinary",
       message: `Failed to read file: ${err}`,
       code: "FILE_ERROR",
     });

@@ -26,10 +26,11 @@ import {
   chooseImageDialog,
   readFileBase64,
   takeScreenshot,
+  logToFile,
+  readFileBinary,
 } from "@/lib/file.ts";
 import { listen } from "@tauri-apps/api/event";
 import { fetch } from "@tauri-apps/plugin-http";
-import { Spinner } from "@workspace/ui/components/Spinner.tsx";
 import { getSettings } from "@/lib/agent.ts";
 import { getRegistryValue } from "@/lib/registry.ts";
 import { APIResponse } from "@workspace/shared/types/api.ts";
@@ -154,8 +155,10 @@ export default function Support() {
 
   const onSubmit = async (formData: FormSchema) => {
     setIsSubmitting(true);
+    await logToFile("INFO", "Starting ticket submission");
 
     try {
+      await logToFile("INFO", "Fetching agent settings");
       const { data: settings } = await getSettings();
       if (
         !settings ||
@@ -163,41 +166,104 @@ export default function Support() {
         !settings.site_id ||
         !settings.api_host
       ) {
-        throw "Invalid settings. Please restart agent.";
+        const errMsg = "Invalid settings. Please restart agent.";
+        await logToFile("ERROR", errMsg);
+        throw errMsg;
       }
-      const rmmId = await getRegistryValue("SOFTWARE\\CentraStage", "DeviceID");
 
-      const res = await fetch(`${settings.api_host}/v1.0/ticket/create`, {
+      await logToFile(
+        "INFO",
+        `Settings loaded: device_id=${settings.device_id}, site_id=${settings.site_id}`
+      );
+
+      await logToFile("INFO", "Fetching RMM ID from registry");
+      const { data: rmmId } = await getRegistryValue(
+        "SOFTWARE\\CentraStage",
+        "DeviceID"
+      );
+      await logToFile("INFO", `RMM ID: ${rmmId || "Not found"}`);
+
+      const apiUrl = `${settings.api_host}/v1.0/ticket/create`;
+      await logToFile("INFO", `Submitting ticket to: ${apiUrl}`);
+      await logToFile(
+        "INFO",
+        `Ticket data: summary="${formData.summary}", urgency=${formData.urgency}, impact=${formData.impact}, has_screenshot=${!!screenshot}`
+      );
+
+      // Use FormData for multipart/form-data to handle large screenshots
+      const formDataToSend = new FormData();
+      formDataToSend.append("summary", formData.summary);
+      formDataToSend.append("description", formData.description || "");
+      formDataToSend.append("impact", formData.impact);
+      formDataToSend.append("urgency", formData.urgency);
+      formDataToSend.append("name", formData.name);
+      formDataToSend.append("email", formData.email);
+      formDataToSend.append("phone", formData.phone);
+      if (rmmId) {
+        formDataToSend.append("rmm_id", rmmId);
+      }
+
+      // Add screenshot as a file if present
+      if (screenshot && formData.screenshot) {
+        await logToFile("INFO", `Adding screenshot file: ${screenshot.name}`);
+        // Read the file as a blob
+        const { data: fileContent } = await readFileBinary(formData.screenshot);
+
+        if (fileContent) {
+          const blob = new Blob([new Uint8Array(fileContent)], {
+            type: "image/png",
+          });
+          formDataToSend.append(
+            "screenshot",
+            blob,
+            screenshot.name || "screenshot.png"
+          );
+          await logToFile("INFO", `Screenshot file size: ${blob.size} bytes`);
+        } else {
+          await logToFile(
+            "WARN",
+            `Screenshot failed to be read as binary: ${formData.screenshot}`
+          );
+        }
+      }
+
+      const res = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "X-Site-ID": settings.site_id,
           "X-Device-ID": settings.device_id,
+          // Don't set Content-Type - browser will set it with boundary
         },
-        body: JSON.stringify({
-          ...formData,
-          screenshot_url: undefined,
-          screenshot_blob: undefined,
-
-          screenshot: {
-            ...screenshot,
-            url: undefined,
-          },
-          rmm_id: rmmId.data,
-        }),
+        body: formDataToSend,
       });
 
+      await logToFile("INFO", `API response status: ${res.status}`);
+
       if (!res.ok) {
+        const errorText = await res.text();
+        await logToFile(
+          "ERROR",
+          `API request failed with status ${res.status}: ${errorText}`
+        );
         throw "API Fetch Error";
       }
+
       const ret: APIResponse<string> = await res.json();
+      await logToFile(
+        "INFO",
+        `Ticket created successfully! Ticket ID: ${ret.data}`
+      );
 
       alert(`Support ticket created successfully! Ticket ID: ${ret.data}`);
       form.reset();
       await hideWindow("support");
     } catch (err) {
-      toast.error(`Failed to submit ticket: ${err}`);
+      const errMsg = `Failed to submit ticket: ${err}`;
+      await logToFile("ERROR", errMsg);
+      toast.error(errMsg);
     } finally {
       setIsSubmitting(false);
+      await logToFile("INFO", "Ticket submission completed");
     }
   };
 
