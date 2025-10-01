@@ -4,6 +4,9 @@ use std::path::PathBuf;
 #[cfg(target_os = "windows")]
 use std::process::Command;
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Settings {
     pub site_id: String,
@@ -106,6 +109,7 @@ pub async fn is_device_registered() -> bool {
 pub fn get_machine_id() -> Result<String, Box<dyn std::error::Error>> {
     #[cfg(target_os = "windows")]
     {
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
         let output = Command::new("reg")
             .args(&[
                 "query",
@@ -113,6 +117,7 @@ pub fn get_machine_id() -> Result<String, Box<dyn std::error::Error>> {
                 "/v",
                 "MachineGuid",
             ])
+            .creation_flags(CREATE_NO_WINDOW)
             .output()?;
 
         let output_str = String::from_utf8_lossy(&output.stdout);
@@ -165,8 +170,10 @@ pub fn get_machine_id() -> Result<String, Box<dyn std::error::Error>> {
 pub fn get_serial_number() -> Option<String> {
     #[cfg(target_os = "windows")]
     {
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
         let output = Command::new("wmic")
             .args(&["bios", "get", "serialnumber"])
+            .creation_flags(CREATE_NO_WINDOW)
             .output()
             .ok()?;
 
@@ -218,8 +225,10 @@ pub fn get_serial_number() -> Option<String> {
 pub fn get_primary_mac() -> Option<String> {
     #[cfg(target_os = "windows")]
     {
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
         let output = Command::new("getmac")
             .args(&["/fo", "csv", "/nh"])
+            .creation_flags(CREATE_NO_WINDOW)
             .output()
             .ok()?;
 
@@ -277,6 +286,31 @@ pub fn get_primary_mac() -> Option<String> {
             }
         }
 
+        None
+    }
+}
+
+/// Gets the RMM Device ID from CentraStage registry (if installed)
+pub fn get_rmm_device_id() -> Option<String> {
+    #[cfg(target_os = "windows")]
+    {
+        use winreg::enums::*;
+        use winreg::RegKey;
+
+        let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+        if let Ok(subkey) = hklm.open_subkey("SOFTWARE\\CentraStage") {
+            if let Ok(device_id) = subkey.get_value::<String, _>("DeviceID") {
+                let trimmed = device_id.trim();
+                if !trimmed.is_empty() {
+                    return Some(trimmed.to_string());
+                }
+            }
+        }
+        None
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
         None
     }
 }

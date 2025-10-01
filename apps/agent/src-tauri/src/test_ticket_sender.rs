@@ -1,4 +1,4 @@
-use crate::device_manager::{get_api_endpoint, get_settings};
+use crate::device_manager::{get_api_endpoint, get_rmm_device_id, get_settings};
 use crate::logger::log_to_file;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -16,6 +16,7 @@ pub struct TestTicketRequest {
     pub phone: String,
     pub impact: String,
     pub urgency: String,
+    pub rmm_id: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -42,6 +43,9 @@ async fn send_test_ticket() -> Result<TicketResponse, Box<dyn std::error::Error>
         .clone()
         .unwrap_or_else(|| "unknown".to_string());
 
+    // Get RMM Device ID from CentraStage if available
+    let rmm_id = get_rmm_device_id();
+
     let request = TestTicketRequest {
         summary: format!(
             "[TEST] Automated Test Ticket from {}",
@@ -53,15 +57,22 @@ async fn send_test_ticket() -> Result<TicketResponse, Box<dyn std::error::Error>
             Device ID: {}\n\
             Site ID: {}\n\
             Hostname: {}\n\
-            Version: {}\n\n\
+            Version: {}\n\
+            RMM Device ID: {}\n\n\
             This ticket can be safely closed.",
-            timestamp, device_id, site_id, hostname, env!("CARGO_PKG_VERSION")
+            timestamp,
+            device_id,
+            site_id,
+            hostname,
+            env!("CARGO_PKG_VERSION"),
+            rmm_id.as_deref().unwrap_or("N/A")
         ),
         name: "Test User".to_string(),
         email: "test@example.com".to_string(),
         phone: "555-0100".to_string(),
         impact: "Low".to_string(),
         urgency: "Low".to_string(),
+        rmm_id,
     };
 
     let api_url = get_api_endpoint("/v1.0/ticket/create").await?;
@@ -72,7 +83,7 @@ async fn send_test_ticket() -> Result<TicketResponse, Box<dyn std::error::Error>
     );
 
     // Create multipart form data (matching frontend format)
-    let form = reqwest::multipart::Form::new()
+    let mut form = reqwest::multipart::Form::new()
         .text("summary", request.summary)
         .text("description", request.description)
         .text("name", request.name)
@@ -80,6 +91,11 @@ async fn send_test_ticket() -> Result<TicketResponse, Box<dyn std::error::Error>
         .text("phone", request.phone)
         .text("impact", request.impact)
         .text("urgency", request.urgency);
+
+    // Add rmm_id if available
+    if let Some(rmm_id) = request.rmm_id {
+        form = form.text("rmm_id", rmm_id);
+    }
 
     let client = reqwest::Client::new();
     let response = client
