@@ -8,7 +8,7 @@ import Encryption from "@workspace/shared/lib/Encryption";
 import { APIResponse } from "@workspace/shared/types/api";
 import { SophosPartnerConfig } from "@workspace/shared/types/integrations/sophos-partner";
 import { HaloPSAConfig } from "@workspace/shared/types/integrations/halopsa";
-import { generateUUID } from "@workspace/shared/lib/utils";
+import { generateUUID } from "@workspace/shared/lib/utils.server";
 
 type SaveConfigProps = {
   data: Record<string, string>;
@@ -39,7 +39,7 @@ export async function saveConfig({
       {
         tenant_id: tenantID,
         integration_id: integrationID,
-        site_id: generateUUID(true),
+        site_id: await generateUUID(true),
         config: config as any,
         credential_expiration_at: expires || "9999-12-31 23:59:59+00",
       },

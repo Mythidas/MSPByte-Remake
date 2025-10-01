@@ -1,6 +1,6 @@
+import { generateAgentGuid } from "@/lib/utils.js";
 import { getRow, upsertRows } from "@workspace/shared/lib/db/orm.js";
 import Debug from "@workspace/shared/lib/Debug.js";
-import { generateAgentGuid } from "@workspace/shared/lib/utils.js";
 import { FastifyInstance } from "fastify";
 
 export default async function (fastify: FastifyInstance) {

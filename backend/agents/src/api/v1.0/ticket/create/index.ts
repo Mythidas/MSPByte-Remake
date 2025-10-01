@@ -1,7 +1,7 @@
 import { HaloPSAConnector } from "@workspace/shared/lib/connectors/HaloPSAConnector.js";
 import { getRow } from "@workspace/shared/lib/db/orm.js";
 import Debug from "@workspace/shared/lib/Debug.js";
-import { generateUUID } from "@workspace/shared/lib/utils.js";
+import { generateUUID } from "@workspace/shared/lib/utils.server.js";
 import { HaloPSAConfig } from "@workspace/shared/types/integrations/halopsa/index.js";
 import { FastifyInstance } from "fastify";
 import { PerformanceTracker } from "@workspace/shared/lib/performance.js";
@@ -57,7 +57,7 @@ export default async function (fastify: FastifyInstance) {
           const dataSourceRes = await getRow("data_sources", {
             filters: [
               ["integration_id", "eq", "halopsa"],
-              ["site_id", "eq", generateUUID(true)],
+              ["site_id", "eq", await generateUUID(true)],
             ],
           });
 
