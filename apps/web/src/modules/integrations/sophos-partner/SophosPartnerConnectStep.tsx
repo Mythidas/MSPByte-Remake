@@ -23,7 +23,7 @@ import {
   SophosPartnerConfigInput,
   saveSophosPartnerConfig,
 } from "@/modules/integrations/sophos-partner/actions/config";
-import { APIResponse } from "@workspace/shared/types/api";
+import { testSophosPartnerConnection } from "@/modules/integrations/sophos-partner/actions/connector";
 import { useAsyncDataCached } from "@/lib/hooks/useAsyncDataCached";
 
 const formSchema = z.object({
@@ -114,28 +114,11 @@ export default function SophosPartnerConnectStep({ integration }: Props) {
 
     setTesting(true);
     try {
-      const response = await fetch(
-        "/api/v1.0/integrations/sophos-partner/test-connection",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(currentValues),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const result: APIResponse<boolean> = await response.json();
+      const result = await testSophosPartnerConnection(currentValues);
 
       if (result.error) {
-        throw new Error(result.error.message);
-      }
-
-      if (result.data) {
+        toast.error(result.error.message || "Connection test failed");
+      } else if (result.data) {
         toast.success("Connection test successful!");
       } else {
         toast.error("Connection test failed");

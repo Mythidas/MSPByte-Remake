@@ -16,3 +16,6 @@ export type SophosPartnerAPIResponse<T> = {
     current: number;
   };
 };
+
+// Re-export types from submodules
+export type { SophosPartnerTenant } from "./tenants";

@@ -18,10 +18,10 @@ import SearchBox from "@/components/SearchBox";
 import { deleteRows, insertRows } from "@/lib/supabase/orm";
 import { SophosTenantConfig } from "@workspace/shared/types/integrations/sophos-partner";
 import { Tables } from "@workspace/shared/types/database";
-import { APIResponse } from "@workspace/shared/types/api";
 import { SophosPartnerTenant } from "@workspace/shared/types/integrations/sophos-partner/tenants";
 import { useAsyncDataCached } from "@/lib/hooks/useAsyncDataCached";
 import { tableCache } from "@/lib/stores/global-cache";
+import { getSophosPartnerTenants } from "@/modules/integrations/sophos-partner/actions/connector";
 
 type Props = {
   integration: Tables<"integrations">;
@@ -41,20 +41,8 @@ export default function SophosPartnerMapSitesStep({ integration }: Props) {
     error: tenantsError,
     refetch: refetchTenants,
   } = useAsyncDataCached(
-    async (signal) => {
-      const response = await fetch(
-        `/api/v1.0/integrations/sophos-partner/tenants?integrationId=${integration.id}`,
-        {
-          method: "GET",
-          signal,
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const result: APIResponse<SophosPartnerTenant[]> = await response.json();
+    async () => {
+      const result = await getSophosPartnerTenants(integration.id);
 
       if (result.error) {
         throw new Error(result.error.message);
