@@ -179,32 +179,33 @@ export default async function (fastify: FastifyInstance) {
       );
 
       if (!assets) {
-        statusCode = 404;
-        errorMessage = "Failed to fetch halo assets";
-        return Debug.response(
-          {
-            error: {
-              module: "v1.0/ticket/create",
-              context: "POST",
-              message: "Failed to fetch halo assets",
-              code: "404",
-            },
-          },
-          404
-        );
+        Debug.log({
+          module: "v1.0/ticket/create",
+          context: "POST",
+          message: "Failed to fetch halo assets",
+        });
       }
 
       Debug.log({
         module: "v1.0/ticket/create",
         context: "POST",
-        message: `Found ${assets.length} HaloPSAAssets (HaloSiteID: ${site.psa_company_id})`,
+        message: `Found ${assets?.length || 0} HaloPSAAssets (HaloSiteID: ${site.psa_company_id})`,
       });
 
       // Find matching asset
       const asset = perf.trackSpanSync("find_matching_asset", () => {
-        return assets.find((a) => {
+        return (assets || []).find((a) => {
+          Debug.log({
+            module: "v1.0/ticket/create",
+            context: "POST",
+            message: `Evaluating HaloPSAAsset (HaloAssetID: ${a.id}) (HaloRMMID: ${a.datto_id})`,
+          });
+
           if (body.rmm_id) {
-            return a.datto_id === body.rmm_id;
+            return (
+              a.datto_id === body.rmm_id ||
+              a.inventory_number === agent.hostname
+            );
           }
 
           return a.inventory_number === agent.hostname;
