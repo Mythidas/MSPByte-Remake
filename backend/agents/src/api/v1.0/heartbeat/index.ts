@@ -1,9 +1,9 @@
 import { getRow, upsertRows } from "@workspace/shared/lib/db/orm.js";
 import Debug from "@workspace/shared/lib/Debug.js";
-import { generateAgentGuid } from "@workspace/shared/lib/utils.js";
 import { FastifyInstance } from "fastify";
 import { PerformanceTracker } from "@workspace/shared/lib/performance.js";
 import { logAgentApiCall } from "@/lib/agentLogger.js";
+import { generateAgentGuid } from "@/lib/utils.js";
 
 export default async function (fastify: FastifyInstance) {
   fastify.post("/", async (req) => {

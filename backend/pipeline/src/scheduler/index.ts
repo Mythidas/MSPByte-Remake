@@ -2,7 +2,7 @@ import Debug from "@workspace/shared/lib/Debug.js";
 import { natsClient } from "@workspace/pipeline/helpers/nats.js";
 import { getRows, updateRow } from "@workspace/shared/lib/db/orm.js";
 import { Tables } from "@workspace/shared/types/database/index.js";
-import { generateUUID } from "@workspace/shared/lib/utils.js";
+import { generateUUID } from "@workspace/shared/lib/utils.server.js";
 import { SyncEventPayload } from "@workspace/shared/types/pipeline/index.js";
 
 export class Scheduler {
@@ -105,7 +105,7 @@ export class Scheduler {
         const topic = `${job.integration_id}.${job.action}`;
         await natsClient.publish(topic, {
           job,
-          eventID: generateUUID(),
+          eventID: await generateUUID(),
           tenantID: job.tenant_id,
           integrationID: job.integration_id,
           dataSourceID: job.data_source_id,

@@ -18,10 +18,14 @@ const nextConfig: NextConfig = {
     ],
   },
   transpilePackages: ["@workspace/ui", "@workspace/shared"],
-  webpack: (config, { isServer }) => {
+  // Optimize for production
+  poweredByHeader: false,
+  reactStrictMode: true,
+  compress: true,
+  webpack: (config) => {
     // Add custom resolver for .js extensions in TypeScript files
     config.resolve.extensionAlias = {
-      '.js': ['.ts', '.tsx', '.js', '.jsx'],
+      ".js": [".ts", ".tsx", ".js", ".jsx"],
     };
 
     return config;
