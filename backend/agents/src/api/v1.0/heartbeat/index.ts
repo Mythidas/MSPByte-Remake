@@ -151,29 +151,6 @@ export default async function (fastify: FastifyInstance) {
 
       statusCode = 200;
 
-      // Log successful API call
-      await logAgentApiCall(
-        {
-          endpoint: "/v1.0/heartbeat",
-          method: "POST",
-          deviceId: deviceID,
-          siteId: siteID,
-          tenantId: existingAgent.tenant_id,
-        },
-        {
-          statusCode: 200,
-          requestMetadata: {
-            hostname,
-            version,
-            guid: calculatedGuid,
-          },
-          responseMetadata: {
-            guid: calculatedGuid,
-          },
-        },
-        perf
-      );
-
       return Debug.response(
         {
           data: {
