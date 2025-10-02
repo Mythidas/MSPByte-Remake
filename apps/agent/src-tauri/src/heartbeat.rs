@@ -128,21 +128,50 @@ pub fn start_heartbeat_task(running: Arc<AtomicBool>) {
         // Wait 5 seconds before first heartbeat to allow app to fully initialize
         tokio::time::sleep(Duration::from_secs(5)).await;
 
-        let mut interval = interval(Duration::from_secs(60));
+        let mut heartbeat_interval = interval(Duration::from_secs(60));
+        let mut health_check_interval = interval(Duration::from_secs(86400)); // 24 hours
+
+        // Skip first tick for health check to align with actual 24hr intervals
+        health_check_interval.tick().await;
 
         while running.load(Ordering::Relaxed) {
-            interval.tick().await;
-
-            log_to_file("DEBUG".to_string(), "Heartbeat tick".to_string());
-
-            match send_heartbeat().await {
-                Ok(response) => {
+            tokio::select! {
+                _ = heartbeat_interval.tick() => {
+                    // Send heartbeat silently (no logging unless error)
+                    match send_heartbeat().await {
+                        Ok(_response) => {
+                            // Success - no logging
+                        }
+                        Err(e) => {
+                            log_to_file(
+                                "WARN".to_string(),
+                                format!("Failed to send heartbeat: {}", e),
+                            );
+                        }
+                    }
                 }
-                Err(e) => {
-                    log_to_file(
-                        "WARN".to_string(),
-                        format!("Failed to send heartbeat: {}", e),
-                    );
+                _ = health_check_interval.tick() => {
+                    // Daily health check log
+                    match gather_system_info().await {
+                        Ok(info) => {
+                            log_to_file(
+                                "INFO".to_string(),
+                                format!(
+                                    "Daily health check - Hostname: {}, Version: {}, IP: {}, MAC: {}",
+                                    info.hostname,
+                                    info.version,
+                                    info.ip_address.unwrap_or_else(|| "N/A".to_string()),
+                                    info.mac_address.unwrap_or_else(|| "N/A".to_string())
+                                ),
+                            );
+                        }
+                        Err(e) => {
+                            log_to_file(
+                                "ERROR".to_string(),
+                                format!("Daily health check failed: {}", e),
+                            );
+                        }
+                    }
                 }
             }
         }
