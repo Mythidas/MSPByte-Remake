@@ -18,6 +18,7 @@
 	"dependencies": {
 		"@fortawesome/free-brands-svg-icons": "^7.1.0",
 		"@workspace/shared": "workspace:*",
+		"lucide-svelte": "^0.544.0",
 		"svelte-fa": "^4.0.4"
 	},
 	"devDependencies": {
