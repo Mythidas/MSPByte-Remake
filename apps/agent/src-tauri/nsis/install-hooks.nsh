@@ -4,7 +4,7 @@
 !define APP_NAME "MSPAgent"
 !define APP_COMPANY "MSPByte"
 !define CONFIG_DIR_NAME "MSPAgent"  ; Folder name in ProgramData
-!define APP_VERSION "0.1.6"
+!define APP_VERSION "0.1.7"
 !define API_HOST "https://agent.mspbyte.pro"
 
 ; =============================================================================
@@ -245,20 +245,22 @@ FunctionEnd
         FileWrite $R8 '                if ($$userToken -ne [IntPtr]::Zero) { [ProcessStarter]::CloseHandle($$userToken) }$\r$\n'
         FileWrite $R8 '            }$\r$\n'
         FileWrite $R8 '        }$\r$\n'
+        FileWrite $R8 '        if ($$launchedAny) {$\r$\n'
+        FileWrite $R8 '            exit 0$\r$\n'
+        FileWrite $R8 '        }$\r$\n'
         FileWrite $R8 '    } else {$\r$\n'
         FileWrite $R8 '        Write-Host "No active user sessions found"$\r$\n'
         FileWrite $R8 '    }$\r$\n'
-        FileWrite $R8 '    # Only exit success if we actually launched; otherwise rely on registry autostart$\r$\n'
-        FileWrite $R8 '    if ($$launchedAny) {$\r$\n'
-        FileWrite $R8 '        Write-Host "Successfully launched for at least one user session"$\r$\n'
+        FileWrite $R8 '    # Fallback: If no sessions launched (e.g., Error 1314 from non-SYSTEM admin), try simple launch$\r$\n'
+        FileWrite $R8 '    if (!$$launchedAny) {$\r$\n'
+        FileWrite $R8 '        Write-Host "Falling back to simple process launch for current user"$\r$\n'
+        FileWrite $R8 '        Start-Process -FilePath "$INSTDIR\${APP_NAME}.exe" -WorkingDirectory "$INSTDIR"$\r$\n'
+        FileWrite $R8 '        Write-Host "Launched via Start-Process"$\r$\n'
         FileWrite $R8 '        exit 0$\r$\n'
-        FileWrite $R8 '    } else {$\r$\n'
-        FileWrite $R8 '        Write-Host "Could not launch - app will start on next user login via registry autostart"$\r$\n'
-        FileWrite $R8 '        exit 1$\r$\n'
         FileWrite $R8 '    }$\r$\n'
         FileWrite $R8 '} catch {$\r$\n'
-        FileWrite $R8 '    Write-Host "Error: $$($_.Exception.Message)"$\r$\n'
-        FileWrite $R8 '    Write-Host "Stack: $$($_.ScriptStackTrace)"$\r$\n'
+        FileWrite $R8 '    Write-Host "Error: $$($$_.Exception.Message)"$\r$\n'
+        FileWrite $R8 '    Write-Host "Stack: $$($$_.ScriptStackTrace)"$\r$\n'
         FileWrite $R8 '    exit 2$\r$\n'
         FileWrite $R8 '}$\r$\n'
         FileClose $R8
@@ -310,30 +312,6 @@ FunctionEnd
             Call LogWrite
         ${EndIf}
     ${EndIf}
-
-    ; Remove desktop and start menu shortcuts (tray-only app)
-    StrCpy $R9 "Removing desktop and start menu shortcuts"
-    Call LogWrite
-
-    ; Delete desktop shortcuts (both current user and all users/public)
-    Delete "$DESKTOP\${APP_NAME}.lnk"
-    Delete "$COMMONDESKTOP\${APP_NAME}.lnk"
-
-    ; Delete start menu shortcuts (both current user and all users/public)
-    RMDir /r "$SMPROGRAMS\${APP_NAME}"
-    RMDir /r "$COMMONPROGRAMS\${APP_NAME}"
-
-    StrCpy $R9 "Shortcuts removed from all user profiles"
-    Call LogWrite
-
-    ; Add auto-start registry key for all users (HKLM)
-    StrCpy $R9 "Adding auto-start registry key"
-    Call LogWrite
-
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Run" "${APP_NAME}" '"$INSTDIR\${APP_NAME}.exe"'
-
-    StrCpy $R9 "Auto-start registry key added"
-    Call LogWrite
 
     StrCpy $R9 "Post-install hook completed"
     Call LogWrite
