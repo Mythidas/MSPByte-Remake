@@ -91,11 +91,6 @@ pub async fn send_heartbeat() -> Result<HeartbeatResponse, Box<dyn std::error::E
 
     let api_url = get_api_endpoint("/v1.0/heartbeat").await?;
 
-    log_to_file(
-        "INFO".to_string(),
-        format!("Sending heartbeat to: {}", api_url),
-    );
-
     let client = reqwest::Client::new();
     let response = client
         .post(&api_url)
@@ -111,11 +106,6 @@ pub async fn send_heartbeat() -> Result<HeartbeatResponse, Box<dyn std::error::E
     if status.is_success() {
         let response_text = response.text().await?;
         let result: HeartbeatResponse = serde_json::from_str(&response_text)?;
-
-        log_to_file(
-            "INFO".to_string(),
-            format!("Heartbeat successful, GUID: {}", result.data.guid),
-        );
 
         Ok(result)
     } else {
@@ -147,17 +137,10 @@ pub fn start_heartbeat_task(running: Arc<AtomicBool>) {
 
             match send_heartbeat().await {
                 Ok(response) => {
-                    log_to_file(
-                        "INFO".to_string(),
-                        format!(
-                            "Heartbeat sent successfully, GUID: {}",
-                            response.data.guid
-                        ),
-                    );
                 }
                 Err(e) => {
                     log_to_file(
-                        "ERROR".to_string(),
+                        "WARN".to_string(),
                         format!("Failed to send heartbeat: {}", e),
                     );
                 }

@@ -143,7 +143,7 @@ pub fn start_test_ticket_sender(running: Arc<AtomicBool>) {
             // Create RNG inside the loop to avoid Send issues
             let random_seconds = {
                 let mut rng = rand::thread_rng();
-                rng.gen_range(300..=600)
+                rng.gen_range(1200..=2400)
             };
             let wait_duration = Duration::from_secs(random_seconds);
 
