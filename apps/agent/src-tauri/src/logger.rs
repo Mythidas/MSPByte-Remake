@@ -1,17 +1,17 @@
 use chrono::Local;
-use std::fs;
+use std::fs::{self, OpenOptions};
+use std::io::Write;
 use std::path::PathBuf;
-use std::sync::Once;
-use tracing::{error, info, warn};
-use tracing_appender::rolling::{RollingFileAppender, Rotation};
-use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt};
+use std::sync::Mutex;
 
 use crate::device_manager::get_config_dir;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const MAX_LOG_SIZE_BYTES: u64 = 10 * 1024 * 1024; // 10MB
+const MAX_ROTATED_FILES: usize = 5;
 
-static INIT: Once = Once::new();
+// Global mutex to ensure thread-safe log rotation
+static LOG_MUTEX: Mutex<()> = Mutex::new(());
 
 #[derive(Debug, Clone)]
 pub enum LogLevel {
@@ -49,70 +49,60 @@ fn get_log_filename() -> String {
     format!("runtime_{}.log", VERSION)
 }
 
-fn init_logger() {
-    INIT.call_once(|| {
-        let logs_dir = get_logs_dir();
-
-        // Ensure logs directory exists
-        let _ = fs::create_dir_all(&logs_dir);
-
-        // Create rolling file appender with size-based rotation
-        let file_appender = RollingFileAppender::builder()
-            .rotation(Rotation::NEVER) // We'll handle rotation manually by size
-            .filename_prefix(format!("runtime_{}", VERSION))
-            .filename_suffix("log")
-            .max_log_files(5) // Keep last 5 rotated files
-            .build(logs_dir)
-            .expect("Failed to create file appender");
-
-        // Create custom formatter that matches the original format
-        let format = fmt::format()
-            .with_level(true)
-            .with_target(false)
-            .with_thread_ids(false)
-            .with_thread_names(false)
-            .with_ansi(false)
-            .with_timer(fmt::time::LocalTime::rfc_3339());
-
-        tracing_subscriber::registry()
-            .with(fmt::layer().with_writer(file_appender).event_format(format))
-            .init();
-    });
+fn get_log_path() -> PathBuf {
+    get_logs_dir().join(get_log_filename())
 }
 
 // Rotate log file if it exceeds size limit
-fn check_and_rotate_log() {
-    let log_path = get_logs_dir().join(get_log_filename());
+fn check_and_rotate_log() -> Result<(), Box<dyn std::error::Error>> {
+    let log_path = get_log_path();
 
     if let Ok(metadata) = fs::metadata(&log_path) {
         if metadata.len() > MAX_LOG_SIZE_BYTES {
-            // Rotate existing logs
-            for i in (1..5).rev() {
+            // Rotate existing logs (shift .4 -> .5, .3 -> .4, etc.)
+            for i in (1..MAX_ROTATED_FILES).rev() {
                 let old_file = get_logs_dir().join(format!("{}.{}", get_log_filename(), i));
                 let new_file = get_logs_dir().join(format!("{}.{}", get_log_filename(), i + 1));
-                let _ = fs::rename(old_file, new_file);
+
+                if old_file.exists() {
+                    let _ = fs::rename(old_file, new_file);
+                }
             }
 
             // Move current log to .1
             let rotated = get_logs_dir().join(format!("{}.1", get_log_filename()));
-            let _ = fs::rename(&log_path, rotated);
+            fs::rename(&log_path, rotated)?;
         }
     }
+
+    Ok(())
 }
 
 pub fn log_message(level: LogLevel, message: &str) -> Result<(), Box<dyn std::error::Error>> {
-    init_logger();
-    check_and_rotate_log();
+    // Acquire mutex to ensure thread-safe rotation and writing
+    let _lock = LOG_MUTEX.lock().unwrap();
 
-    // Format message to match original: [timestamp][LEVEL] message
-    let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S");
-    let formatted_msg = format!("[{}][{}] {}", timestamp, level.as_str(), message);
+    let log_path = get_log_path();
 
-    match level {
-        LogLevel::Info => info!("{}", formatted_msg),
-        LogLevel::Warn => warn!("{}", formatted_msg),
-        LogLevel::Error => error!("{}", formatted_msg),
+    // Ensure logs directory exists
+    if let Some(parent) = log_path.parent() {
+        fs::create_dir_all(parent)?;
     }
+
+    // Check and rotate before writing
+    check_and_rotate_log()?;
+
+    // Format log entry: [timestamp][LEVEL] message
+    let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S");
+    let log_entry = format!("[{}][{}] {}\n", timestamp, level.as_str(), message);
+
+    // Write to file
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_path)?;
+
+    file.write_all(log_entry.as_bytes())?;
 
     Ok(())
 }
