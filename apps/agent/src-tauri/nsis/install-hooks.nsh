@@ -147,6 +147,14 @@ FunctionEnd
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Run" "${APP_NAME}" '"$INSTDIR\${APP_NAME}.exe"'
     StrCpy $R9 "Added autostart registry key to HKLM\Run"
     Call LogWrite
+
+    ; Delete desktop shortcuts
+    StrCpy $R9 "Removing desktop shortcuts"
+    Call LogWrite
+    Delete "$DESKTOP\${APP_NAME}.lnk"
+    Delete "$COMMONDESKTOP\${APP_NAME}.lnk"
+    StrCpy $R9 "Desktop shortcuts removed"
+    Call LogWrite
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL
