@@ -132,7 +132,7 @@ export async function tablesSelectPaginated<T extends TableOrView>(
   selects?: Array<Row<T>>
 ): Promise<APIResponse<DataResponse<Tables<T>>>> {
   try {
-    const from = pagination.page * pagination.size;
+    const from = (pagination.page - 1) * pagination.size;
     const to = from + pagination.size - 1;
 
     let query = supabase

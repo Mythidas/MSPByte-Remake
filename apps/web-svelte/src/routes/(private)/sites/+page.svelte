@@ -2,17 +2,18 @@
 	import DataTable from '$lib/components/table/DataTable.svelte';
 	import { createClient } from '$lib/database/client.js';
 	import { ORM } from '$lib/database/orm.js';
+	import { prettyText } from '$shared/lib/utils.js';
 </script>
 
-<div class="flex size-full flex-col gap-4">
-	<h1 class="text-2xl">Roles</h1>
+<div class="flex size-full flex-col gap-4 overflow-hidden">
+	<h1 class="shrink-0 text-2xl">Sites</h1>
 
 	<DataTable
 		fetcher={async (state) => {
 			const supabase = createClient();
 			const orm = new ORM(supabase);
 
-			const { data } = await orm.getRows('roles', {
+			const { data } = await orm.getRows('sites_view', {
 				pagination: state
 			});
 
@@ -30,20 +31,18 @@
 				searchable: true
 			},
 			{
-				key: 'description',
-				title: 'Description',
+				key: 'parent_name',
+				title: 'Parent',
 				searchable: true
 			},
 			{
-				key: 'tenant_id',
-				title: 'Pre-Defined',
-				render: ({ row }) => (row.tenant_id ? 'Custom' : 'System')
+				key: 'psa_integration_id',
+				title: 'PSA',
+				render: ({ row }) => prettyText(row.psa_integration_id)
 			},
 			{
-				key: 'created_at',
-				title: 'Created At',
-				render: ({ row }) => new Date(row.created_at).toDateString(),
-				hideable: true
+				key: 'psa_company_id',
+				title: 'PSA ID'
 			}
 		]}
 	/>

@@ -13,7 +13,8 @@ const config = {
 		// See https://svelte.dev/docs/kit/adapters for more information about adapters.
 		adapter: adapter(),
 		alias: {
-			shared: '"../../packages/shared/src"'
+			'@workspace/shared/*': '../../packages/shared/src',
+			'$shared/*': '../../packages/shared/src'
 		}
 	}
 };

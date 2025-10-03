@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Binary, LayoutDashboard, Users, Shield, Settings } from 'lucide-svelte';
+	import { Binary, LayoutDashboard, Users, Shield, Settings, Building } from 'lucide-svelte';
 	import Navbar from '$lib/components/nav/Navbar.svelte';
 	import NavLink from '$lib/components/nav/NavLink.svelte';
 	import NavGroup from '$lib/components/nav/NavGroup.svelte';
@@ -22,6 +22,7 @@
 			<!--Nav-->
 			<Navbar>
 				<NavLink href="/" label="Dashboard" icon={LayoutDashboard} />
+				<NavLink href="/sites" label="Sites" icon={Building} />
 
 				<NavGroup name="Admin" icon={Settings}>
 					<NavLink href="/users" label="Users" icon={Users} />
@@ -38,7 +39,7 @@
 
 	<!-- Main content -->
 	<main class="flex-1 p-2">
-		<div class="flex size-full flex-col overflow-auto rounded bg-card p-4 shadow">
+		<div class="flex size-full flex-col overflow-auto rounded bg-card/80 p-4 shadow">
 			{@render children?.()}
 		</div>
 	</main>
