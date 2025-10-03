@@ -1,5 +1,4 @@
 {
-  "tailwindCSS.experimental.configFile": "packages/ui/src/styles/globals.css",
   "typescript.preferences.importModuleSpecifier": "non-relative",
   "typescript.suggest.autoImports": true,
   "typescript.suggest.includeAutomaticOptionalChainCompletions": true,
