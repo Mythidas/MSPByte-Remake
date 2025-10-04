@@ -92,6 +92,8 @@ export default class APIClient {
   }
 
   private static async logApiCall(log: TablesInsert<"api_logs">) {
+    if (log.status_code === 200) return;
+
     const supabase = createPrivelagedClient();
 
     try {

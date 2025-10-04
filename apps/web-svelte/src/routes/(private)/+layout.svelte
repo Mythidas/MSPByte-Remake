@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Binary, LayoutDashboard, Users, Shield, Settings, Building } from 'lucide-svelte';
+	import { Binary, LayoutDashboard, Users, Shield, Settings, Building, Bolt } from 'lucide-svelte';
 	import Navbar from '$lib/components/nav/Navbar.svelte';
 	import NavLink from '$lib/components/nav/NavLink.svelte';
 	import NavGroup from '$lib/components/nav/NavGroup.svelte';
@@ -27,6 +27,7 @@
 				<NavGroup name="Admin" icon={Settings}>
 					<NavLink href="/users" label="Users" icon={Users} />
 					<NavLink href="/roles" label="Roles" icon={Shield} />
+					<NavLink href="/integrations" label="Integrations" icon={Bolt} />
 				</NavGroup>
 			</Navbar>
 		</div>

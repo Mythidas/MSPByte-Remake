@@ -7,10 +7,19 @@
 	import * as Select from '$lib/components/ui/select/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
-	import { ChevronLeft, ChevronsLeft, ChevronsRight, Eye, Search } from 'lucide-svelte';
+	import {
+		ChevronLeft,
+		ChevronsLeft,
+		ChevronsRight,
+		ChevronsUpDown,
+		Eye,
+		Search
+	} from 'lucide-svelte';
 	import { goto } from '$app/navigation';
 	import type { DataResponse } from '@workspace/shared/types/database/index.js';
-	import ScrollArea from '$lib/components/ui/scroll-area/scroll-area.svelte';
+	import { cn } from '$lib/utils.js';
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
+	import ChevronUp from '@lucide/svelte/icons/chevron-up';
 
 	type Props = {
 		fetcher: (state: TableURLState) => Promise<DataResponse<any>>;
@@ -25,6 +34,8 @@
 
 	async function loadData(state: TableURLState) {
 		data = await fetcher(state);
+
+		tableState.page.total = Math.max(Math.ceil(data.total / tableState.page.size), 1);
 	}
 
 	$effect(() => {
@@ -73,8 +84,7 @@
 							<DropdownMenu.CheckboxItem
 								checked={!tableState.columns.hiddenColumns[column.key]}
 								onCheckedChange={(val) => {
-									if (val) tableState.columns.showColumn(column.key);
-									else tableState.columns.hideColumn(column.key);
+									tableState.columns.toggleColumn(column.key);
 								}}
 							>
 								{column.title}
@@ -91,7 +101,30 @@
 		<Table.Header>
 			<Table.Row class="sticky top-0 z-50 bg-input">
 				{#each tableState.columns.visibleColumns() as col}
-					<Table.Head>{col.title}</Table.Head>
+					<Table.Head
+						onclick={() => {
+							if (col.sortable) {
+								tableState.columns.sortColumn(col.key);
+							}
+						}}
+						class={cn(
+							col.sortable &&
+								'items-center hover:cursor-pointer [&>*]:inline-block [&>*]:align-middle'
+						)}
+					>
+						<span>{col.title}</span>
+						{#if col.sortable}
+							{#if tableState.columns.sortedColumn?.[0] === col.key}
+								{#if tableState.columns.sortedColumn[1] === 'asc'}
+									<ChevronDown class="w-4" />
+								{:else}
+									<ChevronUp class="w-4" />
+								{/if}
+							{:else}
+								<ChevronsUpDown class="w-4" />
+							{/if}
+						{/if}
+					</Table.Head>
 				{/each}
 			</Table.Row>
 		</Table.Header>
@@ -114,7 +147,7 @@
 			Page {tableState.page.current} of {tableState.page.total}
 		</div>
 		<div class="flex items-center justify-center gap-1">
-			<Button class="h-8 w-8" variant="secondary" onclick={() => (tableState.page.current = 1)}>
+			<Button class="h-8 w-8" variant="secondary" onclick={tableState.page.firstPage}>
 				<ChevronsLeft />
 			</Button>
 			<Button class="h-8 w-8" variant="secondary" onclick={tableState.page.previousPage}>
@@ -132,11 +165,7 @@
 			<Button class="h-8 w-8" variant="secondary" onclick={tableState.page.nextPage}>
 				<ChevronRight />
 			</Button>
-			<Button
-				class="h-8 w-8"
-				variant="secondary"
-				onclick={() => (tableState.page.current = tableState.page.total)}
-			>
+			<Button class="h-8 w-8" variant="secondary" onclick={tableState.page.lastPage}>
 				<ChevronsRight />
 			</Button>
 		</div>

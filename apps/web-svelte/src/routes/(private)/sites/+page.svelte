@@ -13,6 +13,9 @@
 			const supabase = createClient();
 			const orm = new ORM(supabase);
 
+			state.sorting = state.sorting || { name: 'asc' };
+
+			console.log(state);
 			const { data } = await orm.getRows('sites_view', {
 				pagination: state
 			});
@@ -28,12 +31,14 @@
 			{
 				key: 'name',
 				title: 'Name',
-				searchable: true
+				searchable: true,
+				sortable: true
 			},
 			{
 				key: 'parent_name',
 				title: 'Parent',
-				searchable: true
+				searchable: true,
+				sortable: true
 			},
 			{
 				key: 'psa_integration_id',
@@ -42,7 +47,9 @@
 			},
 			{
 				key: 'psa_company_id',
-				title: 'PSA ID'
+				title: 'PSA ID',
+				hideable: true,
+				sortable: true
 			}
 		]}
 	/>
