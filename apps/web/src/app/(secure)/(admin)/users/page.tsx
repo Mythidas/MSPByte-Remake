@@ -108,7 +108,7 @@ const actions: DataTableAction<Data>[] = [
     icon: <Trash2 className="h-4 w-4" />,
     variant: "destructive",
     disabled: (rows) =>
-      rows.length === 0 || rows.some((row) => row.status === "suspended"),
+      rows.length === 0 || rows.some((row) => row.status === "inactive"),
     onClick: async (rows) => {
       const confirmed = confirm(
         `Are you sure you want to suspend ${rows.length} user(s)?`

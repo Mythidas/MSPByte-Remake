@@ -22,12 +22,12 @@
 			);
 		};
 
-		return data.rows.filter((integ) => isValid(integ));
+		return data.integrations.filter((integ) => isValid(integ));
 	};
 
 	const uniqueTags = () => {
 		const tags = new Set<string>();
-		for (const integ of data.rows) {
+		for (const integ of data.integrations) {
 			if (integ.category && !tags.has(integ.category)) {
 				tags.add(integ.category);
 			}
@@ -81,7 +81,7 @@
 				<Card.Content>
 					<div class="flex items-center justify-between">
 						<div>
-							{#if (integ.data_sources_count || 0) > 0}
+							{#if data.dataSources.find((ds) => ds.integration_id === integ.id)?.status === 'active'}
 								<Badge>Active</Badge>
 							{:else}
 								<Badge variant="destructive">Inactive</Badge>

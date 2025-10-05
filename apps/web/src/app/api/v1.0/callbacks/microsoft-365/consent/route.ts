@@ -157,7 +157,7 @@ export async function GET(request: NextRequest) {
               user_count: 0,
             })),
           } as Microsoft365DataSourceConfig,
-          status: "connected",
+          status: "active",
         },
       });
 
@@ -181,7 +181,7 @@ export async function GET(request: NextRequest) {
             user_count: 0,
           })),
         } as Microsoft365DataSourceConfig,
-        status: "connected",
+        status: "active",
         credential_expiration_at: "9999-12-31 23:59:59+00", // Client credentials don't expire like user tokens
       };
 

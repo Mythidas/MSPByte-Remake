@@ -45,7 +45,7 @@ export async function saveSophosPartnerConfig(
         id: existingDataSource.id,
         row: {
           config: sophosPartnerConfig,
-          status: "connected",
+          status: "active",
           updated_at: new Date().toISOString(),
         },
       });
@@ -58,7 +58,7 @@ export async function saveSophosPartnerConfig(
           {
             integration_id: integrationId,
             config: sophosPartnerConfig,
-            status: "connected",
+            status: "active",
             external_id: `sophos_partner_${validatedConfig.client_id}`,
             credential_expiration_at: new Date(
               Date.now() + 365 * 24 * 60 * 60 * 1000

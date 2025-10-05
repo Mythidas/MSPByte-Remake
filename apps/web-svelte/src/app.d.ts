@@ -1,5 +1,6 @@
 import type { SupabaseClient, Session, User } from '@supabase/supabase-js';
 import type { Database } from '@workspace/shared/types/database/import';
+import type { Tables } from '@workspace/shared/types/database/index.js';
 
 declare global {
 	namespace App {
@@ -7,14 +8,12 @@ declare global {
 		interface Locals {
 			auth: {
 				supabase: SupabaseClient<Database>;
-				safeGetSession: () => Promise<{ session: Session | null; user: User | null }>;
-				session: Session | null;
-				user: User | null;
+				safeGetSession: () => Promise<{
+					user: Tables<'users_view'> | null;
+				}>;
 			};
 		}
-		interface PageData {
-			session: Session | null;
-		}
+		// interface PageData {};
 		// interface PageState {}
 		// interface Platform {}
 	}

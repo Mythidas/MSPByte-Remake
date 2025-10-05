@@ -95,7 +95,8 @@ export type Database = {
       }
       agents: {
         Row: {
-          created_at: string | null
+          created_at: string
+          deleted_at: string | null
           ext_address: string | null
           guid: string
           hostname: string
@@ -107,11 +108,12 @@ export type Database = {
           registered_at: string | null
           site_id: string
           tenant_id: string
-          updated_at: string | null
+          updated_at: string
           version: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
+          deleted_at?: string | null
           ext_address?: string | null
           guid: string
           hostname: string
@@ -123,11 +125,12 @@ export type Database = {
           registered_at?: string | null
           site_id: string
           tenant_id: string
-          updated_at?: string | null
+          updated_at?: string
           version: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
+          deleted_at?: string | null
           ext_address?: string | null
           guid?: string
           hostname?: string
@@ -139,7 +142,7 @@ export type Database = {
           registered_at?: string | null
           site_id?: string
           tenant_id?: string
-          updated_at?: string | null
+          updated_at?: string
           version?: string
         }
         Relationships: [
@@ -204,22 +207,73 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_log: {
+        Row: {
+          action: Database["public"]["Enums"]["audit_action"]
+          changes: Json
+          created_at: string
+          id: string
+          record_id: string
+          table_name: string
+          tenant_id: string
+          user_id: string | null
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["audit_action"]
+          changes?: Json
+          created_at?: string
+          id?: string
+          record_id: string
+          table_name: string
+          tenant_id: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["audit_action"]
+          changes?: Json
+          created_at?: string
+          id?: string
+          record_id?: string
+          table_name?: string
+          tenant_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_source_to_site: {
         Row: {
           created_at: string
           data_source_id: string
+          deleted_at: string | null
           id: string
           site_id: string
         }
         Insert: {
           created_at?: string
           data_source_id: string
+          deleted_at?: string | null
           id?: string
           site_id: string
         }
         Update: {
           created_at?: string
           data_source_id?: string
+          deleted_at?: string | null
           id?: string
           site_id?: string
         }
@@ -245,12 +299,13 @@ export type Database = {
           config: Json
           created_at: string
           credential_expiration_at: string
+          deleted_at: string | null
           external_id: string | null
           id: string
           integration_id: string
           metadata: Json | null
           site_id: string | null
-          status: string
+          status: Database["public"]["Enums"]["data_source_status"]
           tenant_id: string
           updated_at: string
         }
@@ -258,12 +313,13 @@ export type Database = {
           config: Json
           created_at?: string
           credential_expiration_at: string
+          deleted_at?: string | null
           external_id?: string | null
           id?: string
           integration_id: string
           metadata?: Json | null
           site_id?: string | null
-          status?: string
+          status?: Database["public"]["Enums"]["data_source_status"]
           tenant_id: string
           updated_at?: string
         }
@@ -271,12 +327,13 @@ export type Database = {
           config?: Json
           created_at?: string
           credential_expiration_at?: string
+          deleted_at?: string | null
           external_id?: string | null
           id?: string
           integration_id?: string
           metadata?: Json | null
           site_id?: string | null
-          status?: string
+          status?: Database["public"]["Enums"]["data_source_status"]
           tenant_id?: string
           updated_at?: string
         }
@@ -442,7 +499,7 @@ export type Database = {
           payload: Json
           processed_at: string
           retry_count: number | null
-          status: string
+          status: Database["public"]["Enums"]["event_status"]
           tenant_id: string
           updated_at: string
         }
@@ -454,7 +511,7 @@ export type Database = {
           payload: Json
           processed_at: string
           retry_count?: number | null
-          status?: string
+          status?: Database["public"]["Enums"]["event_status"]
           tenant_id: string
           updated_at?: string
         }
@@ -466,7 +523,7 @@ export type Database = {
           payload?: Json
           processed_at?: string
           retry_count?: number | null
-          status?: string
+          status?: Database["public"]["Enums"]["event_status"]
           tenant_id?: string
           updated_at?: string
         }
@@ -531,6 +588,62 @@ export type Database = {
           },
         ]
       }
+      health_checks: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          failure_count: number
+          id: string
+          last_check_at: string
+          last_failure_at: string | null
+          last_success_at: string | null
+          metadata: Json | null
+          resource_id: string
+          resource_type: Database["public"]["Enums"]["resource_type"]
+          status: Database["public"]["Enums"]["health_status"]
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          failure_count?: number
+          id?: string
+          last_check_at?: string
+          last_failure_at?: string | null
+          last_success_at?: string | null
+          metadata?: Json | null
+          resource_id: string
+          resource_type: Database["public"]["Enums"]["resource_type"]
+          status?: Database["public"]["Enums"]["health_status"]
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          failure_count?: number
+          id?: string
+          last_check_at?: string
+          last_failure_at?: string | null
+          last_success_at?: string | null
+          metadata?: Json | null
+          resource_id?: string
+          resource_type?: Database["public"]["Enums"]["resource_type"]
+          status?: Database["public"]["Enums"]["health_status"]
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_checks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integrations: {
         Row: {
           category: string
@@ -541,6 +654,7 @@ export type Database = {
           icon_url: string | null
           id: string
           is_active: boolean | null
+          level: string | null
           name: string
           product_url: string | null
           supported_types: string[]
@@ -555,6 +669,7 @@ export type Database = {
           icon_url?: string | null
           id: string
           is_active?: boolean | null
+          level?: string | null
           name: string
           product_url?: string | null
           supported_types?: string[]
@@ -569,6 +684,7 @@ export type Database = {
           icon_url?: string | null
           id?: string
           is_active?: boolean | null
+          level?: string | null
           name?: string
           product_url?: string | null
           supported_types?: string[]
@@ -579,6 +695,7 @@ export type Database = {
       roles: {
         Row: {
           created_at: string
+          deleted_at: string | null
           description: string
           id: string
           name: string
@@ -588,6 +705,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           description: string
           id?: string
           name: string
@@ -597,6 +715,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           description?: string
           id?: string
           name?: string
@@ -630,7 +749,7 @@ export type Database = {
           priority: number | null
           scheduled_at: string
           started_at: string
-          status: string
+          status: Database["public"]["Enums"]["job_status"]
           tenant_id: string
           updated_at: string
         }
@@ -649,7 +768,7 @@ export type Database = {
           priority?: number | null
           scheduled_at: string
           started_at?: string
-          status?: string
+          status?: Database["public"]["Enums"]["job_status"]
           tenant_id: string
           updated_at?: string
         }
@@ -668,7 +787,7 @@ export type Database = {
           priority?: number | null
           scheduled_at?: string
           started_at?: string
-          status?: string
+          status?: Database["public"]["Enums"]["job_status"]
           tenant_id?: string
           updated_at?: string
         }
@@ -699,6 +818,7 @@ export type Database = {
       sites: {
         Row: {
           created_at: string
+          deleted_at: string | null
           id: string
           metadata: Json | null
           name: string
@@ -706,12 +826,13 @@ export type Database = {
           psa_integration_id: string | null
           psa_parent_company_id: string | null
           slug: string
-          status: string
+          status: Database["public"]["Enums"]["site_status"]
           tenant_id: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           metadata?: Json | null
           name: string
@@ -719,12 +840,13 @@ export type Database = {
           psa_integration_id?: string | null
           psa_parent_company_id?: string | null
           slug?: string
-          status: string
+          status?: Database["public"]["Enums"]["site_status"]
           tenant_id: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           metadata?: Json | null
           name?: string
@@ -732,7 +854,7 @@ export type Database = {
           psa_integration_id?: string | null
           psa_parent_company_id?: string | null
           slug?: string
-          status?: string
+          status?: Database["public"]["Enums"]["site_status"]
           tenant_id?: string
           updated_at?: string
         }
@@ -777,34 +899,37 @@ export type Database = {
       users: {
         Row: {
           created_at: string
+          deleted_at: string | null
           email: string
           id: string
           last_activity_at: string | null
           name: string
           role_id: string
-          status: string
+          status: Database["public"]["Enums"]["user_status"]
           tenant_id: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           email: string
           id: string
           last_activity_at?: string | null
           name: string
           role_id: string
-          status?: string
+          status?: Database["public"]["Enums"]["user_status"]
           tenant_id: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           email?: string
           id?: string
           last_activity_at?: string | null
           name?: string
           role_id?: string
-          status?: string
+          status?: Database["public"]["Enums"]["user_status"]
           tenant_id?: string
           updated_at?: string
         }
@@ -844,7 +969,22 @@ export type Database = {
       }
     }
     Enums: {
+      alert_severity: "info" | "warning" | "error" | "critical"
+      alert_type: "credential_expiring" | "credential_expired"
+      audit_action: "create" | "update" | "delete" | "restore"
+      data_source_status: "active" | "inactive" | "failed" | "expired"
+      event_status:
+        | "pending"
+        | "processing"
+        | "completed"
+        | "failed"
+        | "cancelled"
+      health_status: "healthy" | "degraded" | "critical" | "unknown"
       http_method: "GET" | "POST" | "PUT" | "DELETE"
+      job_status: "pending" | "running" | "completed" | "failed" | "cancelled"
+      resource_type: "data_source" | "agent" | "scheduled_job" | "site"
+      site_status: "active" | "inactive"
+      user_status: "active" | "inactive" | "invited"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -865,7 +1005,7 @@ export type Database = {
           linked_site_id: string | null
           linked_site_name: string | null
           linked_site_slug: string | null
-          linked_site_status: string | null
+          linked_site_status: Database["public"]["Enums"]["site_status"] | null
           name: string | null
           tenant_id: string | null
           updated_at: string | null
@@ -988,7 +1128,7 @@ export type Database = {
           psa_integration_id: string | null
           psa_parent_company_id: string | null
           slug: string | null
-          status: string | null
+          status: Database["public"]["Enums"]["site_status"] | null
           tenant_id: string | null
           updated_at: string | null
         }
@@ -1005,7 +1145,9 @@ export type Database = {
       sophos_partner_sites_view: {
         Row: {
           created_at: string | null
-          data_source_status: string | null
+          data_source_status:
+            | Database["public"]["Enums"]["data_source_status"]
+            | null
           id: string | null
           is_linked: boolean | null
           linked_tenant_api_host: string | null
@@ -1014,7 +1156,7 @@ export type Database = {
           mapped_at: string | null
           name: string | null
           slug: string | null
-          status: string | null
+          status: Database["public"]["Enums"]["site_status"] | null
           tenant_id: string | null
           updated_at: string | null
         }
@@ -1031,7 +1173,7 @@ export type Database = {
           role_id: string | null
           role_name: string | null
           role_rights: Json | null
-          status: string | null
+          status: Database["public"]["Enums"]["user_status"] | null
           tenant_id: string | null
           updated_at: string | null
         }
@@ -1170,7 +1312,23 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      alert_severity: ["info", "warning", "error", "critical"],
+      alert_type: ["credential_expiring", "credential_expired"],
+      audit_action: ["create", "update", "delete", "restore"],
+      data_source_status: ["active", "inactive", "failed", "expired"],
+      event_status: [
+        "pending",
+        "processing",
+        "completed",
+        "failed",
+        "cancelled",
+      ],
+      health_status: ["healthy", "degraded", "critical", "unknown"],
       http_method: ["GET", "POST", "PUT", "DELETE"],
+      job_status: ["pending", "running", "completed", "failed", "cancelled"],
+      resource_type: ["data_source", "agent", "scheduled_job", "site"],
+      site_status: ["active", "inactive"],
+      user_status: ["active", "inactive", "invited"],
     },
   },
   views: {

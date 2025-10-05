@@ -141,7 +141,7 @@ export class Scheduler {
 
     await updateRow("scheduled_jobs", {
       row: {
-        status: invalid ? "invalid" : "failed",
+        status: invalid ? "cancelled" : "failed",
         error,
         attempts: attempts + 1,
         attempts_max: attemptsMax,

@@ -18,7 +18,6 @@ import SearchBox from "@/components/SearchBox";
 import { deleteRows, insertRows } from "@/lib/supabase/orm";
 import { SophosTenantConfig } from "@workspace/shared/types/integrations/sophos-partner";
 import { Tables } from "@workspace/shared/types/database";
-import { SophosPartnerTenant } from "@workspace/shared/types/integrations/sophos-partner/tenants";
 import { useAsyncDataCached } from "@/lib/hooks/useAsyncDataCached";
 import { tableCache } from "@/lib/stores/global-cache";
 import { getSophosPartnerTenants } from "@/modules/integrations/sophos-partner/actions/connector";
@@ -107,7 +106,7 @@ export default function SophosPartnerMapSitesStep({ integration }: Props) {
               integration_id: integration.id,
               site_id: site.id!,
               config: tenantConfig,
-              status: "connected",
+              status: "active",
               external_id: tenant.id,
               credential_expiration_at: new Date(
                 Date.now() + 365 * 24 * 60 * 60 * 1000

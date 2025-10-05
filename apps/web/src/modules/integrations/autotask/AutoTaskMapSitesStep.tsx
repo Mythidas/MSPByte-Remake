@@ -10,7 +10,7 @@ import {
   DataTableFetchParams,
   DataTableFetchResult,
 } from "@/lib/types/datatable";
-import { Tables } from "@workspace/shared/types/database";
+import { Tables, TablesInsert } from "@workspace/shared/types/database";
 import { ExternalLinkIcon } from "lucide-react";
 import { useMemo } from "react";
 import { toast } from "sonner";
@@ -119,18 +119,21 @@ export default function AutoTaskMapSitesStep({ integration }: Props) {
 
           try {
             // Prepare site records for insertion
-            const siteRecords = unlinkedCompanies.map((company) => ({
-              name: company.name || "Unknown Company",
-              psa_company_id: company.external_id!,
-              psa_integration_id: "", // Default empty
-              psa_parent_company_id: "", // Default empty
-              status: "active",
-              tenant_id: "", // This should be populated with actual tenant ID
-              slug: (company.name || "unknown")
-                .toLowerCase()
-                .replace(/[^a-z0-9]/g, "-"),
-              created_at: new Date().toISOString(),
-            }));
+            const siteRecords = unlinkedCompanies.map(
+              (company) =>
+                ({
+                  name: company.name || "Unknown Company",
+                  psa_company_id: company.external_id!,
+                  psa_integration_id: "", // Default empty
+                  psa_parent_company_id: "", // Default empty
+                  status: "active",
+                  tenant_id: "", // This should be populated with actual tenant ID
+                  slug: (company.name || "unknown")
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]/g, "-"),
+                  created_at: new Date().toISOString(),
+                }) as TablesInsert<"sites">
+            );
 
             // Insert the new sites
             const insertResponse = await insertRows("sites", {

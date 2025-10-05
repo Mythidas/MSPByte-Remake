@@ -1,4 +1,5 @@
 import APIClient from "@workspace/shared/lib/APIClient.js";
+import { IConnector } from "@workspace/shared/lib/connectors/index.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import Encryption from "@workspace/shared/lib/Encryption.js";
 import { APIResponse } from "@workspace/shared/types/api.js";
@@ -10,7 +11,7 @@ import {
 } from "@workspace/shared/types/integrations/sophos-partner/index.js";
 import { SophosPartnerTenant } from "@workspace/shared/types/integrations/sophos-partner/tenants.js";
 
-export default class SophosPartnerConnector {
+export default class SophosPartnerConnector implements IConnector {
   private token: string | null = null;
   private expiration: Date = new Date();
 

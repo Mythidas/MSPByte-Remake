@@ -1,16 +1,17 @@
 import { ClientSecretCredential } from "@azure/identity";
 import { Client } from "@microsoft/microsoft-graph-client";
+import { IConnector } from "@workspace/shared/lib/connectors/index.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import { APIResponse } from "@workspace/shared/types/api.js";
 import { MSGraphGroup } from "@workspace/shared/types/integrations/microsoft-365/groups.js";
 import { MSGraphIdentity } from "@workspace/shared/types/integrations/microsoft-365/identities.js";
 import { Microsoft365DataSourceConfig } from "@workspace/shared/types/integrations/microsoft-365/index.js";
 
-export default class Microsoft365Connector {
+export default class Microsoft365Connector implements IConnector {
   constructor(private config: Microsoft365DataSourceConfig) {}
 
   async checkHealth() {
-    return true;
+    return { data: true };
   }
 
   async getIdentities({

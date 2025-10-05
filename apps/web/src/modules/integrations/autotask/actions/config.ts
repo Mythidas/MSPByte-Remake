@@ -48,7 +48,7 @@ export async function saveAutoTaskConfig(
         id: existingDataSource.id,
         row: {
           config: autoTaskConfig,
-          status: "connected",
+          status: "active",
           updated_at: new Date().toISOString(),
         },
       });
@@ -61,7 +61,7 @@ export async function saveAutoTaskConfig(
           {
             integration_id: integrationId,
             config: autoTaskConfig,
-            status: "connected",
+            status: "active",
             external_id: `autotask_${validatedConfig.server}`,
             credential_expiration_at: new Date(
               Date.now() + 365 * 24 * 60 * 60 * 1000
