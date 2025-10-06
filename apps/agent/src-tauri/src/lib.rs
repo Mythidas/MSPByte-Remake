@@ -2,7 +2,6 @@ mod device_manager;
 mod device_registration;
 mod heartbeat;
 mod logger;
-mod test_ticket_sender;
 
 use base64::engine::general_purpose;
 use base64::Engine;
@@ -16,7 +15,6 @@ use device_manager::{get_settings, is_device_registered};
 use device_registration::register_device_with_server;
 use heartbeat::start_heartbeat_task;
 use logger::log_to_file;
-use test_ticket_sender::start_test_ticket_sender;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -33,12 +31,8 @@ pub fn run() {
             let heartbeat_running = Arc::new(AtomicBool::new(true));
             let heartbeat_flag = heartbeat_running.clone();
 
-            let test_ticket_running = Arc::new(AtomicBool::new(true));
-            let test_ticket_flag = test_ticket_running.clone();
-
             // Store the flags in app state for cleanup
             app.manage(heartbeat_running);
-            app.manage(test_ticket_running);
 
             // Check and register device on first launch
             tauri::async_runtime::spawn(async move {
@@ -81,16 +75,8 @@ pub fn run() {
                     );
                 }
 
-                // TODO: Delete in production
                 // Start background tasks after registration check
                 start_heartbeat_task(heartbeat_flag.clone());
-
-                // Start test ticket sender (TEMPORARY - for testing)
-                log_to_file(
-                    String::from("INFO"),
-                    String::from("Starting test ticket sender for backend testing"),
-                );
-                start_test_ticket_sender(test_ticket_flag);
             });
 
             // Create the tray application
