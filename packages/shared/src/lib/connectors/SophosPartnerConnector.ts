@@ -1,4 +1,3 @@
-import APIClient from "@workspace/shared/lib/APIClient.js";
 import { IConnector } from "@workspace/shared/lib/connectors/index.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import Encryption from "@workspace/shared/lib/Encryption.js";
@@ -15,7 +14,10 @@ export default class SophosPartnerConnector implements IConnector {
   private token: string | null = null;
   private expiration: Date = new Date();
 
-  constructor(private config: SophosPartnerConfig) {}
+  constructor(
+    private config: SophosPartnerConfig,
+    private encryptionKey: string
+  ) {}
 
   async checkHealth(): Promise<APIResponse<true>> {
     return { data: true };
@@ -34,9 +36,7 @@ export default class SophosPartnerConnector implements IConnector {
 
       let page = 1;
       while (true) {
-        const { data, error } = await APIClient.fetch<
-          SophosPartnerAPIResponse<SophosPartnerTenant>
-        >(
+        const response = await fetch(
           `${url}?pageTotal=true&pageSize=100&page=${page}`,
           {
             method: "GET",
@@ -44,14 +44,20 @@ export default class SophosPartnerConnector implements IConnector {
               Authorization: `Bearer ${token}`,
               "X-Partner-ID": sophosPartner.data,
             },
-          },
-          "SophosPartner"
+          }
         );
 
-        if (error) {
-          return { error };
+        if (!response.ok) {
+          return Debug.error({
+            module: "SophosPartnerConnector",
+            context: "getTenants",
+            message: `HTTP ${response.status}: ${response.statusText}`,
+            code: response.status,
+          });
         }
 
+        const data: SophosPartnerAPIResponse<SophosPartnerTenant> =
+          await response.json();
         tenants.push(...data.items);
 
         if (data.pages.current >= data.pages.total) {
@@ -82,23 +88,25 @@ export default class SophosPartnerConnector implements IConnector {
       const path = "/endpoint/v1/endpoints?pageSize=500&pageTotal=true";
       const url = config.api_host + path;
 
-      const { data, error } = await APIClient.fetch<
-        SophosPartnerAPIResponse<SophosPartnerEndpoint>
-      >(
-        url,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "X-Tenant-ID": config.tenant_id,
-          },
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "X-Tenant-ID": config.tenant_id,
         },
-        "SophosPartner"
-      );
+      });
 
-      if (error) {
-        return { error };
+      if (!response.ok) {
+        return Debug.error({
+          module: "SophosPartnerConnector",
+          context: "getEndpoints",
+          message: `HTTP ${response.status}: ${response.statusText}`,
+          code: response.status,
+        });
       }
+
+      const data: SophosPartnerAPIResponse<SophosPartnerEndpoint> =
+        await response.json();
 
       return {
         data: [...data.items],
@@ -117,20 +125,23 @@ export default class SophosPartnerConnector implements IConnector {
     try {
       const { data: token } = await this.getToken();
 
-      const { data, error } = await APIClient.fetch<{ id: string }>(
-        "https://api.central.sophos.com/whoami/v1",
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+      const response = await fetch("https://api.central.sophos.com/whoami/v1", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-        "SophosPartner"
-      );
+      });
 
-      if (error) {
-        return { error };
+      if (!response.ok) {
+        return Debug.error({
+          module: "SophosPartnerConnector",
+          context: "getPartnerID",
+          message: `HTTP ${response.status}: ${response.statusText}`,
+          code: response.status,
+        });
       }
+
+      const data: { id: string } = await response.json();
 
       return {
         data: data.id,
@@ -153,10 +164,12 @@ export default class SophosPartnerConnector implements IConnector {
         if (!expired) return { data: this.token };
       }
 
-      const clientId = this.config["client_id"];
+      const clientId = this.config.client_id;
       const clientSecret = await Encryption.decrypt(
-        this.config["client_secret"]
+        this.config.client_secret,
+        this.encryptionKey
       );
+
       const body = new URLSearchParams({
         grant_type: "client_credentials",
         client_id: clientId,
@@ -164,10 +177,7 @@ export default class SophosPartnerConnector implements IConnector {
         scope: "token",
       });
 
-      const { data, error } = await APIClient.fetch<{
-        expires_in: number;
-        access_token: string;
-      }>(
+      const response = await fetch(
         "https://id.sophos.com/api/v2/oauth2/token",
         {
           method: "POST",
@@ -175,13 +185,20 @@ export default class SophosPartnerConnector implements IConnector {
             "Content-Type": "application/x-www-form-urlencoded",
           },
           body: body.toString(),
-        },
-        "SophosPartner"
+        }
       );
 
-      if (error) {
-        return { error };
+      if (!response.ok) {
+        return Debug.error({
+          module: "SophosPartnerConnector",
+          context: "getToken",
+          message: `HTTP ${response.status}: ${response.statusText}`,
+          code: response.status,
+        });
       }
+
+      const data: { expires_in: number; access_token: string } =
+        await response.json();
       this.expiration = new Date(new Date().getTime() + data.expires_in * 1000);
 
       return {

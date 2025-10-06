@@ -1,4 +1,3 @@
-import APIClient from "@workspace/shared/lib/APIClient.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import Encryption from "@workspace/shared/lib/Encryption.js";
 import { APIResponse } from "@workspace/shared/types/api.js";
@@ -11,7 +10,10 @@ import { HaloPSASite } from "@workspace/shared/types/integrations/halopsa/sites.
 import { HaloPSANewTicket } from "@workspace/shared/types/integrations/halopsa/tickets.js";
 
 export class HaloPSAConnector {
-  constructor(private config: HaloPSAConfig) {}
+  constructor(
+    private config: HaloPSAConfig,
+    private encryptionKey: string
+  ) {}
 
   async checkHealth(): Promise<APIResponse<boolean>> {
     return { data: true };
@@ -34,23 +36,29 @@ export class HaloPSAConnector {
 
     const sites: HaloPSASite[] = [];
 
-    const { data, error } = await APIClient.fetch<
-      HaloPSAPagination & { sites: HaloPSASite[] }
-    >(`${this.config.url}/api/site?${params}`, {
+    const response = await fetch(`${this.config.url}/api/site?${params}`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
     });
-    if (error) return { error };
+
+    if (!response.ok) {
+      return Debug.error({
+        module: "HaloPSAConnector",
+        context: "getSites",
+        message: `HTTP ${response.status}: ${response.statusText}`,
+        code: response.status,
+      });
+    }
+
+    const data: HaloPSAPagination & { sites: HaloPSASite[] } = await response.json();
     sites.push(...data.sites);
     params.set("page_no", `${data.page_no + 1}`);
 
     while (sites.length < data.record_count) {
-      const refetch = await APIClient.fetch<
-        HaloPSAPagination & { sites: HaloPSASite[] }
-      >(`${this.config.url}/api/site?${params}`, {
+      const refetchResponse = await fetch(`${this.config.url}/api/site?${params}`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -58,9 +66,10 @@ export class HaloPSAConnector {
         },
       });
 
-      if (refetch.data) {
-        sites.push(...refetch.data.sites);
-        params.set("page_no", `${refetch.data.page_no + 1}`);
+      if (refetchResponse.ok) {
+        const refetchData: HaloPSAPagination & { sites: HaloPSASite[] } = await refetchResponse.json();
+        sites.push(...refetchData.sites);
+        params.set("page_no", `${refetchData.page_no + 1}`);
       } else break;
     }
 
@@ -87,35 +96,40 @@ export class HaloPSAConnector {
 
     const assets: HaloPSAAsset[] = [];
 
-    const { data, error } = await APIClient.fetch<APISchema>(
-      `${this.config.url}/api/asset?${params}`,
-      {
+    const response = await fetch(`${this.config.url}/api/asset?${params}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      return Debug.error({
+        module: "HaloPSAConnector",
+        context: "getAssets",
+        message: `HTTP ${response.status}: ${response.statusText}`,
+        code: response.status,
+      });
+    }
+
+    const data: APISchema = await response.json();
+    assets.push(...data.assets);
+    params.set("page_no", `${data.page_no + 1}`);
+
+    while (assets.length < data.record_count) {
+      const refetchResponse = await fetch(`${this.config.url}/api/asset?${params}`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-      }
-    );
-    if (error) return { error };
-    assets.push(...data.assets);
-    params.set("page_no", `${data.page_no + 1}`);
+      });
 
-    while (assets.length < data.record_count) {
-      const refetch = await APIClient.fetch<APISchema>(
-        `${this.config.url}/api/asset?${params}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (refetch.data) {
-        assets.push(...refetch.data.assets);
-        params.set("page_no", `${refetch.data.page_no + 1}`);
+      if (refetchResponse.ok) {
+        const refetchData: APISchema = await refetchResponse.json();
+        assets.push(...refetchData.assets);
+        params.set("page_no", `${refetchData.page_no + 1}`);
       } else break;
     }
 
@@ -150,44 +164,50 @@ export class HaloPSAConnector {
     params.set("includepriority", "false");
     params.set("idonly", "true");
 
-    const { data, error } = await APIClient.fetch<{ id: string }>(
-      `${this.config.url}/api/tickets?${params}`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json-patch+json",
+    const response = await fetch(`${this.config.url}/api/tickets?${params}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json-patch+json",
+      },
+      body: JSON.stringify([
+        {
+          site_id: ticket.siteId,
+          matched_rule_id: 9,
+          matched_rule_ids: "9",
+          priority_id: 4,
+          files: null,
+          usertype: 1,
+          tickettype_id: 1,
+          timerinuse: false,
+          itil_tickettype_id: "-1",
+          tickettype_group_id: "-1",
+          summary: ticket.summary,
+          details_html,
+          category_1: "AEM Alert",
+          impact: "3",
+          urgency: "3",
+          donotapplytemplateintheapi: true,
+          utcoffset: 300,
+          form_id: "newticket-1",
+          dont_do_rules: true,
+          return_this: false,
+          phonenumber: ticket.user.phone,
+          assets: ticket.assets.map((a) => ({ id: a })),
         },
-        body: JSON.stringify([
-          {
-            site_id: ticket.siteId,
-            matched_rule_id: 9,
-            matched_rule_ids: "9",
-            priority_id: 4,
-            files: null,
-            usertype: 1,
-            tickettype_id: 1,
-            timerinuse: false,
-            itil_tickettype_id: "-1",
-            tickettype_group_id: "-1",
-            summary: ticket.summary,
-            details_html,
-            category_1: "AEM Alert",
-            impact: "3",
-            urgency: "3",
-            donotapplytemplateintheapi: true,
-            utcoffset: 300,
-            form_id: "newticket-1",
-            dont_do_rules: true,
-            return_this: false,
-            phonenumber: ticket.user.phone,
-            assets: ticket.assets.map((a) => ({ id: a })),
-          },
-        ]),
-      }
-    );
+      ]),
+    });
 
-    if (error) return { error };
+    if (!response.ok) {
+      return Debug.error({
+        module: "HaloPSAConnector",
+        context: "createTicket",
+        message: `HTTP ${response.status}: ${response.statusText}`,
+        code: response.status,
+      });
+    }
+
+    const data: { id: string } = await response.json();
     return {
       data: String(data.id),
     };
@@ -203,49 +223,52 @@ export class HaloPSAConnector {
     formData.append("image_upload_key", "");
     formData.append("file", file, "upload.png");
 
-    const { data, error } = await APIClient.fetch<{ link: string }>(
-      `${this.config.url}/api/attachment/image`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
+    const response = await fetch(`${this.config.url}/api/attachment/image`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
       },
-      "HaloPSAConnector"
-    );
+      body: formData,
+    });
 
-    if (error) return { error };
+    if (!response.ok) {
+      return Debug.error({
+        module: "HaloPSAConnector",
+        context: "uploadImage",
+        message: `HTTP ${response.status}: ${response.statusText}`,
+        code: response.status,
+      });
+    }
+
+    const data: { link: string } = await response.json();
     return { data: data.link };
   }
 
   private async getToken(): Promise<APIResponse<string>> {
-    const { data, error } = await APIClient.fetch<{ access_token: string }>(
-      `${this.config.url}/auth/token`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          grant_type: "client_credentials",
-          client_id: this.config.client_id,
-          client_secret:
-            (await Encryption.decrypt(this.config.client_secret)) || "",
-          scope: "all",
-        }),
+    const response = await fetch(`${this.config.url}/auth/token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
       },
-      "HaloPSAConnector"
-    );
+      body: new URLSearchParams({
+        grant_type: "client_credentials",
+        client_id: this.config.client_id,
+        client_secret:
+          (await Encryption.decrypt(this.config.client_secret, this.encryptionKey)) || "",
+        scope: "all",
+      }),
+    });
 
-    if (error) {
+    if (!response.ok) {
       return Debug.error({
         module: "HaloPSAConnector",
         context: "getToken",
-        message: `Failed to fetch token: ${error.message}`,
-        code: "TOKEN_FAILURE",
+        message: `HTTP ${response.status}: ${response.statusText}`,
+        code: response.status,
       });
     }
+
+    const data: { access_token: string } = await response.json();
     return { data: data.access_token };
   }
 }

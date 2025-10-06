@@ -16,10 +16,7 @@ export class PerformanceTracker {
   /**
    * Track a span of work with automatic timing
    */
-  async trackSpan<T>(
-    name: string,
-    fn: () => Promise<T>
-  ): Promise<T> {
+  async trackSpan<T>(name: string, fn: () => Promise<T>): Promise<T> {
     const spanStart = performance.now();
 
     try {

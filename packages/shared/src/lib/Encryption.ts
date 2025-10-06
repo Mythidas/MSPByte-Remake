@@ -3,11 +3,11 @@ import crypto from "node:crypto";
 const ALGORITHM = "aes-256-gcm";
 
 export default class Encryption {
-  static async encrypt(text: string) {
+  static async encrypt(text: string, key: string) {
     const iv = crypto.randomBytes(12);
     const cipher = crypto.createCipheriv(
       ALGORITHM,
-      process.env.NEXT_SECRET_KEY!,
+      key,
       iv
     );
     const encrypted = Buffer.concat([
@@ -23,7 +23,7 @@ export default class Encryption {
       encrypted.toString("hex")
     );
   }
-  static async decrypt(encryptedText: string) {
+  static async decrypt(encryptedText: string, key: string) {
     const [ivHex, tagHex, dataHex] = encryptedText.split(":");
     if (!ivHex || !tagHex || !dataHex) return undefined;
 
@@ -32,10 +32,11 @@ export default class Encryption {
     const encrypted = Buffer.from(dataHex, "hex");
     const decipher = crypto.createDecipheriv(
       ALGORITHM,
-      process.env.NEXT_SECRET_KEY!,
+      key,
       iv
     );
     decipher.setAuthTag(tag);
+
     return (
       decipher.update(encrypted, undefined, "utf8") + decipher.final("utf8")
     );

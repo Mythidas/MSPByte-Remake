@@ -6,6 +6,7 @@ import { HaloPSAConfig } from "@workspace/shared/types/integrations/halopsa/inde
 import { FastifyInstance } from "fastify";
 import { PerformanceTracker } from "@workspace/shared/lib/performance.js";
 import { logAgentApiCall } from "@/lib/agentLogger.js";
+import { HaloPSAAsset } from "@workspace/shared/types/integrations/halopsa/assets.js";
 
 export default async function (fastify: FastifyInstance) {
   fastify.post("/", async (req) => {
@@ -87,7 +88,8 @@ export default async function (fastify: FastifyInstance) {
       });
 
       const connector = new HaloPSAConnector(
-        dataSource.config as HaloPSAConfig
+        dataSource.config as HaloPSAConfig,
+        process.env.NEXT_SECRET_KEY!
       );
 
       // Parse and validate request body (multipart/form-data or JSON)
@@ -168,7 +170,7 @@ export default async function (fastify: FastifyInstance) {
       });
 
       // Fetch assets from PSA
-      const { data: assets } = await perf.trackSpan(
+      const assetResponse = await perf.trackSpan(
         "psa_fetch_assets",
         async () => {
           if (!body.rmm_id) {
@@ -177,6 +179,17 @@ export default async function (fastify: FastifyInstance) {
           return await connector.getAssets(site?.psa_company_id || "");
         }
       );
+
+      if ("error" in assetResponse) {
+        Debug.log({
+          module: "v1.0/ticket/create",
+          context: "psa_fetch_assets",
+          message: "Failed to fetch assets from PSA",
+        });
+        return;
+      }
+
+      const { data: assets } = assetResponse;
 
       if (!assets) {
         Debug.log({
@@ -194,7 +207,7 @@ export default async function (fastify: FastifyInstance) {
 
       // Find matching asset
       const asset = perf.trackSpanSync("find_matching_asset", () => {
-        return (assets || []).find((a) => {
+        return (assets || []).find((a: HaloPSAAsset) => {
           Debug.log({
             module: "v1.0/ticket/create",
             context: "POST",

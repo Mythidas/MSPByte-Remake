@@ -72,7 +72,10 @@ export class SophosPartnerAdapter extends BaseAdapter {
     }
     const partnerConfig = sophosSource.data.config as SophosPartnerConfig;
 
-    const connector = new SophosPartnerConnector(partnerConfig);
+    const connector = new SophosPartnerConnector(
+      partnerConfig,
+      process.env.NEXT_SECRET_KEY!
+    );
     const health = await connector.checkHealth();
     if (!health) {
       return Debug.error({

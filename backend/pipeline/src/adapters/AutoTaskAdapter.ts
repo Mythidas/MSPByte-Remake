@@ -53,7 +53,8 @@ export class AutoTaskAdapter extends BaseAdapter {
     dataSource: Tables<"data_sources">
   ): Promise<APIResponse<DataFetchPayload[]>> {
     const connector = new AutoTaskConnector(
-      dataSource.config as AutoTaskDataSourceConfig
+      dataSource.config as AutoTaskDataSourceConfig,
+      process.env.NEXT_SECRET_KEY!
     );
     const health = await connector.checkHealth();
     if (!health) {

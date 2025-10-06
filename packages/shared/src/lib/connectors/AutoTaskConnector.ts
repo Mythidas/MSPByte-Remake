@@ -1,5 +1,5 @@
-import APIClient from "@workspace/shared/lib/APIClient.js";
 import { IConnector } from "@workspace/shared/lib/connectors/index.js";
+import Debug from "@workspace/shared/lib/Debug.js";
 import Encryption from "@workspace/shared/lib/Encryption.js";
 import { APIResponse } from "@workspace/shared/types/api.js";
 import { AutoTaskCompany } from "@workspace/shared/types/integrations/autotask/company.js";
@@ -10,40 +10,57 @@ import {
 } from "@workspace/shared/types/integrations/autotask/index.js";
 
 export class AutoTaskConnector implements IConnector {
-  constructor(private config: AutoTaskDataSourceConfig) {}
+  constructor(
+    private config: AutoTaskDataSourceConfig,
+    private encryptionKey: string
+  ) {}
 
   async checkHealth() {
     return { data: true };
   }
 
   async getCompanies(): Promise<APIResponse<AutoTaskCompany[]>> {
-    const search: AutoTaskSearch<AutoTaskCompany> = {
-      filter: [{ field: "isActive", op: "eq", value: true }],
-    };
+    try {
+      const search: AutoTaskSearch<AutoTaskCompany> = {
+        filter: [{ field: "isActive", op: "eq", value: true }],
+      };
 
-    const secret =
-      (await Encryption.decrypt(this.config.client_secret)) || "failed";
-    const { data, error } = await APIClient.fetch<
-      AutoTaskResponse<AutoTaskCompany>
-    >(
-      `https://${this.config.server}/ATServicesRest/V1.0/Companies/query?search=${JSON.stringify(search)}`,
-      {
-        method: "GET",
-        headers: {
-          UserName: this.config.client_id,
-          Secret: secret,
-          ApiIntegrationCode: this.config.tracker_id,
-        },
-      },
-      "AutoTaskAdapter"
-    );
+      const secret =
+        (await Encryption.decrypt(this.config.client_secret, this.encryptionKey)) || "failed";
 
-    if (error) {
-      return { error };
+      const response = await fetch(
+        `https://${this.config.server}/ATServicesRest/V1.0/Companies/query?search=${JSON.stringify(search)}`,
+        {
+          method: "GET",
+          headers: {
+            UserName: this.config.client_id,
+            Secret: secret,
+            ApiIntegrationCode: this.config.tracker_id,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        return Debug.error({
+          module: "AutoTaskConnector",
+          context: "getCompanies",
+          message: `HTTP ${response.status}: ${response.statusText}`,
+          code: response.status,
+        });
+      }
+
+      const data: AutoTaskResponse<AutoTaskCompany> = await response.json();
+
+      return {
+        data: data.items,
+      };
+    } catch (err) {
+      return Debug.error({
+        module: "AutoTaskConnector",
+        context: "getCompanies",
+        message: String(err),
+        code: "AUTOTASK_API_FAILURE",
+      });
     }
-
-    return {
-      data: data.items,
-    };
   }
 }

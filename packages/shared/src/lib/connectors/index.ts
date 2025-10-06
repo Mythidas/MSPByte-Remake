@@ -14,9 +14,9 @@ export function getConnector(
 ): IConnector | undefined {
   switch (integration) {
     case "autotask":
-      return new AutoTaskConnector(config);
+      return new AutoTaskConnector(config, process.env.NEXT_SECRET_KEY!);
     case "sophos-partner":
-      return new SophosPartnerConnector(config);
+      return new SophosPartnerConnector(config, process.env.NEXT_SECRET_KEY!);
     case "microsoft-365":
       return new Microsoft365Connector(config);
     default: {
