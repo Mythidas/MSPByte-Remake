@@ -16,9 +16,11 @@
 	import { createIntegrationActions } from './helpers/integration/actions.js';
 	import IntegrationHeader from './helpers/IntegrationHeader.svelte';
 	import SetupStatus from './helpers/SetupStatus.svelte';
+	import SyncStatus from './helpers/SyncStatus.svelte';
 	import EnableIntegrationDialog from './helpers/EnableIntegrationDialog.svelte';
 	import DisableIntegrationDialog from './helpers/DisableIntegrationDialog.svelte';
 	import { toast } from 'svelte-sonner';
+	import Badge from '$lib/components/ui/badge/badge.svelte';
 
 	const { data } = $props();
 
@@ -109,6 +111,33 @@
 	const billingDataPromise = config.getBillingData
 		? config.getBillingData(integration)
 		: getDefaultBilling();
+
+	// Fetch total failed job count for badge
+	let totalFailedJobs = $state(0);
+
+	const fetchFailedJobsCount = async () => {
+		if (!integration.dataSource) {
+			totalFailedJobs = 0;
+			return;
+		}
+
+		const { data: failedJobs } = await integration.orm.getRows('scheduled_jobs', {
+			filters: [
+				['integration_id', 'eq', integration.integration.id],
+				['data_source_id', 'eq', integration.dataSource.id],
+				['status', 'eq', 'failed']
+			]
+		});
+
+		totalFailedJobs = failedJobs?.rows?.length || 0;
+	};
+
+	// Fetch failed jobs count on mount and poll every 30 seconds
+	$effect(() => {
+		fetchFailedJobsCount();
+		const interval = setInterval(fetchFailedJobsCount, 30000);
+		return () => clearInterval(interval);
+	});
 </script>
 
 <div class="flex size-full max-h-full flex-col gap-4 overflow-hidden">
@@ -159,7 +188,7 @@
 					amount={billingData.currentMonth}
 					description="Current billing period"
 				/>
-				<CostCard title="Predicted Cost" amount={billingData.yearly} description="Year to date" />
+				<CostCard title="Current Year" amount={billingData.yearly} description="Year to date" />
 			{:catch error}
 				<Card>
 					<CardHeader class="pb-2">
@@ -176,7 +205,7 @@
 	{/if}
 
 	<!-- Tabs -->
-	<Tabs value="overview" class="size-full overflow-hidden">
+	<Tabs value="sync-status" class="size-full overflow-hidden">
 		<TabsList>
 			<TabsTrigger value="overview">Overview</TabsTrigger>
 			{#if integration.isEnabled()}
@@ -185,6 +214,16 @@
 					<TabsTrigger value="configuration">Configuration</TabsTrigger>
 				{/if}
 				<TabsTrigger value="billing">Billing</TabsTrigger>
+				{#if integration.isValidConfig()}
+					<TabsTrigger value="sync-status" class="relative">
+						Sync Status
+						{#if totalFailedJobs > 0}
+							<Badge variant="destructive" class="ml-2 h-5 min-w-5 px-1.5 text-xs">
+								{totalFailedJobs}
+							</Badge>
+						{/if}
+					</TabsTrigger>
+				{/if}
 				{#if config.troubleshooting}
 					<TabsTrigger value="troubleshooting">Troubleshooting</TabsTrigger>
 				{/if}
@@ -195,6 +234,21 @@
 				{/if}
 			{/if}
 		</TabsList>
+
+		<!-- Sync Status Tab -->
+		<TabsContent value="sync-status" class="flex flex-col space-y-4 overflow-hidden">
+			<Card class="size-full overflow-hidden">
+				<CardHeader>
+					<CardTitle>Sync Status</CardTitle>
+					<CardDescription
+						>View detailed sync status for all entity types supported by this integration.</CardDescription
+					>
+				</CardHeader>
+				<CardContent class="flex flex-1 flex-col overflow-auto">
+					<SyncStatus />
+				</CardContent>
+			</Card>
+		</TabsContent>
 
 		<!-- Overview Tab -->
 		<TabsContent value="overview" class="space-y-4">
