@@ -11,32 +11,39 @@
 	} from '$lib/components/ui/alert-dialog';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import Label from '$lib/components/ui/label/label.svelte';
-	import { getIntegrationState } from './state.svelte.js';
+	import { getIntegration } from './integration/state.svelte.js';
 
-	const integrationState = getIntegrationState();
+	const integration = getIntegration();
+	let open = $state(false);
 	let understood = $state(false);
 
+	// Expose function to open dialog
+	integration.enable = () => {
+		open = true;
+	};
+
 	function handleConfirm() {
-		integrationState.confirmEnable();
+		integration.confirmEnable();
+		open = false;
 		understood = false; // Reset for next time
 	}
 
 	function handleCancel() {
-		integrationState.cancelDialog();
+		open = false;
 		understood = false; // Reset for next time
 	}
 </script>
 
-<AlertDialog bind:open={integrationState.showEnableDialog}>
+<AlertDialog bind:open>
 	<AlertDialogContent>
 		<AlertDialogHeader>
 			<AlertDialogTitle class="flex items-center gap-2">
 				<span class="text-yellow-600">⚠️</span>
-				Enable {integrationState.integration?.name} Integration
+				Enable {integration.integration?.name} Integration
 			</AlertDialogTitle>
 			<AlertDialogDescription class="space-y-3 pt-2">
 				<p>
-					This will enable the <strong>{integrationState.integration?.name}</strong> integration for
+					This will enable the <strong>{integration.integration?.name}</strong> integration for
 					your organization.
 				</p>
 				<p class="text-foreground">

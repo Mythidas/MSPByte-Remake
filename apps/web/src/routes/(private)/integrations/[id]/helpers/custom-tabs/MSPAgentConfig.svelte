@@ -2,12 +2,12 @@
 	import Loader from '$lib/components/Loader.svelte';
 	import SearchBox from '$lib/components/SearchBox.svelte';
 	import { Bolt } from 'lucide-svelte';
-	import { getIntegrationState } from '../state.svelte.js';
+	import { getIntegration } from '../integration/state.svelte.js';
 	import Button from '$lib/components/ui/button/button.svelte';
 
-	const integrationState = getIntegrationState();
+	const integration = getIntegration();
 	const fetchIntegrations = async () => {
-		return integrationState.orm.getRows('integrations_view', {
+		return integration.orm.getRows('integrations_view', {
 			filters: [
 				['is_active', 'eq', true],
 				['category', 'eq', 'PSA'],
@@ -16,10 +16,10 @@
 		});
 	};
 
-	let selected = $state((integrationState.dataSource?.config as any).psa_integration_id || '');
+	let selected = $state((integration.dataSource?.config as any).psa_integration_id || '');
 
 	const handleSave = () => {
-		integrationState.saveConfig({ psa_integration_id: selected });
+		integration.saveConfig({ psa_integration_id: selected });
 	};
 </script>
 
@@ -34,12 +34,12 @@
 			placeholder="Search Integrations"
 			icon={Bolt}
 			onSelect={(val) => (selected = val)}
-			defaultValue={(integrationState.dataSource?.config as any).psa_integration_id}
+			defaultValue={(integration.dataSource?.config as any).psa_integration_id}
 		/>
 
 		<Button
 			onclick={handleSave}
-			disabled={!integrationState.isConfigChanged({ psa_integration_id: selected })}
+			disabled={!integration.isConfigChanged({ psa_integration_id: selected })}
 			class="ml-auto">Save Configuration</Button
 		>
 	</div>

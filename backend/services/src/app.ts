@@ -2,6 +2,7 @@ import { AutoTaskAdapter } from "@workspace/pipeline/adapters/AutoTaskAdapter.js
 import { BaseAdapter } from "@workspace/pipeline/adapters/BaseAdapter.js";
 import { Microsoft365Adapter } from "@workspace/pipeline/adapters/Microsoft365Adpater.js";
 import { SophosPartnerAdapter } from "@workspace/pipeline/adapters/SophosPartnerAdapter.js";
+import { HaloPSAAdapter } from "@workspace/pipeline/adapters/HaloPSAAdapter.js";
 import { natsClient } from "@workspace/pipeline/helpers/nats.js";
 import { BaseLinker } from "@workspace/pipeline/linkers/BaseLinker.js";
 import { BaseProcessor } from "@workspace/pipeline/processors/BaseProcessor.js";
@@ -38,6 +39,7 @@ class MSPByteBackend {
       ["autotask", new AutoTaskAdapter() as BaseAdapter],
       ["sophos-partner", new SophosPartnerAdapter()],
       ["microsoft-365", new Microsoft365Adapter()],
+      ["halopsa", new HaloPSAAdapter()],
     ]);
 
     // Initialize empty arrays - you'll add concrete implementations later

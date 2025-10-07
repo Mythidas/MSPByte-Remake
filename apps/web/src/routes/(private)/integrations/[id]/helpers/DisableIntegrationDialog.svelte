@@ -11,10 +11,16 @@
 	} from '$lib/components/ui/alert-dialog';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import Label from '$lib/components/ui/label/label.svelte';
-	import { getIntegrationState } from './state.svelte.js';
+	import { getIntegration } from './integration/state.svelte.js';
 
-	const integrationState = getIntegrationState();
+	const integration = getIntegration();
+	let open = $state(false);
 	let understood = $state(false);
+
+	// Expose function to open dialog
+	integration.disable = () => {
+		open = true;
+	};
 
 	// Calculate the deletion date (7 days from now)
 	const deletionDate = $derived(() => {
@@ -24,22 +30,23 @@
 	});
 
 	function handleConfirm() {
-		integrationState.confirmDisable();
+		integration.confirmDisable();
+		open = false;
 		understood = false; // Reset for next time
 	}
 
 	function handleCancel() {
-		integrationState.cancelDialog();
+		open = false;
 		understood = false; // Reset for next time
 	}
 </script>
 
-<AlertDialog bind:open={integrationState.showDisableDialog}>
+<AlertDialog bind:open>
 	<AlertDialogContent>
 		<AlertDialogHeader>
 			<AlertDialogTitle class="flex items-center gap-2">
 				<span class="text-red-600">⚠️</span>
-				Disable {integrationState.integration?.name} Integration
+				Disable {integration.integration?.name} Integration
 			</AlertDialogTitle>
 			<AlertDialogDescription class="space-y-3 pt-2">
 				<p class="text-foreground">

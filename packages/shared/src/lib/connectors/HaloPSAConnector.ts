@@ -16,7 +16,9 @@ export class HaloPSAConnector {
   ) {}
 
   async checkHealth(): Promise<APIResponse<boolean>> {
-    return { data: true };
+    const { data: token, error: tokenError } = await this.getToken();
+    if (tokenError) return { error: tokenError };
+    return { data: !!token };
   }
 
   async getSites(): Promise<APIResponse<HaloPSASite[]>> {
@@ -53,21 +55,26 @@ export class HaloPSAConnector {
       });
     }
 
-    const data: HaloPSAPagination & { sites: HaloPSASite[] } = await response.json();
+    const data: HaloPSAPagination & { sites: HaloPSASite[] } =
+      await response.json();
     sites.push(...data.sites);
     params.set("page_no", `${data.page_no + 1}`);
 
     while (sites.length < data.record_count) {
-      const refetchResponse = await fetch(`${this.config.url}/api/site?${params}`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
+      const refetchResponse = await fetch(
+        `${this.config.url}/api/site?${params}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (refetchResponse.ok) {
-        const refetchData: HaloPSAPagination & { sites: HaloPSASite[] } = await refetchResponse.json();
+        const refetchData: HaloPSAPagination & { sites: HaloPSASite[] } =
+          await refetchResponse.json();
         sites.push(...refetchData.sites);
         params.set("page_no", `${refetchData.page_no + 1}`);
       } else break;
@@ -118,13 +125,16 @@ export class HaloPSAConnector {
     params.set("page_no", `${data.page_no + 1}`);
 
     while (assets.length < data.record_count) {
-      const refetchResponse = await fetch(`${this.config.url}/api/asset?${params}`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
+      const refetchResponse = await fetch(
+        `${this.config.url}/api/asset?${params}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (refetchResponse.ok) {
         const refetchData: APISchema = await refetchResponse.json();
@@ -254,7 +264,10 @@ export class HaloPSAConnector {
         grant_type: "client_credentials",
         client_id: this.config.client_id,
         client_secret:
-          (await Encryption.decrypt(this.config.client_secret, this.encryptionKey)) || "",
+          (await Encryption.decrypt(
+            this.config.client_secret,
+            this.encryptionKey
+          )) || "",
         scope: "all",
       }),
     });

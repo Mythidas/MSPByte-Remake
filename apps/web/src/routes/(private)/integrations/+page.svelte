@@ -3,6 +3,8 @@
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
+	import { Dates } from '$lib/Dates.js';
+	import { daysUntil } from '$lib/utils.js';
 	import { Search, Settings } from 'lucide-svelte';
 
 	const { data } = $props();
@@ -69,6 +71,7 @@
 	<!--Table-->
 	<div class="grid grid-cols-4 gap-2">
 		{#each filteredRows() as integ}
+			{@const dataSource = data.dataSources.find((ds) => ds.integration_id === integ.id)}
 			<Card.Root class="justify-between">
 				<Card.Header>
 					<Card.Title>
@@ -81,12 +84,19 @@
 				<Card.Content>
 					<div class="flex items-center justify-between">
 						<div>
-							{#if data.dataSources.find((ds) => ds.integration_id === integ.id)?.status === 'active'}
+							{#if dataSource?.status === 'active'}
 								<Badge>Active</Badge>
 							{:else}
 								<Badge variant="destructive">Inactive</Badge>
 							{/if}
 							<Badge variant="secondary">{integ.category}</Badge>
+							{#if dataSource && dataSource.deleted_at && new Dates(dataSource.deleted_at)
+									.add({ days: 7 })
+									.daysUntil() >= 0}
+								<Badge variant="destructive"
+									>{new Dates(dataSource.deleted_at).add({ days: 7 }).toDaysUntil()}</Badge
+								>
+							{/if}
 						</div>
 
 						<Button class="size-fit !p-2" variant="ghost" href={`/integrations/${integ.id}`}>

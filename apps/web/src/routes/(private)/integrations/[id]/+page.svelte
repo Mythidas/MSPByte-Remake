@@ -8,26 +8,86 @@
 	import FeatureList from './helpers/FeatureList.svelte';
 	import CardDescription from '$lib/components/ui/card/card-description.svelte';
 	import Label from '$lib/components/ui/label/label.svelte';
-	import { integrationConfigs } from './helpers/integrations.config.js';
-	import { setIntegrationState } from './helpers/state.svelte.js';
+	import {
+		integrationConfigs,
+		type IntegrationBillingData
+	} from './helpers/integrations.config.js';
+	import { setIntegration } from './helpers/integration/state.svelte.js';
+	import { createIntegrationActions } from './helpers/integration/actions.js';
 	import IntegrationHeader from './helpers/IntegrationHeader.svelte';
-	import { mockBillingData } from './helpers/mock-data.js';
 	import SetupStatus from './helpers/SetupStatus.svelte';
 	import EnableIntegrationDialog from './helpers/EnableIntegrationDialog.svelte';
 	import DisableIntegrationDialog from './helpers/DisableIntegrationDialog.svelte';
+	import { toast } from 'svelte-sonner';
 
 	const { data } = $props();
 
 	// Get integration data from server
 	const dataSourceConfig = data.dataSource?.config as Record<string, string>;
-	const integrationState = setIntegrationState(data.integration, data.user?.tenant_id || '');
-	integrationState.integration = data.integration;
-	integrationState.dataSource = data.dataSource;
+	const integration = setIntegration({
+		integration: data.integration,
+		dataSource: data.dataSource,
+		tenantId: data.user?.tenant_id || ''
+	});
 
-	// Get config for this integration (use a normalized key like "autotask", "connectwise", etc.)
-	// For demo purposes, we'll use the integration name lowercased
-	const configKey = integrationState.integration.id;
-	const config = integrationConfigs[integrationState.integration.id] || {
+	// Initialize business logic actions
+	createIntegrationActions(integration);
+
+	// Configuration form state
+	let configFormData = $state<Record<string, string>>({});
+	const isValidConfig = $derived(
+		integration.isValidConfig(configFormData) &&
+			integration.isConfigChanged(configFormData) &&
+			Object.entries(configFormData).every(([key, val]) => !!val)
+	);
+
+	// Initialize config form data
+	$effect(() => {
+		const schema = integration.integration?.config_schema || {};
+		const initialData: Record<string, string> = {};
+
+		Object.entries(schema).forEach(([key]) => {
+			initialData[key] = dataSourceConfig?.[key] || '';
+		});
+
+		configFormData = initialData;
+	});
+
+	const handleSaveConfig = async () => {
+		const formData = new FormData();
+		formData.append('dataSourceId', integration.dataSource?.id || '');
+		formData.append('integrationId', integration.integration.id);
+		formData.append('config', JSON.stringify(configFormData));
+
+		const response = await fetch(window.location.pathname + '?/saveConfig', {
+			method: 'POST',
+			body: formData
+		});
+
+		const result = await response.json();
+
+		if (result.type === 'success') {
+			toast.info(result.data?.message || 'Configuration saved successfully!');
+
+			// Update local dataSource config
+			if (integration.dataSource) {
+				integration.dataSource.config = configFormData;
+			}
+
+			// Re-initialize form with saved values
+			const schema = integration.integration?.config_schema || {};
+			const newData: Record<string, string> = {};
+			Object.entries(schema).forEach(([key, fieldSchema]) => {
+				newData[key] = configFormData[key] || '';
+			});
+			configFormData = newData;
+		} else {
+			toast.error(result.data?.message || 'Failed to save configuration');
+		}
+	};
+
+	// Get config for this integration
+	const config = integrationConfigs[integration.integration.id] || {
 		overview: {
 			description: 'No configuration available for this integration',
 			features: []
@@ -36,23 +96,19 @@
 		troubleshooting: []
 	};
 
-	// Get mock data
-	const billing = mockBillingData[configKey] || {
-		lastMonthCost: 0,
-		currentMonthCost: 0,
-		predictedMonthCost: 0,
-		billingBreakdown: []
+	const getDefaultBilling = async (): Promise<IntegrationBillingData> => {
+		return {
+			lastMonth: 0,
+			currentMonth: 0,
+			yearly: 0,
+			breakdown: []
+		};
 	};
 
-	// Local state for actions
-	let testingConnection = $state(false);
-
-	// Calculate trend
-	const costTrend = $derived(() => {
-		if (billing.currentMonthCost > billing.lastMonthCost) return 'up';
-		if (billing.currentMonthCost < billing.lastMonthCost) return 'down';
-		return 'neutral';
-	});
+	// Fetch billing data - uses config's custom fetcher or defaults to zeros
+	const billingDataPromise = config.getBillingData
+		? config.getBillingData(integration)
+		: getDefaultBilling();
 </script>
 
 <div class="flex size-full max-h-full flex-col gap-4 overflow-hidden">
@@ -61,25 +117,61 @@
 	<Separator />
 
 	<!-- Stats Cards -->
-	{#if integrationState.isEnabled()}
+	{#if integration.isEnabled()}
 		<div class="grid gap-4 md:grid-cols-4">
-			<CostCard
-				title="Last Month"
-				amount={billing.lastMonthCost}
-				description="Previous billing period"
-			/>
-			<CostCard
-				title="Current Month"
-				amount={billing.currentMonthCost}
-				description="Month to date"
-				trend={costTrend()}
-			/>
-			<CostCard
-				title="Predicted Cost"
-				amount={billing.predictedMonthCost}
-				description="Estimated end of month"
-			/>
-			<SetupStatus status={{ isConnected: true, isEnabled: true, configurationComplete: true }} />
+			{#await billingDataPromise}
+				<!-- Loading skeleton for cost cards -->
+				<Card>
+					<CardHeader class="pb-2">
+						<CardTitle class="text-sm font-medium">Last Month</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<div class="h-8 w-24 animate-pulse rounded bg-muted"></div>
+						<p class="mt-1 text-xs text-muted-foreground">Previous billing period</p>
+					</CardContent>
+				</Card>
+				<Card>
+					<CardHeader class="pb-2">
+						<CardTitle class="text-sm font-medium">Current Month</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<div class="h-8 w-24 animate-pulse rounded bg-muted"></div>
+						<p class="mt-1 text-xs text-muted-foreground">Current billing period</p>
+					</CardContent>
+				</Card>
+				<Card>
+					<CardHeader class="pb-2">
+						<CardTitle class="text-sm font-medium">Predicted Cost</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<div class="h-8 w-24 animate-pulse rounded bg-muted"></div>
+						<p class="mt-1 text-xs text-muted-foreground">Year to date</p>
+					</CardContent>
+				</Card>
+			{:then billingData}
+				<CostCard
+					title="Last Month"
+					amount={billingData.lastMonth}
+					description="Previous billing period"
+				/>
+				<CostCard
+					title="Current Month"
+					amount={billingData.currentMonth}
+					description="Current billing period"
+				/>
+				<CostCard title="Predicted Cost" amount={billingData.yearly} description="Year to date" />
+			{:catch error}
+				<Card>
+					<CardHeader class="pb-2">
+						<CardTitle class="text-sm font-medium text-destructive">Error Loading Billing</CardTitle
+						>
+					</CardHeader>
+					<CardContent>
+						<p class="text-xs text-muted-foreground">Failed to load billing data</p>
+					</CardContent>
+				</Card>
+			{/await}
+			<SetupStatus />
 		</div>
 	{/if}
 
@@ -87,14 +179,16 @@
 	<Tabs value="overview" class="size-full overflow-hidden">
 		<TabsList>
 			<TabsTrigger value="overview">Overview</TabsTrigger>
-			{#if integrationState.isEnabled()}
+			{#if integration.isEnabled()}
 				<TabsTrigger value="setup">Setup</TabsTrigger>
-				{#if integrationState.integration?.level === 'global'}
+				{#if integration.integration?.level === 'global'}
 					<TabsTrigger value="configuration">Configuration</TabsTrigger>
 				{/if}
 				<TabsTrigger value="billing">Billing</TabsTrigger>
-				<TabsTrigger value="troubleshooting">Troubleshooting</TabsTrigger>
-				{#if config.customTabs && integrationState.isValidConfig()}
+				{#if config.troubleshooting}
+					<TabsTrigger value="troubleshooting">Troubleshooting</TabsTrigger>
+				{/if}
+				{#if config.customTabs && integration.isValidConfig()}
 					{#each config.customTabs as tab}
 						<TabsTrigger value={tab.id}>{tab.label}</TabsTrigger>
 					{/each}
@@ -106,7 +200,7 @@
 		<TabsContent value="overview" class="space-y-4">
 			<Card>
 				<CardHeader>
-					<CardTitle>About {integrationState.integration?.name}</CardTitle>
+					<CardTitle>About {integration.integration?.name}</CardTitle>
 					<CardDescription>{config.overview.description}</CardDescription>
 				</CardHeader>
 				<CardContent class="space-y-4">
@@ -157,29 +251,36 @@
 				<CardHeader>
 					<CardTitle>Configuration Settings</CardTitle>
 					<CardDescription
-						>Configure your {integrationState.integration?.name} integration settings below.</CardDescription
+						>Configure your {integration.integration?.name} integration settings below.</CardDescription
 					>
 				</CardHeader>
 				<CardContent class="space-y-4">
-					{#if config.configuration}
+					{#if config.configuration !== undefined}
 						<config.configuration />
 					{:else}
-						<!-- Mock configuration form - will be dynamic based on config_schema -->
-						<form class="flex flex-col gap-4">
-							{#each Object.entries(integrationState.integration?.config_schema || {}) as [key, val]}
+						<!-- Dynamic configuration form based on config_schema -->
+						<form
+							class="flex flex-col gap-4"
+							onsubmit={(e) => {
+								e.preventDefault();
+								handleSaveConfig();
+							}}
+						>
+							{#each Object.entries(integration.integration?.config_schema || {}) as [key, val]}
 								<Label for={key} class="flex flex-col items-start gap-2">
 									<span>{val.label}</span>
 									<Input
+										id={key}
 										name={key}
 										type={val.sensitive ? 'password' : 'text'}
-										placeholder={val.label}
-										defaultValue={val.sensitive ? '********' : dataSourceConfig[key]}
+										placeholder={val.sensitive ? 'Enter new value to update' : val.label}
+										bind:value={configFormData[key]}
 									/>
 								</Label>
 							{/each}
 
 							<div class="flex justify-end gap-2">
-								<Button>Save Configuration</Button>
+								<Button type="submit" disabled={!isValidConfig}>Save Configuration</Button>
 							</div>
 						</form>
 					{/if}
@@ -194,28 +295,55 @@
 					<CardTitle>Billing Breakdown</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<div class="space-y-4">
-						<div class="space-y-2">
-							{#each billing.billingBreakdown as item}
-								<div class="flex items-center justify-between rounded-lg border p-3">
-									<div class="space-y-1">
-										<p class="font-medium">{item.item}</p>
-										<p class="text-sm text-muted-foreground">
-											{item.quantity} × ${item.ratePerUnit.toFixed(2)} per unit
-										</p>
+					{#await billingDataPromise}
+						<!-- Loading skeleton -->
+						<div class="space-y-4">
+							<div class="space-y-2">
+								{#each Array(3) as _}
+									<div class="flex items-center justify-between rounded-lg border p-3">
+										<div class="space-y-2">
+											<div class="h-5 w-32 animate-pulse rounded bg-muted"></div>
+											<div class="h-4 w-48 animate-pulse rounded bg-muted"></div>
+										</div>
+										<div class="h-6 w-20 animate-pulse rounded bg-muted"></div>
 									</div>
-									<span class="text-lg font-semibold">${item.total.toFixed(2)}</span>
+								{/each}
+							</div>
+						</div>
+					{:then billingData}
+						<div class="space-y-4">
+							{#if billingData.breakdown.length > 0}
+								<div class="space-y-2">
+									{#each billingData.breakdown as item}
+										<div class="flex items-center justify-between rounded-lg border p-3">
+											<div class="space-y-1">
+												<p class="font-medium">{item.label}</p>
+												<p class="text-sm text-muted-foreground">
+													{item.units} × ${item.unitCost.toFixed(2)} per unit
+												</p>
+											</div>
+											<span class="text-lg font-semibold">${item.total.toFixed(2)}</span>
+										</div>
+									{/each}
 								</div>
-							{/each}
-						</div>
 
-						<Separator />
+								<Separator />
 
-						<div class="flex items-center justify-between rounded-lg bg-muted p-3">
-							<span class="font-semibold">Total (Month to Date)</span>
-							<span class="text-xl font-bold">${billing.currentMonthCost.toFixed(2)}</span>
+								<div class="flex items-center justify-between rounded-lg bg-muted p-3">
+									<span class="font-semibold">Total (Month to Date)</span>
+									<span class="text-xl font-bold">${billingData.currentMonth.toFixed(2)}</span>
+								</div>
+							{:else}
+								<div class="flex items-center justify-center p-8 text-muted-foreground">
+									<p>No billing data available</p>
+								</div>
+							{/if}
 						</div>
-					</div>
+					{:catch error}
+						<div class="flex items-center justify-center p-8 text-destructive">
+							<p>Failed to load billing data</p>
+						</div>
+					{/await}
 				</CardContent>
 			</Card>
 		</TabsContent>
@@ -227,7 +355,7 @@
 					<CardTitle>Troubleshooting & FAQ</CardTitle>
 				</CardHeader>
 				<CardContent>
-					{#if config.troubleshooting.length > 0}
+					{#if config.troubleshooting}
 						<div class="space-y-4">
 							{#each config.troubleshooting as item}
 								<div class="space-y-2">

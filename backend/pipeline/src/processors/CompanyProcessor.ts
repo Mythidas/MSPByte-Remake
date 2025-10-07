@@ -4,6 +4,7 @@ import {
 } from "@workspace/pipeline/processors/BaseProcessor.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import { AutoTaskCompany } from "@workspace/shared/types/integrations/autotask/company.js";
+import { HaloPSASite } from "@workspace/shared/types/integrations/halopsa/sites.js";
 import {
   DataFetchPayload,
   IntegrationType,
@@ -21,6 +22,8 @@ export class CompanyProcessor extends BaseProcessor {
     switch (integrationType) {
       case "autotask":
         return this.fromAutoTask(data);
+      case "halopsa":
+        return this.fromHaloPSA(data);
       default: {
         Debug.error({
           module: "CompanyProcessor",
@@ -50,9 +53,33 @@ export class CompanyProcessor extends BaseProcessor {
 
           name: rawData.companyName,
           type: rawData.companyType === 1 ? "customer" : "prospect",
-          address: rawData.address1,
 
           created_at: rawData.createDate,
+        },
+      } as CompanyData;
+    });
+  }
+
+  private fromHaloPSA(data: DataFetchPayload[]) {
+    return data.map((row) => {
+      const { rawData, dataHash } = row as {
+        rawData: HaloPSASite;
+        dataHash: string;
+      };
+
+      return {
+        externalID: String(rawData.id),
+        raw: rawData,
+        hash: dataHash,
+        normalized: {
+          external_id: String(rawData.id),
+          external_parent_id: String(rawData.client_id),
+
+          name: rawData.name,
+          parent_name: rawData.client_name,
+          type: rawData.use,
+
+          created_at: "",
         },
       } as CompanyData;
     });

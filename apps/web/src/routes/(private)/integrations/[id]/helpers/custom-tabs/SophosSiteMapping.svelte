@@ -1,7 +1,7 @@
 <script lang="ts">
 	import SearchBar from '$lib/components/SearchBar.svelte';
 	import { Search, Link2, Unlink } from 'lucide-svelte';
-	import { getIntegrationState } from '../state.svelte.js';
+	import { getIntegration } from '../integration/state.svelte.js';
 	import * as Select from '$lib/components/ui/select/index.js';
 	import * as ScrollArea from '$lib/components/ui/scroll-area/index.js';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
@@ -14,7 +14,7 @@
 	import SearchBox from '$lib/components/SearchBox.svelte';
 	import type { Tables } from '@workspace/shared/types/database/index.js';
 
-	const integrationState = getIntegrationState();
+	const integration = getIntegration();
 
 	let searchQuery = $state('');
 	let filterType = $state('all');
@@ -25,10 +25,10 @@
 	let loading = $state(true);
 
 	async function fetchTenants() {
-		const dataSourceId = integrationState.dataSource?.id;
+		const dataSourceId = integration.dataSource?.id;
 
 		const [{ data: sitesData }, tenantsResponse] = await Promise.all([
-			integrationState.orm.getRows('sophos_partner_sites_view'),
+			integration.orm.getRows('sophos_partner_sites_view'),
 			fetch(`/api/v1.0/external/sophos/tenants?dataSourceId=${dataSourceId}`).then(
 				(res) => res.json() as Promise<APIResponse<SophosPartnerTenant[]>>
 			)
@@ -55,16 +55,16 @@
 			api_host: tenant.apiHost
 		} as SophosTenantConfig;
 
-		const { data } = await integrationState.orm.getRow('data_sources', {
+		const { data } = await integration.orm.getRow('data_sources', {
 			filters: [
 				['site_id', 'eq', siteId],
-				['integration_id', 'eq', integrationState.integration?.id],
+				['integration_id', 'eq', integration.integration?.id],
 				['external_id', 'eq', tenant.id]
 			]
 		});
 
 		if (data) {
-			const { error: deleteError } = await integrationState.orm.deleteRows('data_sources', {
+			const { error: deleteError } = await integration.orm.deleteRows('data_sources', {
 				filters: [['id', 'eq', data.id]]
 			});
 			if (deleteError) {
@@ -73,11 +73,11 @@
 			}
 		}
 
-		const { error: insertError } = await integrationState.orm.insertRows('data_sources', {
+		const { error: insertError } = await integration.orm.insertRows('data_sources', {
 			rows: [
 				{
-					tenant_id: integrationState.dataSource?.tenant_id!,
-					integration_id: integrationState.dataSource?.integration_id!,
+					tenant_id: integration.dataSource?.tenant_id!,
+					integration_id: integration.dataSource?.integration_id!,
 					site_id: siteId,
 					config: metadata,
 					credential_expiration_at: '9999-12-31 23:59:59+00',
@@ -115,10 +115,10 @@
 	async function confirmUnlink() {
 		if (!siteToUnlink) return;
 
-		const { error } = await integrationState.orm.deleteRows('data_sources', {
+		const { error } = await integration.orm.deleteRows('data_sources', {
 			filters: [
 				['site_id', 'eq', siteToUnlink.id],
-				['integration_id', 'eq', integrationState.integration?.id]
+				['integration_id', 'eq', integration.integration?.id]
 			]
 		});
 

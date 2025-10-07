@@ -90,7 +90,6 @@ export class Scheduler {
         message: `Processing job ${job.id} for action ${job.action}`,
       });
 
-      // TODO: Create updated_at and created_at triggers in SQL
       await updateRow("scheduled_jobs", {
         row: {
           status: "running",

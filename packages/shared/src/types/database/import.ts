@@ -262,6 +262,7 @@ export type Database = {
           deleted_at: string | null
           id: string
           site_id: string
+          tenant_id: string | null
         }
         Insert: {
           created_at?: string
@@ -269,6 +270,7 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           site_id: string
+          tenant_id?: string | null
         }
         Update: {
           created_at?: string
@@ -276,6 +278,7 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           site_id?: string
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -290,6 +293,13 @@ export type Database = {
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_source_to_site_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -959,6 +969,10 @@ export type Database = {
         Args: { length?: number }
         Returns: string
       }
+      get_tenant: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       has_access: {
         Args: { access: string; module: string }
         Returns: boolean
@@ -995,31 +1009,6 @@ export type Database = {
       [_ in never]: never
     }
     Views: {
-      autotask_companies_view: {
-        Row: {
-          created_at: string | null
-          external_id: string | null
-          id: string | null
-          integration_id: string | null
-          is_linked: boolean | null
-          linked_site_id: string | null
-          linked_site_name: string | null
-          linked_site_slug: string | null
-          linked_site_status: Database["public"]["Enums"]["site_status"] | null
-          name: string | null
-          tenant_id: string | null
-          updated_at: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "entities_integration_id_fkey"
-            columns: ["integration_id"]
-            isOneToOne: false
-            referencedRelation: "integrations_view"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       integrations_view: {
         Row: {
           category: string | null
@@ -1089,7 +1078,7 @@ export type Database = {
             foreignKeyName: "entities_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
-            referencedRelation: "autotask_companies_view"
+            referencedRelation: "psa_companies_view"
             referencedColumns: ["linked_site_id"]
           },
           {
@@ -1111,6 +1100,33 @@ export type Database = {
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sophos_partner_sites_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      psa_companies_view: {
+        Row: {
+          created_at: string | null
+          external_id: string | null
+          external_parent_id: string | null
+          id: string | null
+          integration_id: string | null
+          is_linked: boolean | null
+          linked_site_id: string | null
+          linked_site_name: string | null
+          linked_site_slug: string | null
+          linked_site_status: Database["public"]["Enums"]["site_status"] | null
+          name: string | null
+          normalized_data: Json | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entities_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations_view"
             referencedColumns: ["id"]
           },
         ]

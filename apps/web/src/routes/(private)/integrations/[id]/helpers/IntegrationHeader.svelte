@@ -1,11 +1,19 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
-	import { getIntegrationState } from './state.svelte.js';
+	import { getIntegration } from './integration/state.svelte.js';
 	import { daysUntil } from '$lib/utils.js';
 
-	const integrationState = getIntegrationState();
-	const { icon_url, name, category, product_url } = integrationState.integration!;
+	const integration = getIntegration();
+	const { icon_url, name, category, product_url } = integration.integration!;
+
+	function toggleEnabled() {
+		if (integration.isEnabled()) {
+			integration.disable();
+		} else {
+			integration.enable();
+		}
+	}
 </script>
 
 <div class="flex items-start justify-between gap-4">
@@ -21,15 +29,17 @@
 		<div class="space-y-1">
 			<div class="flex items-center gap-3">
 				<h1 class="text-3xl font-bold">{name}</h1>
-				<Badge variant={integrationState.isEnabled() ? 'default' : 'secondary'}>
-					{integrationState.isEnabled() ? 'Connected' : 'Not Connected'}
+				<Badge variant={integration.isEnabled() ? 'default' : 'secondary'}>
+					{integration.isEnabled() && integration.isValidConfig()
+						? 'Connected'
+						: 'Not Connected'}
 				</Badge>
-				{#if integrationState.dataSource?.deleted_at && !integrationState.isEnabled()}
+				{#if integration.dataSource?.deleted_at && !integration.isEnabled()}
 					<Badge variant="destructive">
-						{daysUntil(integrationState.dataSource.deleted_at, 7)}
+						{daysUntil(integration.dataSource.deleted_at, 7)}
 					</Badge>
 				{/if}
-				{#if integrationState.isEnabled()}
+				{#if integration.isEnabled()}
 					<Badge variant="outline" class="border-green-500 text-green-700 dark:text-green-400">
 						Enabled
 					</Badge>
@@ -48,18 +58,20 @@
 	</div>
 
 	<div class="flex gap-2">
+		{#if integration.isEnabled()}
+			<Button
+				variant="outline"
+				onclick={integration.testConnection}
+				disabled={!integration.isValidConfig()}
+			>
+				Test Connection
+			</Button>
+		{/if}
 		<Button
-			variant="outline"
-			onclick={integrationState.testConnection}
-			disabled={!integrationState.isEnabled()}
+			variant={integration.isEnabled() ? 'secondary' : 'default'}
+			onclick={toggleEnabled}
 		>
-			Test Connection
-		</Button>
-		<Button
-			variant={integrationState.isEnabled() ? 'secondary' : 'default'}
-			onclick={integrationState.toggleEnabled}
-		>
-			{integrationState.isEnabled() ? 'Disable' : 'Enable'}
+			{integration.isEnabled() ? 'Disable' : 'Enable'}
 		</Button>
 	</div>
 </div>

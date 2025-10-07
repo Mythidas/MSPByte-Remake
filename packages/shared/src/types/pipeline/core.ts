@@ -29,6 +29,7 @@ export type IntegrationType =
   | "autotask"
   | "microsoft-365"
   | "sophos-partner"
+  | "halopsa"
   | "datto";
 
 // Template literal type for generating event names

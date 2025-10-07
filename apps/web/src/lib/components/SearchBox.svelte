@@ -64,7 +64,6 @@
 	$effect(() => {
 		if (triggerElement && open) {
 			triggerWidth = triggerElement.offsetWidth;
-			console.log(triggerWidth);
 		}
 	});
 </script>

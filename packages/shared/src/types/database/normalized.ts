@@ -3,8 +3,8 @@ export type Company = {
   external_parent_id?: string;
 
   name: string;
+  parent_name?: string;
   type: "customer" | "prospect";
-  address: string;
 
   created_at: string;
 };

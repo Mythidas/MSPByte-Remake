@@ -19,13 +19,17 @@ export default class SophosPartnerConnector implements IConnector {
     private encryptionKey: string
   ) {}
 
-  async checkHealth(): Promise<APIResponse<true>> {
-    return { data: true };
+  async checkHealth(): Promise<APIResponse<boolean>> {
+    const { data: token, error: tokenError } = await this.getToken();
+    if (tokenError) return { error: tokenError };
+    return { data: !!token };
   }
 
   async getTenants(): Promise<APIResponse<SophosPartnerTenant[]>> {
     try {
-      const { data: token } = await this.getToken();
+      const { data: token, error: tokenError } = await this.getToken();
+      if (tokenError) return { error: tokenError };
+
       const sophosPartner = await this.getPartnerID();
       if (sophosPartner.error) {
         throw new Error(sophosPartner.error.message);
@@ -83,7 +87,8 @@ export default class SophosPartnerConnector implements IConnector {
     config: SophosTenantConfig
   ): Promise<APIResponse<SophosPartnerEndpoint[]>> {
     try {
-      const { data: token } = await this.getToken();
+      const { data: token, error: tokenError } = await this.getToken();
+      if (tokenError) return { error: tokenError };
 
       const path = "/endpoint/v1/endpoints?pageSize=500&pageTotal=true";
       const url = config.api_host + path;

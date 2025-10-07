@@ -1,6 +1,21 @@
 import type { Component } from 'svelte';
 import SophosSiteMapping from './custom-tabs/SophosSiteMapping.svelte';
 import MSPAgentConfig from './custom-tabs/MSPAgentConfig.svelte';
+import HaloPSASiteMapping from './custom-tabs/HaloPSASiteMapping.svelte';
+import type { Tables } from '@workspace/shared/types/database/index.js';
+import type { IntegrationState } from './integration/types.js';
+
+export type IntegrationBillingData = {
+	lastMonth: number;
+	currentMonth: number;
+	yearly: number;
+	breakdown: {
+		label: string;
+		unitCost: number;
+		units: number;
+		total: number;
+	}[];
+};
 
 export interface IntegrationConfig {
 	overview: {
@@ -11,7 +26,7 @@ export interface IntegrationConfig {
 		steps: string[];
 		requirements?: string[];
 	};
-	troubleshooting: {
+	troubleshooting?: {
 		title: string;
 		solution: string;
 	}[];
@@ -19,12 +34,13 @@ export interface IntegrationConfig {
 	customTabs?: {
 		id: string;
 		label: string;
-		component?: Component; // For future custom components
+		component: Component; // For future custom components
 	}[];
+
+	getBillingData?: (integration: IntegrationState) => Promise<IntegrationBillingData>;
 }
 
 export const integrationConfigs: Record<string, IntegrationConfig> = {
-	// Example: AutoTask
 	autotask: {
 		overview: {
 			description:
@@ -58,13 +74,63 @@ export const integrationConfigs: Record<string, IntegrationConfig> = {
 				solution:
 					'Ensure the API user has access to all companies/sites you want to sync. Check AutoTask security level settings.'
 			}
-		],
+		]
+	},
+	halopsa: {
+		overview: {
+			description: 'Sync your AutoTask PSA with MSPByte for site syncing',
+			features: ['Site Mapping', 'MSP Agent Integration']
+		},
+		setup: {
+			requirements: [
+				'Admin access to your HaloPSA portal',
+				'HaloPSA API credentials (Client ID and Secret)'
+			],
+			steps: [
+				'Log in to your HaloPSA portal',
+				'Navigate to Configuration > Integrations > HaloPSA API',
+				'View Applications and create a new application',
+				'Select Client ID and Secret',
+				'Choose "Login Type" as Agent and log in as can be any user',
+				'Set Permissions as "all:standard" and save the user',
+				'(Optional) Set the CORS whitelist to mspbyte.pro',
+				'Save the info in the "Configuration" tab and then Test Connection',
+				'Map or Create MSP Byte sites from the "Site Mapping" tab'
+			]
+		},
 		customTabs: [
 			{
 				id: 'site-mapping',
-				label: 'Site Mapping'
+				label: 'Site Mapping',
+				component: HaloPSASiteMapping
 			}
-		]
+		],
+
+		getBillingData: async (integration) => {
+			const billing: IntegrationBillingData = {
+				lastMonth: 0,
+				yearly: 0,
+				currentMonth: 0,
+				breakdown: []
+			};
+
+			const { data: sites, error } = await integration.orm.getRows('sites', {
+				filters: [['psa_integration_id', 'eq', integration.integration.id]]
+			});
+			if (error) return billing;
+
+			const companiesBreakdown = {
+				label: 'Sites (Linked)',
+				units: sites.rows.length,
+				unitCost: 0.05,
+				total: 0.05 * sites.rows.length
+			};
+
+			billing.breakdown.push(companiesBreakdown);
+			billing.currentMonth += companiesBreakdown.total;
+
+			return billing;
+		}
 	},
 	'sophos-partner': {
 		overview: {
@@ -90,7 +156,6 @@ export const integrationConfigs: Record<string, IntegrationConfig> = {
 				'WIP'
 			]
 		},
-		troubleshooting: [],
 		customTabs: [
 			{
 				id: 'site-mapping',

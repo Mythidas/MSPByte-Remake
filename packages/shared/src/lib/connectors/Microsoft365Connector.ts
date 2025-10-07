@@ -11,7 +11,9 @@ export default class Microsoft365Connector implements IConnector {
   constructor(private config: Microsoft365DataSourceConfig) {}
 
   async checkHealth() {
-    return { data: true };
+    const { data, error } = await this.getOrganization();
+    if (error) return { error };
+    return { data: !!data };
   }
 
   async getIdentities({
@@ -99,6 +101,28 @@ export default class Microsoft365Connector implements IConnector {
 
       return {
         data: allGroups,
+      };
+    } catch (err) {
+      return Debug.error({
+        module: "Microsoft365Connector",
+        context: "getGroups",
+        message: `Failed to fetch: ${err}`,
+        code: "GRAPH_FAILURE",
+      });
+    }
+  }
+
+  async getOrganization(): Promise<APIResponse<any>> {
+    try {
+      const { data: client, error: clientError } = await this.getGraphClient();
+      if (clientError) return { error: clientError };
+
+      let query = client.api("/organization");
+
+      let response = await query.get();
+
+      return {
+        data: response,
       };
     } catch (err) {
       return Debug.error({
