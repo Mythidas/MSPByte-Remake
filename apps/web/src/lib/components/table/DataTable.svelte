@@ -1,6 +1,6 @@
 <script lang="ts">
 	import SearchBar from '$lib/components/SearchBar.svelte';
-	import { setTableState, type TableURLState } from '$lib/components/table/state.svelte.js';
+	import { setTableState, type TableURLState } from '$lib/state/DataTable.svelte.js';
 	import type { DataTableColumn } from '$lib/components/table/types.js';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Table from '$lib/components/ui/table/index.js';
@@ -132,9 +132,19 @@
 			{#each data.rows as row}
 				<Table.Row>
 					{#each tableState.columns.visibleColumns() as col}
-						<Table.Cell>
-							{col.render ? col.render({ row }) : row[col.key]}
-						</Table.Cell>
+						{#if col.cell}
+							<Table.Cell>
+								{@render col.cell({ row, column: col })}
+							</Table.Cell>
+						{:else if col.render}
+							<Table.Cell>
+								{col.render({ row, column: col })}
+							</Table.Cell>
+						{:else}
+							<Table.Cell>
+								{row[col.key]}
+							</Table.Cell>
+						{/if}
 					{/each}
 				</Table.Row>
 			{/each}

@@ -1,14 +1,16 @@
-import type { Component } from 'svelte';
+import type { Component, Snippet } from 'svelte';
 
-export type DataTableCell = {
-	row: any;
+export type DataTableCell<T> = {
+	row: T;
+	column: DataTableColumn;
 };
 
 export type DataTableColumn = {
 	key: string;
 	title: string;
 
-	render?: (cell: DataTableCell) => string;
+	render?: (cell: DataTableCell<any>) => string;
+	cell?: Snippet<[DataTableCell<any>]>;
 
 	sortable?: boolean;
 	hideable?: boolean;

@@ -2,7 +2,7 @@
 	import { setContext } from 'svelte';
 	import { ChevronDown, ChevronUp } from 'lucide-svelte';
 	import type { ComponentType, Snippet } from 'svelte';
-	import { getNavState } from './NavState.svelte.js';
+	import { getNavState } from '../../state/Navbar.svelte.js';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { cn } from '$lib/utils.js';
 

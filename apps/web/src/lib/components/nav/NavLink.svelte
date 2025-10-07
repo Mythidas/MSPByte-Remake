@@ -1,23 +1,24 @@
 <script lang="ts">
 	import { getContext, hasContext } from 'svelte';
 	import type { ComponentType } from 'svelte';
-	import { getNavState } from './NavState.svelte.js';
+	import { getNavState } from '../../state/Navbar.svelte.js';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { cn } from '$lib/utils.js';
 
 	interface Props {
 		href: string;
 		label: string;
+		exact?: boolean;
 		icon: ComponentType;
 	}
 
-	let { href, label, icon }: Props = $props();
+	let { href, label, exact, icon }: Props = $props();
 
 	const navState = getNavState();
 	const groupName = hasContext('nav-group-name') ? getContext<string>('nav-group-name') : undefined;
 	navState.registerRoute(href, groupName);
 
-	const isActive = $derived(navState.isRouteActive(href));
+	const isActive = $derived(navState.isRouteActive(href, exact));
 </script>
 
 <Button variant="ghost" class={cn('flex w-full px-0 !py-0', isActive && 'bg-secondary')}>

@@ -1,10 +1,24 @@
 <script lang="ts">
-	import { Binary, LayoutDashboard, Users, Shield, Settings, Building, Bolt } from 'lucide-svelte';
+	import {
+		Binary,
+		LayoutDashboard,
+		Users,
+		Shield,
+		Settings,
+		Building,
+		Bolt,
+		Castle,
+		Earth,
+		ArrowBigRight
+	} from 'lucide-svelte';
 	import Navbar from '$lib/components/nav/Navbar.svelte';
 	import NavLink from '$lib/components/nav/NavLink.svelte';
 	import NavGroup from '$lib/components/nav/NavGroup.svelte';
+	import { setAppState } from '$lib/state/Application.svelte.js';
 
-	let { children } = $props();
+	let { children, data } = $props();
+
+	const appState = setAppState({ site: data.site, user: data.user });
 </script>
 
 <div class="flex size-full">
@@ -22,7 +36,16 @@
 			<!--Nav-->
 			<Navbar>
 				<NavLink href="/" label="Dashboard" icon={LayoutDashboard} />
-				<NavLink href="/sites" label="Sites" icon={Building} />
+
+				{#if appState.getSite()}
+					{@const site = appState.getSite()!}
+					<NavGroup name="Sites" icon={Building}>
+						<NavLink href="/sites" label="All Sites" exact icon={Earth} />
+						<NavLink href={`/sites/${site.slug}`} label={site.name!} icon={ArrowBigRight} />
+					</NavGroup>
+				{:else}
+					<NavLink href="/sites" label="Sites" icon={Building} />
+				{/if}
 
 				<NavGroup name="Admin" icon={Settings}>
 					<NavLink href="/users" label="Users" icon={Users} />

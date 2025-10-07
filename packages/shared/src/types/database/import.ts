@@ -654,6 +654,60 @@ export type Database = {
           },
         ]
       }
+      integration_pricing_tiers: {
+        Row: {
+          created_at: string | null
+          description: string
+          effective_from: string
+          effective_until: string | null
+          id: string
+          integration_id: string
+          name: string
+          tenant_id: string
+          unit_cost: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          effective_from?: string
+          effective_until?: string | null
+          id?: string
+          integration_id: string
+          name: string
+          tenant_id: string
+          unit_cost: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          effective_from?: string
+          effective_until?: string | null
+          id?: string
+          integration_id?: string
+          name?: string
+          tenant_id?: string
+          unit_cost?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integration_pricing_tiers_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "integration_pricing_tiers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integrations: {
         Row: {
           category: string
@@ -885,6 +939,191 @@ export type Database = {
           },
         ]
       }
+      tenant_bill_line_items: {
+        Row: {
+          bill_id: string
+          create_at: string | null
+          description: string
+          id: string
+          integration_id: string
+          metadata: Json | null
+          pricing_tier_id: string
+          tenant_id: string
+          total: number
+          units: number
+          unti_cost: number
+        }
+        Insert: {
+          bill_id: string
+          create_at?: string | null
+          description: string
+          id?: string
+          integration_id: string
+          metadata?: Json | null
+          pricing_tier_id: string
+          tenant_id: string
+          total: number
+          units?: number
+          unti_cost: number
+        }
+        Update: {
+          bill_id?: string
+          create_at?: string | null
+          description?: string
+          id?: string
+          integration_id?: string
+          metadata?: Json | null
+          pricing_tier_id?: string
+          tenant_id?: string
+          total?: number
+          units?: number
+          unti_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_bill_line_items_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_bill_line_items_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_bill_line_items_pricing_tier_id_fkey"
+            columns: ["pricing_tier_id"]
+            isOneToOne: false
+            referencedRelation: "integration_pricing_tiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_bill_line_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_billing_adjustments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          created_by: string | null
+          effective_from: string
+          effective_to: string
+          id: string
+          integration_id: string | null
+          reason: string
+          tenant_id: string
+          type: Database["public"]["Enums"]["tenant_billing_adjustment_types"]
+          updated_at: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string | null
+          created_by?: string | null
+          effective_from: string
+          effective_to: string
+          id?: string
+          integration_id?: string | null
+          reason: string
+          tenant_id: string
+          type: Database["public"]["Enums"]["tenant_billing_adjustment_types"]
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          created_by?: string | null
+          effective_from?: string
+          effective_to?: string
+          id?: string
+          integration_id?: string | null
+          reason?: string
+          tenant_id?: string
+          type?: Database["public"]["Enums"]["tenant_billing_adjustment_types"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_billing_adjustments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_billing_adjustments_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_billing_adjustments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_bills: {
+        Row: {
+          created_at: string | null
+          finalized_at: string | null
+          id: string
+          notes: string | null
+          paid_at: string | null
+          period_end: string
+          period_start: string
+          status: Database["public"]["Enums"]["tenant_bills_statuses"]
+          tenant_id: string
+          total: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          finalized_at?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          period_end: string
+          period_start: string
+          status?: Database["public"]["Enums"]["tenant_bills_statuses"]
+          tenant_id: string
+          total?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          finalized_at?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          period_end?: string
+          period_start?: string
+          status?: Database["public"]["Enums"]["tenant_bills_statuses"]
+          tenant_id?: string
+          total?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_bills_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           created_at: string
@@ -913,6 +1152,7 @@ export type Database = {
           email: string
           id: string
           last_activity_at: string | null
+          metadata: Json
           name: string
           role_id: string
           status: Database["public"]["Enums"]["user_status"]
@@ -925,6 +1165,7 @@ export type Database = {
           email: string
           id: string
           last_activity_at?: string | null
+          metadata?: Json
           name: string
           role_id: string
           status?: Database["public"]["Enums"]["user_status"]
@@ -937,6 +1178,7 @@ export type Database = {
           email?: string
           id?: string
           last_activity_at?: string | null
+          metadata?: Json
           name?: string
           role_id?: string
           status?: Database["public"]["Enums"]["user_status"]
@@ -998,6 +1240,12 @@ export type Database = {
       job_status: "pending" | "running" | "completed" | "failed" | "cancelled"
       resource_type: "data_source" | "agent" | "scheduled_job" | "site"
       site_status: "active" | "inactive"
+      tenant_billing_adjustment_types:
+        | "percentage"
+        | "fixed"
+        | "credit"
+        | "free"
+      tenant_bills_statuses: "draft" | "finalized" | "paid" | "void" | "failed"
       user_status: "active" | "inactive" | "invited"
     }
     CompositeTypes: {
@@ -1117,7 +1365,6 @@ export type Database = {
           linked_site_slug: string | null
           linked_site_status: Database["public"]["Enums"]["site_status"] | null
           name: string | null
-          normalized_data: Json | null
           tenant_id: string | null
           updated_at: string | null
         }
@@ -1184,6 +1431,7 @@ export type Database = {
           email: string | null
           id: string | null
           last_activity_at: string | null
+          metadata: Json | null
           name: string | null
           role_description: string | null
           role_id: string | null
@@ -1344,6 +1592,13 @@ export const Constants = {
       job_status: ["pending", "running", "completed", "failed", "cancelled"],
       resource_type: ["data_source", "agent", "scheduled_job", "site"],
       site_status: ["active", "inactive"],
+      tenant_billing_adjustment_types: [
+        "percentage",
+        "fixed",
+        "credit",
+        "free",
+      ],
+      tenant_bills_statuses: ["draft", "finalized", "paid", "void", "failed"],
       user_status: ["active", "inactive", "invited"],
     },
   },

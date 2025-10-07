@@ -4,7 +4,7 @@ interface NavState {
 	currentPath: string;
 	registerGroup: (name: string) => void;
 	registerRoute: (href: string, group?: string) => void;
-	isRouteActive: (href: string) => boolean;
+	isRouteActive: (href: string, exact?: boolean) => boolean;
 	isGroupActive: (groupName: string) => boolean;
 }
 
@@ -29,9 +29,9 @@ class NavStateClass implements NavState {
 		}
 	}
 
-	isRouteActive(href: string): boolean {
-		if (href === '/') {
-			return this.currentPath === '/';
+	isRouteActive(href: string, exact?: boolean): boolean {
+		if (href === '/' || exact) {
+			return this.currentPath === href;
 		}
 		return this.currentPath.startsWith(href);
 	}

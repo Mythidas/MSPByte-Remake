@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { setNavState } from './NavState.svelte.js';
+	import { setNavState } from '../../state/Navbar.svelte.js';
 	import type { Snippet } from 'svelte';
 
 	interface Props {
