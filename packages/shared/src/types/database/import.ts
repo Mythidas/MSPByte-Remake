@@ -1257,6 +1257,16 @@ export type Database = {
       [_ in never]: never
     }
     Views: {
+      enabled_integrations_view: {
+        Row: {
+          enabled_integration_count: number | null
+          enabled_integration_ids: string[] | null
+          enabled_integrations: string[] | null
+          tenant_id: string | null
+          tenant_name: string | null
+        }
+        Relationships: []
+      }
       integrations_view: {
         Row: {
           category: string | null
@@ -1333,6 +1343,13 @@ export type Database = {
             foreignKeyName: "entities_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
+            referencedRelation: "site_integrations_view"
+            referencedColumns: ["site_id"]
+          },
+          {
+            foreignKeyName: "entities_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
             referencedRelation: "sites_view"
             referencedColumns: ["id"]
           },
@@ -1378,6 +1395,19 @@ export type Database = {
           },
         ]
       }
+      site_integrations_view: {
+        Row: {
+          mapped_integration_count: number | null
+          mapped_integration_ids: string[] | null
+          mapped_integrations: string[] | null
+          site_id: string | null
+          site_name: string | null
+          site_slug: string | null
+          tenant_id: string | null
+          tenant_name: string | null
+        }
+        Relationships: []
+      }
       sites_view: {
         Row: {
           created_at: string | null
@@ -1389,6 +1419,7 @@ export type Database = {
           parent_slug: string | null
           psa_company_id: string | null
           psa_integration_id: string | null
+          psa_integration_name: string | null
           psa_parent_company_id: string | null
           slug: string | null
           status: Database["public"]["Enums"]["site_status"] | null

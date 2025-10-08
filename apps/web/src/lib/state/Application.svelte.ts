@@ -5,12 +5,17 @@ import { getContext, setContext } from 'svelte';
 
 type AppStateConfig = {
 	user: Tables<'users_view'>;
+	enabled_integrations: Tables<'enabled_integrations_view'>;
+
 	site?: Tables<'sites_view'>;
+	site_enabled_integrations?: Tables<'site_integrations_view'>;
 };
 
 interface AppState {
 	orm: ORM;
 	user: Tables<'users_view'>;
+	enabled_integrations: Tables<'enabled_integrations_view'>;
+	site_enabled_integrations?: Tables<'site_integrations_view'>;
 
 	getSite: () => Tables<'sites_view'> | undefined;
 	setSite: (site: Tables<'sites_view'> | undefined) => void;
@@ -19,17 +24,23 @@ interface AppState {
 class AppStateClass implements AppState {
 	orm: ORM;
 	user: Tables<'users_view'>;
+	enabled_integrations: Tables<'enabled_integrations_view'>;
+	site_enabled_integrations?: Tables<'site_integrations_view'>;
 
-	private site: Tables<'sites_view'> | undefined;
+	private site?: Tables<'sites_view'>;
 
 	constructor(config: AppStateConfig) {
 		this.orm = new ORM(createClient());
-		this.site = $state(config.site);
 		this.user = $state(config.user);
+		this.enabled_integrations = $state(config.enabled_integrations);
+
+		this.site = $state(config.site);
+		this.site_enabled_integrations = $state(config.site_enabled_integrations);
 	}
 
 	getSite = () => this.site;
 	setSite = async (site: Tables<'sites_view'> | undefined) => {
+		this.site = site;
 		await this.orm.updateRow('users', {
 			id: this.user.id!,
 			row: {
@@ -39,7 +50,6 @@ class AppStateClass implements AppState {
 				}
 			}
 		});
-		this.site = site;
 	};
 }
 

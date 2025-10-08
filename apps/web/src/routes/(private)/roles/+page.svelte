@@ -1,7 +1,8 @@
 <script lang="ts">
 	import DataTable from '$lib/components/table/DataTable.svelte';
-	import { createClient } from '$lib/database/client.js';
-	import { ORM } from '$lib/database/orm.js';
+	import { getAppState } from "$lib/state/Application.svelte.js";
+
+	const appState = getAppState();
 </script>
 
 <div class="flex size-full flex-col gap-4">
@@ -9,10 +10,7 @@
 
 	<DataTable
 		fetcher={async (state) => {
-			const supabase = createClient();
-			const orm = new ORM(supabase);
-
-			const { data } = await orm.getRows('roles', {
+			const { data } = await appState.orm.getRows('roles', {
 				pagination: state
 			});
 

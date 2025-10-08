@@ -9,8 +9,8 @@ type Time = {
 export class Dates {
 	public date: Date;
 
-	constructor(date: string | Date) {
-		this.date = new Date(date);
+	constructor(date?: string | Date) {
+		this.date = date ? new Date(date) : new Date();
 	}
 
 	add(time: Partial<Time>) {
@@ -27,6 +27,10 @@ export class Dates {
 	toDaysUntil() {
 		const days = this.daysUntil();
 		return `${days} days`;
+	}
+
+	getTime() {
+		return this.date.getTime();
 	}
 
 	static timeToMilliseconds(time: Partial<Time>) {
