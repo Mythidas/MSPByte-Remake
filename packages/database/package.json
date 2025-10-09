@@ -3,6 +3,21 @@
   "version": "0.0.1",
   "type": "module",
   "private": true,
+  "exports": {
+    ".": "./convex/index.ts",
+    "./convex": "./convex/index.ts",
+    "./convex/_generated/api.js": {
+      "types": "./convex/_generated/api.d.ts",
+      "default": "./convex/_generated/api.js"
+    },
+    "./convex/_generated/dataModel.js": {
+      "types": "./convex/_generated/dataModel.d.ts",
+      "default": "./convex/_generated/dataModel.js"
+    },
+    "./convex/types.js": "./convex/types.ts",
+    "./convex/helper.js": "./convex/helper.ts",
+    "./convex/utils.js": "./convex/utils.ts"
+  },
   "dependencies": {
     "convex": "^1.27.4"
   }

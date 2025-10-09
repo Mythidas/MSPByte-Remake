@@ -1,6 +1,8 @@
 import { createClient } from '$lib/database/client.js';
 import { ORM } from '$lib/database/orm.js';
 import type { Tables } from '@workspace/shared/types/database/index.js';
+import { useConvexClient } from 'convex-svelte';
+import type { ConvexClient } from 'convex/browser';
 import { getContext, setContext } from 'svelte';
 
 type AppStateConfig = {
@@ -13,6 +15,7 @@ type AppStateConfig = {
 
 interface AppState {
 	orm: ORM;
+	convex: ConvexClient;
 	user: Tables<'users_view'>;
 	enabled_integrations: Tables<'enabled_integrations_view'>;
 	site_enabled_integrations?: Tables<'site_integrations_view'>;
@@ -23,6 +26,7 @@ interface AppState {
 
 class AppStateClass implements AppState {
 	orm: ORM;
+	convex: ConvexClient = useConvexClient();
 	user: Tables<'users_view'>;
 	enabled_integrations: Tables<'enabled_integrations_view'>;
 	site_enabled_integrations?: Tables<'site_integrations_view'>;
