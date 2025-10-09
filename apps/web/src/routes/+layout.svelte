@@ -1,11 +1,18 @@
 <script lang="ts">
-	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { ModeWatcher } from 'mode-watcher';
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
 	import { browser } from '$app/environment';
+	import { setupConvex, useConvexClient } from 'convex-svelte';
+	import { PUBLIC_CONVEX_URL } from '$env/static/public';
+	import { ClerkProvider } from 'svelte-clerk';
+	import '../app.css';
 
-	let { children } = $props();
+	let { data, children } = $props();
+
+	setupConvex(PUBLIC_CONVEX_URL);
+	const convexClient = useConvexClient();
+	convexClient.setAuth(async () => data.token);
 </script>
 
 <svelte:head>
@@ -17,6 +24,9 @@
 {/if}
 
 <ModeWatcher />
-<div class="flex h-screen w-screen flex-col">
-	{@render children?.()}
-</div>
+
+<ClerkProvider>
+	<div class="flex h-screen w-screen flex-col">
+		{@render children?.()}
+	</div>
+</ClerkProvider>

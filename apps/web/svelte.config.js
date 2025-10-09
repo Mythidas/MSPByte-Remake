@@ -14,7 +14,8 @@ const config = {
 		adapter: adapter(),
 		alias: {
 			'@workspace/shared/*': '../../packages/shared/src',
-			'$shared/*': '../../packages/shared/src'
+			'$shared/*': '../../packages/shared/src',
+			'$convex/*': '../../packages/database/convex'
 		}
 	}
 };
