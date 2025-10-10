@@ -104,33 +104,7 @@ export const integrationConfigs: Record<string, IntegrationConfig> = {
 				label: 'Site Mapping',
 				component: HaloPSASiteMapping
 			}
-		],
-
-		getBillingData: async (integration) => {
-			const billing: IntegrationBillingData = {
-				lastMonth: 0,
-				yearly: 0,
-				currentMonth: 0,
-				breakdown: []
-			};
-
-			const { data: sites, error } = await integration.orm.getRows('sites', {
-				filters: [['psa_integration_id', 'eq', integration.integration.id]]
-			});
-			if (error) return billing;
-
-			const companiesBreakdown = {
-				label: 'Sites (Linked)',
-				units: sites.rows.length,
-				unitCost: 0.05,
-				total: 0.05 * sites.rows.length
-			};
-
-			billing.breakdown.push(companiesBreakdown);
-			billing.currentMonth += companiesBreakdown.total;
-
-			return billing;
-		}
+		]
 	},
 	'sophos-partner': {
 		overview: {

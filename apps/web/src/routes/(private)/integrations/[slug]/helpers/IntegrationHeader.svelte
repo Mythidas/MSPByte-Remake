@@ -2,7 +2,6 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
 	import { getIntegration } from './integration/state.svelte.js';
-	import { daysUntil } from '$lib/utils.js';
 	import { Dates } from '$lib/Dates.js';
 
 	const integration = getIntegration();

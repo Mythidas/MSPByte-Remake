@@ -9,40 +9,27 @@
 	import Loader from '$lib/components/Loader.svelte';
 	import { toast } from 'svelte-sonner';
 	import SearchBox from '$lib/components/SearchBox.svelte';
-	import type { Tables } from '@workspace/shared/types/database/index.js';
+	import { useQuery } from 'convex-svelte';
+	import { api } from '$convex/_generated/api.js';
+	import { getAppState } from '$lib/state/Application.svelte.js';
 
 	const integration = getIntegration();
+	const appState = getAppState();
 
 	let searchQuery = $state('');
 	let filterType = $state('all');
 	let unlinkDialogOpen = $state(false);
 	let createDialogOpen = $state(false);
 	let companyToUnlink = $state<{ id: string; name: string } | null>(null);
-	let companyToCreate = $state<Tables<'psa_companies_view'> | null>(null);
-	let sites = $state<Tables<'sites_view'>[]>([]);
-	let companies = $state<Tables<'psa_companies_view'>[]>([]);
-	let loading = $state(true);
+	let companyToCreate = $state<any | null>(null);
 
-	async function fetchData() {
-		// Fetch from views schema
-		const [sitesResponse, companiesResponse] = await Promise.all([
-			integration.orm.getRows('sites_view', {
-				sorting: [['name', 'asc']]
-			}),
-			integration.orm.getRows('psa_companies_view', {
-				filters: [['integration_id', 'eq', integration.integration.id]],
-				sorting: [['name', 'asc']]
-			})
-		]);
-
-		sites = sitesResponse.data?.rows || [];
-		companies = companiesResponse.data?.rows || [];
-		loading = false;
-	}
-
-	$effect(() => {
-		fetchData();
+	const sitesQuery = useQuery(api.sites.query.getSites, {});
+	const psaCompaniesQuery = useQuery(api.entities.query.getCompaniesWithSite, {
+		integrationId: integration.integration._id
 	});
+
+	const sites = $derived(sitesQuery.data);
+	const companies = $derived(psaCompaniesQuery.data);
 
 	async function onSiteSelect(companyExternalId: string, siteId?: string) {
 		if (!siteId) {
@@ -50,50 +37,40 @@
 			return;
 		}
 
-		const company = companies.find((c) => c.external_id === companyExternalId);
+		const company = companies?.find((c) => c.externalId === companyExternalId);
 		if (!company) {
 			toast.error('Failed to find company');
 			return;
 		}
 
 		// Check if another site is already linked to this company
-		const alreadyLinkedSite = sites.find(
-			(s) => s.psa_company_id === companyExternalId && s.psa_integration_id === 'halopsa'
-		);
-		if (alreadyLinkedSite && alreadyLinkedSite.id !== siteId) {
-			// Unlink the old site first
-			await integration.orm.updateRow('sites', {
-				id: alreadyLinkedSite.id!,
-				row: {
-					psa_company_id: null,
-					psa_integration_id: null,
-					psa_parent_company_id: null
-				}
+		const alreadyLinkedSite = sites?.find((s) => s.psaCompanyId === companyExternalId);
+		if (alreadyLinkedSite && alreadyLinkedSite._id !== siteId) {
+			// Unlink the old site
+
+			await appState.convex.mutation(api.sites.mutate.updatePSAConfig, {
+				id: alreadyLinkedSite._id
 			});
 		}
 
-		// Update selected site with PSA company link
-		const { error } = await integration.orm.updateRow('sites', {
-			id: siteId,
-			row: {
-				psa_company_id: company.external_id!,
-				psa_integration_id: 'halopsa',
-				psa_parent_company_id: null
+		const query = await appState.convex.mutation(api.sites.mutate.updatePSAConfig, {
+			id: siteId as any,
+			config: {
+				psaCompanyId: company.externalId,
+				psaIntegrationId: integration.integration._id,
+				psaParentCompanyId: company.externalParentId
 			}
 		});
 
-		if (error) {
+		if (!query) {
 			toast.error('Failed to link company to site');
 			return;
 		}
 
-		// Refresh data to show updated state
-		await fetchData();
-
 		toast.info('Successfully linked company to site!');
 	}
 
-	function onCreateNewSite(company: Tables<'psa_companies_view'>) {
+	function onCreateNewSite(company: any) {
 		companyToCreate = company;
 		createDialogOpen = true;
 	}
@@ -101,26 +78,17 @@
 	async function confirmCreateSite() {
 		if (!companyToCreate) return;
 
-		const { data: newSite, error } = await integration.orm.insertRows('sites', {
-			rows: [
-				{
-					tenant_id: integration.dataSource?.tenant_id!,
-					name: companyToCreate.name!,
-					psa_company_id: companyToCreate.external_id!,
-					psa_parent_company_id: companyToCreate.external_parent_id,
-					psa_integration_id: 'halopsa',
-					status: 'active'
-				}
-			]
+		const newSite = await appState.convex.mutation(api.sites.mutate.create, {
+			name: companyToCreate.name,
+			psaCompanyId: companyToCreate.externalId,
+			psaParentCompanyId: companyToCreate?.externalParentId,
+			psaIntegrationId: integration.integration._id
 		});
 
-		if (error || !newSite || newSite.length === 0) {
+		if (!newSite) {
 			toast.error('Failed to create site from company');
 			return;
 		}
-
-		// Refetch to get the updated view data
-		await fetchData();
 
 		toast.info(`Successfully created site "${companyToCreate.name}"!`);
 		createDialogOpen = false;
@@ -136,9 +104,7 @@
 		if (!companyToUnlink) return;
 
 		// Find the site linked to this company
-		const linkedSite = sites.find(
-			(s) => s.psa_company_id === companyToUnlink!.id && s.psa_integration_id === 'halopsa'
-		);
+		const linkedSite = sites?.find((s) => s.psaCompanyId === companyToUnlink!.id);
 
 		if (!linkedSite) {
 			toast.error('No linked site found');
@@ -147,19 +113,13 @@
 			return;
 		}
 
-		const { error } = await integration.orm.updateRow('sites', {
-			id: linkedSite.id!,
-			row: {
-				psa_company_id: null,
-				psa_integration_id: null,
-				psa_parent_company_id: null
-			}
+		const query = await appState.convex.mutation(api.sites.mutate.updatePSAConfig, {
+			id: linkedSite._id
 		});
 
-		if (error) {
+		if (!query) {
 			toast.error('Failed to unlink company');
 		} else {
-			await fetchData();
 			toast.info('Company unlinked successfully');
 		}
 
@@ -172,41 +132,37 @@
 
 		// Filter by search query
 		if (searchQuery.trim()) {
-			filtered = filtered.filter((company) =>
+			filtered = filtered?.filter((company) =>
 				company.name?.toLowerCase().includes(searchQuery.toLowerCase())
 			);
 		}
 
 		// Filter by link status
 		if (filterType === 'linked') {
-			filtered = filtered.filter((company) => isCompanyLinked(company.external_id!));
+			filtered = filtered?.filter((company) => isCompanyLinked(company.externalId!));
 		} else if (filterType === 'unlinked') {
-			filtered = filtered.filter((company) => !isCompanyLinked(company.external_id!));
+			filtered = filtered?.filter((company) => !isCompanyLinked(company.externalId!));
 		}
 
 		return filtered;
 	}
 
 	function isCompanyLinked(companyExternalId: string) {
-		return sites.some(
-			(s) => s.psa_company_id === companyExternalId && s.psa_integration_id === 'halopsa'
-		);
+		return sites?.some((s) => s.psaCompanyId === companyExternalId);
 	}
 
 	function getLinkedSite(companyExternalId: string) {
-		return sites.find(
-			(s) => s.psa_company_id === companyExternalId && s.psa_integration_id === 'halopsa'
-		);
+		return sites?.find((s) => s.psaCompanyId === companyExternalId);
 	}
 
 	function getAvailableSites(currentCompanyExternalId: string) {
 		// Filter out sites that are already linked to other companies
 		// But include the site if it's linked to the current company
-		return sites.filter((s) => !s.psa_company_id || s.psa_company_id === currentCompanyExternalId);
+		return sites?.filter((s) => !s.psaCompanyId || s.psaCompanyId === currentCompanyExternalId);
 	}
 </script>
 
-{#if loading}
+{#if sitesQuery.isLoading && psaCompaniesQuery.isLoading}
 	<div class="flex size-full items-center justify-center">
 		<Loader />
 	</div>
@@ -215,7 +171,7 @@
 	<div class="flex size-full flex-col gap-4">
 		<div class="flex w-full max-w-md gap-2">
 			<SearchBar
-				placeholder={`Search companies (${companies.length})`}
+				placeholder={`Search companies (${companies?.length || 0})`}
 				icon={Search}
 				onSearch={(v) => (searchQuery = v)}
 			/>
@@ -233,10 +189,10 @@
 
 		<ScrollArea.Root class="w-full flex-1 overflow-auto pr-3">
 			<div class="grid gap-2">
-				{#each filteredCompanies as company}
-					{@const linkedSite = getLinkedSite(company.external_id!)}
+				{#each filteredCompanies || [] as company}
+					{@const linkedSite = getLinkedSite(company.externalId!)}
 					{@const isLinked = !!linkedSite}
-					{@const availableSites = getAvailableSites(company.external_id!)}
+					{@const availableSites = getAvailableSites(company.externalId!)}
 					<div
 						class="flex w-full items-center justify-between rounded-lg border bg-card p-2 shadow-sm transition-shadow hover:shadow-md"
 					>
@@ -246,7 +202,7 @@
 									{company.name}
 								</span>
 								<div class="flex items-center gap-2">
-									<p class="text-xs text-muted-foreground">(ID: {company.external_id})</p>
+									<p class="text-xs text-muted-foreground">(ID: {company.externalId})</p>
 									{#if linkedSite}
 										<ArrowRight class="w-3" />
 										<span class="my-auto text-xs text-muted-foreground">{linkedSite.name}</span>
@@ -262,7 +218,7 @@
 								<Button
 									variant="ghost"
 									size="icon"
-									onclick={() => openUnlinkDialog(company.external_id!, company.name!)}
+									onclick={() => openUnlinkDialog(company.externalId!, company.name!)}
 									class="h-9 w-9"
 								>
 									<Unlink class="h-4 w-4" />
@@ -275,8 +231,8 @@
 
 							{#if !isLinked}
 								<SearchBox
-									options={availableSites.map((s) => ({ label: s.name!, value: s.id! }))}
-									onSelect={(val) => onSiteSelect(company.external_id!, val)}
+									options={availableSites?.map((s) => ({ label: s.name!, value: s._id! })) || []}
+									onSelect={(val) => onSiteSelect(company.externalId!, val)}
 									placeholder="Select internal site"
 									delay={0}
 									class="w-80"
@@ -296,7 +252,7 @@
 					</div>
 				{/each}
 
-				{#if filteredCompanies.length === 0}
+				{#if filteredCompanies?.length === 0}
 					<div class="flex items-center justify-center p-8 text-muted-foreground">
 						<p>No companies found matching your criteria</p>
 					</div>

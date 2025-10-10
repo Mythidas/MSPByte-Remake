@@ -59,6 +59,7 @@ export default defineSchema({
 		updatedAt: v.number(),
 		deletedAt: v.optional(v.number())
 	})
+		.index('by_psa_id', ['psaCompanyId'])
 		.index('by_tenant', ['tenantId'])
 		.index('by_slug', ['slug'])
 		.index('by_status', ['status'])
@@ -249,7 +250,7 @@ export default defineSchema({
 		updatedAt: v.number()
 	})
 		.index('by_tenant', ['tenantId'])
-		.index('by_integration', ['integrationId'])
+		.index('by_integration', ['integrationId', 'tenantId'])
 		.index('by_data_source', ['dataSourceId'])
 		.index('by_site', ['siteId'])
 		.index('by_type', ['entityType'])

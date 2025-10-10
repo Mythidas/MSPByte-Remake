@@ -45,6 +45,15 @@
 			Object.entries(configFormData).every(([key, val]) => !!val)
 	);
 
+	const config = integrationConfigs[integration.integration.slug] || {
+		overview: {
+			description: 'No configuration available for this integration',
+			features: []
+		},
+		setup: { steps: [] },
+		troubleshooting: []
+	};
+
 	// Initialize config form data
 	$effect(() => {
 		const schema = integration.integration?.configSchema || {};
@@ -88,16 +97,6 @@
 		} else {
 			toast.error(result.data?.message || 'Failed to save configuration');
 		}
-	};
-
-	// Get config for this integration
-	const config = integrationConfigs[integration.integration._id] || {
-		overview: {
-			description: 'No configuration available for this integration',
-			features: []
-		},
-		setup: { steps: [] },
-		troubleshooting: []
 	};
 
 	const getDefaultBilling = async (): Promise<IntegrationBillingData> => {

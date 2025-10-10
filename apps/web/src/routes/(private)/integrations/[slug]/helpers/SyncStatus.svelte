@@ -22,11 +22,13 @@
 		return `${diffDays}d ago`;
 	};
 
-	const syncStatusQuery = useQuery(api.integrations.query.getStatusMatrix, {
-		dataSourceId: integration.dataSource?.config || ('' as any),
-		supportedTypes: integration.integration.supportedTypes
-	});
-	const syncStatuses = $derived(syncStatusQuery.data);
+	const syncStatusQuery = integration.dataSource
+		? useQuery(api.integrations.query.getStatusMatrix, {
+				dataSourceId: integration.dataSource._id,
+				supportedTypes: integration.integration.supportedTypes
+			})
+		: undefined;
+	const syncStatuses = $derived(syncStatusQuery?.data);
 
 	const getStatusBadge = (status: string) => {
 		switch (status) {
@@ -54,7 +56,7 @@
 	};
 </script>
 
-{#if syncStatusQuery.isLoading}
+{#if syncStatusQuery?.isLoading}
 	<div class="flex items-center justify-center py-12">
 		<Loader />
 	</div>
