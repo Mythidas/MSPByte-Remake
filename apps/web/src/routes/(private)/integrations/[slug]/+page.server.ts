@@ -1,11 +1,10 @@
-import { ORM } from '$lib/database/orm.js';
 import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types.js';
 import { getConnector } from '@workspace/shared/lib/connectors/index.js';
 import { ENCRYPTION_KEY } from '$env/static/private';
 import type { IntegrationType } from '@workspace/shared/types/pipeline/core.js';
 import Encryption from '@workspace/shared/lib/Encryption.js';
-import { api } from '$convex/_generated/api.js';
+import { api } from '$lib/convex';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	const integration = await locals.client.query(api.integrations.query.getIntegrationBySlug, {

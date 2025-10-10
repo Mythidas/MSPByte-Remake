@@ -22,7 +22,7 @@
 	import { toast } from 'svelte-sonner';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import { useQuery } from 'convex-svelte';
-	import { api } from '$convex/_generated/api.js';
+	import { api } from '$lib/convex';
 
 	const { data } = $props();
 

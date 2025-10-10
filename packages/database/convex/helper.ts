@@ -1,7 +1,8 @@
-import { mutation, QueryCtx, MutationCtx } from './_generated/server.js';
+import { mutation } from './_generated/server.js';
+import type { QueryCtx, MutationCtx } from './_generated/server.js';
 import type { MutationBuilder } from 'convex/server';
-import { DataModel } from './_generated/dataModel.js';
-import { UserJWT } from './types.js';
+import type { DataModel } from './_generated/dataModel.js';
+import type { UserJWT } from './types.js';
 
 export type AuthenticatedMutationCtx = MutationCtx & { identity: UserJWT };
 

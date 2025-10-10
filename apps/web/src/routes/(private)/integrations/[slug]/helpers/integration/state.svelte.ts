@@ -1,6 +1,6 @@
 import { getContext, setContext } from 'svelte';
 import type { IntegrationState, IntegrationConfig } from './types.js';
-import type { Doc } from '$convex/_generated/dataModel.js';
+import type { Doc } from '$lib/convex';
 
 export class IntegrationStateClass implements IntegrationState {
 	integration: Doc<'integrations'>;

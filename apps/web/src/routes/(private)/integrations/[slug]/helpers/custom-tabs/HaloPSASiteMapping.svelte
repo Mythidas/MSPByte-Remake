@@ -10,7 +10,7 @@
 	import { toast } from 'svelte-sonner';
 	import SearchBox from '$lib/components/SearchBox.svelte';
 	import { useQuery } from 'convex-svelte';
-	import { api } from '$convex/_generated/api.js';
+	import { api } from '$lib/convex';
 	import { getAppState } from '$lib/state/Application.svelte.js';
 
 	const integration = getIntegration();

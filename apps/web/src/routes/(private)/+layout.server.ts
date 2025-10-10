@@ -1,4 +1,4 @@
-import { api } from '$convex/_generated/api.js';
+import { api } from '$lib/convex';
 import type { LayoutServerLoad } from './$types.js';
 
 export const load: LayoutServerLoad = async ({ locals }) => {

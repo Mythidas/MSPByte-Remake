@@ -1,13 +1,10 @@
-import { insertRows } from "@workspace/shared/lib/db/orm.js";
 import { PerformanceTracker } from "@workspace/shared/lib/performance.js";
-import { Database } from "@workspace/shared/types/database/import.js";
-
-type HttpMethod = Database["public"]["Enums"]["http_method"];
+import { convexAgents } from "./convex.js";
 
 export interface AgentLogContext {
   endpoint: string;
-  method: HttpMethod;
-  deviceId: string;
+  method: string; // "GET", "POST", etc.
+  agentId: string;
   siteId: string;
   tenantId: string;
   psaSiteId?: string;
@@ -22,39 +19,36 @@ export interface AgentLogResult {
   responseMetadata?: Record<string, any>;
 }
 
-/**
- * Log an agent API call with performance metrics
- */
 export async function logAgentApiCall(
   context: AgentLogContext,
   result: AgentLogResult,
   performanceTracker: PerformanceTracker
 ): Promise<void> {
+  if (result.statusCode === 200) {
+    return;
+  }
+
   try {
     const spans = performanceTracker.getSpans();
     const totalElapsed = performanceTracker.getTotalElapsed();
 
-    await insertRows("agent_api_logs", {
-      rows: [
-        {
-          endpoint: context.endpoint,
-          method: context.method,
-          agent_id: context.deviceId,
-          site_id: context.siteId,
-          tenant_id: context.tenantId,
-          psa_site_id: context.psaSiteId || null,
-          rmm_device_id: context.rmmDeviceId || null,
-          status_code: result.statusCode,
-          external_id: result.externalId || null,
-          error_message: result.errorMessage || null,
-          time_elapsed_ms: totalElapsed,
-          req_metadata: result.requestMetadata || {},
-          res_metadata: {
-            ...((result.responseMetadata || {}) as any),
-            spans,
-          },
-        },
-      ],
+    await convexAgents.createApiLog({
+      endpoint: context.endpoint,
+      method: context.method,
+      agentId: context.agentId,
+      siteId: context.siteId,
+      tenantId: context.tenantId,
+      psaSiteId: context.psaSiteId,
+      rmmDeviceId: context.rmmDeviceId,
+      statusCode: result.statusCode,
+      externalId: result.externalId,
+      errorMessage: result.errorMessage,
+      timeElapsedMs: totalElapsed,
+      reqMetadata: result.requestMetadata || {},
+      resMetadata: {
+        ...((result.responseMetadata || {}) as any),
+        spans,
+      },
     });
   } catch (error) {
     // Don't fail the request if logging fails

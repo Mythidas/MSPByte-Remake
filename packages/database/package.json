@@ -1,0 +1,23 @@
+{
+  "name": "@workspace/database",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "exports": {
+    "./convex/*": "./convex/*",
+    "./convex/_generated/*": "./convex/_generated/*",
+    "./convex/_generated/api": "./convex/_generated/api.d.ts",
+    "./convex/_generated/dataModel": "./convex/_generated/dataModel.d.ts",
+    "./convex/_generated/server": "./convex/_generated/server.d.ts"
+  },
+  "scripts": {
+    "dev": "convex dev",
+    "deploy": "convex deploy"
+  },
+  "dependencies": {
+    "convex": "^1.27.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2"
+  }
+}

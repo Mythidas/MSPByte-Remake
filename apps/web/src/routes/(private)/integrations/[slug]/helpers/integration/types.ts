@@ -1,4 +1,4 @@
-import type { Doc } from '$convex/_generated/dataModel.js';
+import type { Doc } from '$lib/convex';
 
 export interface IntegrationState {
 	integration: Doc<'integrations'>;

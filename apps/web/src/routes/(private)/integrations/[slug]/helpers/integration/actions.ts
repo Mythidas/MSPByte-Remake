@@ -2,7 +2,7 @@ import { CONSTANTS } from '@workspace/shared/lib/constants.js';
 import { toast } from 'svelte-sonner';
 import type { IntegrationState } from './types.js';
 import { getAppState } from '$lib/state/Application.svelte.js';
-import { api } from '$convex/_generated/api.js';
+import { api } from '$lib/convex';
 
 export function createIntegrationActions(state: IntegrationState) {
 	const appState = getAppState();

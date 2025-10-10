@@ -4,8 +4,7 @@
 	import { getIntegration } from './integration/state.svelte.js';
 	import Loader from '$lib/components/Loader.svelte';
 	import { useQuery } from 'convex-svelte';
-	import { api } from '$convex/_generated/api.js';
-	import type { Doc } from '$convex/_generated/dataModel.js';
+	import { api, type Doc } from '$lib/convex';
 
 	const integration = getIntegration();
 

@@ -3,7 +3,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import Loader from '$lib/components/Loader.svelte';
 	import { useQuery } from 'convex-svelte';
-	import { api } from '$convex/_generated/api.js';
+	import { api } from '$lib/convex';
 
 	const integration = getIntegration();
 

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { api } from '$convex/_generated/api.js';
-	import { type SiteWithDetails } from '$convex/types.js';
+	import { api } from '$lib/convex';
+	import { type SiteWithDetails } from '@workspace/database/convex/types.js';
 	import DataTable from '$lib/components/table/DataTable.svelte';
 	import { type DataTableCell } from '$lib/components/table/types.js';
 	import Button from '$lib/components/ui/button/button.svelte';

@@ -13,7 +13,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@workspace/shared/*": ["../../packages/shared/src/*"],
-      "@workspace/services/*": ["../../backend/services/src/*"]
+      "@workspace/services/*": ["../../backend/services/src/*"],
+      "@workspace/database/*": ["../../packages/database/*"]
     }
   },
   "include": ["src"]

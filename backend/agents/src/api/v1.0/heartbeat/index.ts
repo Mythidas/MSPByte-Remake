@@ -1,9 +1,9 @@
-import { getRow, upsertRows } from "@workspace/shared/lib/db/orm.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import { FastifyInstance } from "fastify";
 import { PerformanceTracker } from "@workspace/shared/lib/performance.js";
 import { logAgentApiCall } from "@/lib/agentLogger.js";
 import { generateAgentGuid } from "@/lib/utils.js";
+import { convexAgents } from "@/lib/convex.js";
 
 export default async function (fastify: FastifyInstance) {
   fastify.post("/", async (req) => {
@@ -72,14 +72,9 @@ export default async function (fastify: FastifyInstance) {
       }
 
       // Fetch existing agent
-      const { data: existingAgent } = await perf.trackSpan(
-        "db_fetch_agent",
-        async () => {
-          return await getRow("agents", {
-            filters: [["id", "eq", deviceID]],
-          });
-        }
-      );
+      const existingAgent = await perf.trackSpan("db_fetch_agent", async () => {
+        return convexAgents.get(deviceID);
+      });
 
       if (!existingAgent) {
         statusCode = 404;
@@ -113,27 +108,19 @@ export default async function (fastify: FastifyInstance) {
 
       // Update agent information
       const result = await perf.trackSpan("db_update_agent", async () => {
-        return await upsertRows("agents", {
-          rows: [
-            {
-              id: deviceID,
-              guid: calculatedGuid,
-              hostname,
-              ip_address: ip_address || existingAgent.ip_address || "",
-              ext_address: ext_address || existingAgent.ext_address || "",
-              version,
-              mac_address: mac_address || existingAgent.mac_address,
-              last_checkin_at: new Date().toISOString(),
-              site_id: siteID,
-              tenant_id: existingAgent.tenant_id,
-              platform: existingAgent.platform,
-            },
-          ],
-          onConflict: ["id"],
+        return await convexAgents.update({
+          id: deviceID,
+          guid: calculatedGuid,
+          hostname,
+          ipAddress: ip_address || existingAgent.ipAddress,
+          extAddress: ext_address || existingAgent.extAddress,
+          version,
+          macAddress: mac_address || existingAgent.macAddress,
+          lastCheckinAt: new Date().getTime(),
         });
       });
 
-      if (result.error) {
+      if (!result?.success) {
         statusCode = 500;
         errorMessage = "Failed to update agent";
         return Debug.response(
@@ -169,8 +156,8 @@ export default async function (fastify: FastifyInstance) {
       if (siteID && deviceID) {
         // Get tenant_id for logging (best effort)
         try {
-          const { data: agent } = await getRow("agents", {
-            filters: [["id", "eq", deviceID]],
+          const agent = await perf.trackSpan("db_fetch_agent", async () => {
+            return convexAgents.get(deviceID);
           });
 
           if (agent) {
@@ -178,9 +165,9 @@ export default async function (fastify: FastifyInstance) {
               {
                 endpoint: "/v1.0/heartbeat",
                 method: "POST",
-                deviceId: deviceID,
-                siteId: siteID,
-                tenantId: agent.tenant_id,
+                agentId: agent._id,
+                siteId: siteID as any,
+                tenantId: agent.tenantId,
               },
               {
                 statusCode,

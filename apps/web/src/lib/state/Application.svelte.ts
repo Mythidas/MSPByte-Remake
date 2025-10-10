@@ -1,5 +1,4 @@
-import { api } from '$convex/_generated/api.js';
-import type { Doc, Id } from '$convex/_generated/dataModel.js';
+import { api, type Doc, type Id } from '$lib/convex';
 import { useConvexClient } from 'convex-svelte';
 import type { ConvexClient } from 'convex/browser';
 import { getContext, setContext } from 'svelte';
