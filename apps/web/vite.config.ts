@@ -3,6 +3,9 @@ import { defineConfig } from 'vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
+	resolve: {
+		extensions: ['.ts', '.js', '.svelte', '.mjs', '.json']
+	},
 	plugins: [tailwindcss(), sveltekit()],
 	test: {
 		expect: { requireAssertions: true },

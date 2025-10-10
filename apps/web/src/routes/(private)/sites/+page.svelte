@@ -5,7 +5,7 @@
 	import { type DataTableCell } from '$lib/components/table/types.js';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { getAppState } from '$lib/state/Application.svelte.js';
-	import { prettyText } from '$shared/lib/utils.js';
+	import { prettyText } from '@workspace/shared/lib/utils.js';
 
 	const appState = getAppState();
 </script>

@@ -1,12 +1,10 @@
 <script lang="ts">
 	import { api } from '$convex/_generated/api.js';
-	import type { IntegrationWithStatus } from '$convex/types.js';
 	import SearchBar from '$lib/components/SearchBar.svelte';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { getAppState } from '$lib/state/Application.svelte.js';
-	import { Dates } from '$lib/Dates.js';
 	import { useQuery } from 'convex-svelte';
 	import { Search, Settings } from 'lucide-svelte';
 
@@ -18,7 +16,7 @@
 	// Reactively fetch integrations with enabled status
 	// TODO: Get actual tenantId from appState.user once user queries are set up
 	// For now, we'll use getActiveIntegrations and handle enabled status separately
-	const query = useQuery(api.integrations.getEnabledIntegrations, {});
+	const query = useQuery(api.integrations.query.getActiveIntegrationsView, {});
 	const integrations = $derived(query.data);
 
 	// Computed: filtered integrations based on search and tags

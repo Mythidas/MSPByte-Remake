@@ -1,8 +1,22 @@
+import { PUBLIC_CONVEX_URL } from '$env/static/public';
 import { redirect, type Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
+import { ConvexHttpClient } from 'convex/browser';
 import { withClerkHandler } from 'svelte-clerk/server';
 
 const clerkHandle = withClerkHandler();
+
+const convexHandle: Handle = async ({ event, resolve }) => {
+	const auth = event.locals.auth();
+	const token = await auth.getToken({ template: 'convex' });
+
+	event.locals.token = token || undefined;
+	event.locals.client = new ConvexHttpClient(PUBLIC_CONVEX_URL, {
+		auth: token || undefined
+	});
+
+	return resolve(event);
+};
 
 const authGuard: Handle = async ({ event, resolve }) => {
 	// Skip auth guard for auth routes - let them handle authentication
@@ -22,4 +36,4 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
-export const handle = sequence(clerkHandle, authGuard);
+export const handle = sequence(clerkHandle, convexHandle, authGuard);
