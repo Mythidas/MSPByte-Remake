@@ -1,40 +1,35 @@
+import { api } from '$convex/_generated/api.js';
 import type { LayoutServerLoad } from './$types.js';
 
 export const load: LayoutServerLoad = async ({ locals }) => {
-	// const orm = new ORM(locals.auth.supabase);
-	// const userData = locals.auth.user?.metadata as any;
+	const user = await locals.client.query(api.users.query.getCurrentUser, {});
+	const metadata = user.metadata;
+	const site = metadata.currentSite
+		? await locals.client.query(api.sites.query.getSiteWithIntegrationsView, {
+				id: metadata.currentSite
+			})
+		: undefined;
 
-	// if (!userData.current_site) {
-	// 	return {
-	// 		user: locals.auth.user!,
-	// 		site: undefined
-	// 	};
-	// }
+	const mspAgent = await locals.client.query(api.integrations.query.getIntegrationBySlug, {
+		slug: 'msp-agent'
+	});
+	if (mspAgent) {
+		const dataSource = await locals.client.query(
+			api.datasources.query.getPrimaryDataSourceByIntegration,
+			{
+				id: mspAgent._id
+			}
+		);
 
-	// const { data: enabledIntegrations } = await orm.getRow('enabled_integrations_view');
-	// if (!enabledIntegrations) {
-	// 	return error(404, 'Unable to find enabled integrations');
-	// }
-
-	// const { data: sites_view } = await orm.getRow('sites_view', {
-	// 	filters: [['id', 'eq', userData.current_site]]
-	// });
-
-	// const { data: siteEnabledIntegrations } = !sites_view
-	// 	? { data: undefined }
-	// 	: await orm.getRow('site_integrations_view', {
-	// 			filters: [['site_id', 'eq', sites_view.id]]
-	// 		});
-
-	const user = locals.auth();
+		return {
+			user,
+			site,
+			mspagent: dataSource
+		};
+	}
 
 	return {
-		user: {
-			userId: user.userId
-		},
-		enabledIntegrations: {},
-
-		site: undefined,
-		siteEnabledIntegrations: undefined
+		user,
+		site
 	};
 };

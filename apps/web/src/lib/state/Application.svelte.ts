@@ -1,57 +1,48 @@
-import { createClient } from '$lib/database/client.js';
-import { ORM } from '$lib/database/orm.js';
-import type { Tables } from '@workspace/shared/types/database/index.js';
+import { api } from '$convex/_generated/api.js';
+import type { Doc, Id } from '$convex/_generated/dataModel.js';
 import { useConvexClient } from 'convex-svelte';
 import type { ConvexClient } from 'convex/browser';
 import { getContext, setContext } from 'svelte';
 
-type AppStateConfig = {
-	user: Tables<'users_view'>;
-	enabled_integrations: Tables<'enabled_integrations_view'>;
+type SiteLinkedIntegration = { id: Id<'integrations'>; slug: string; name: string };
+type Site = Doc<'sites'> & { psaIntegrationName?: string };
 
-	site?: Tables<'sites_view'>;
-	site_enabled_integrations?: Tables<'site_integrations_view'>;
+type AppStateConfig = {
+	user: Doc<'users'>;
+	site?: Site;
+	siteLinkedIntegrations?: SiteLinkedIntegration[];
 };
 
 interface AppState {
-	orm: ORM;
 	convex: ConvexClient;
-	user: Tables<'users_view'>;
-	enabled_integrations: Tables<'enabled_integrations_view'>;
-	site_enabled_integrations?: Tables<'site_integrations_view'>;
+	user: Doc<'users'>;
+	siteLinkedIntegrations?: SiteLinkedIntegration[];
 
-	getSite: () => Tables<'sites_view'> | undefined;
-	setSite: (site: Tables<'sites_view'> | undefined) => void;
+	getSite: () => Site | undefined;
+	setSite: (site: Site | undefined) => void;
 }
 
 class AppStateClass implements AppState {
-	orm: ORM;
 	convex: ConvexClient = useConvexClient();
-	user: Tables<'users_view'>;
-	enabled_integrations: Tables<'enabled_integrations_view'>;
-	site_enabled_integrations?: Tables<'site_integrations_view'>;
+	user: Doc<'users'>;
+	siteLinkedIntegrations?: SiteLinkedIntegration[];
 
-	private site?: Tables<'sites_view'>;
+	private site?: Site & { psaIntegrationName?: string };
 
 	constructor(config: AppStateConfig) {
-		this.orm = new ORM(createClient());
 		this.user = $state(config.user);
-		this.enabled_integrations = $state(config.enabled_integrations);
 
 		this.site = $state(config.site);
-		this.site_enabled_integrations = $state(config.site_enabled_integrations);
+		this.siteLinkedIntegrations = $state(config.siteLinkedIntegrations);
 	}
 
 	getSite = () => this.site;
-	setSite = async (site: Tables<'sites_view'> | undefined) => {
+	setSite = async (site: Doc<'sites'> | undefined) => {
 		this.site = site;
-		await this.orm.updateRow('users', {
-			id: this.user.id!,
-			row: {
-				metadata: {
-					...(this.user.metadata as any),
-					current_site: site?.id || undefined
-				}
+		await this.convex.mutation(api.users.mutate.updateMyMetadata, {
+			metadata: {
+				...this.user.metadata,
+				currentSite: site?._id
 			}
 		});
 	};

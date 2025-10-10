@@ -15,7 +15,7 @@ const config = {
 		alias: {
 			'@workspace/shared/*': '../../packages/shared/src',
 			'$shared/*': '../../packages/shared/src',
-			'$convex/*': './src/lib/convex'
+			'$convex/*': './src/convex'
 		}
 	}
 };

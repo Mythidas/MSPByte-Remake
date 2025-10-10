@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { api } from '$convex/_generated/api.js';
+	import { api } from '../../../convex/_generated/api.js';
 	import SearchBar from '$lib/components/SearchBar.svelte';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import Button from '$lib/components/ui/button/button.svelte';
@@ -8,14 +8,9 @@
 	import { useQuery } from 'convex-svelte';
 	import { Search, Settings } from 'lucide-svelte';
 
-	const appState = getAppState();
-
 	let search = $state('');
 	let tags: string[] = $state([]);
 
-	// Reactively fetch integrations with enabled status
-	// TODO: Get actual tenantId from appState.user once user queries are set up
-	// For now, we'll use getActiveIntegrations and handle enabled status separately
 	const query = useQuery(api.integrations.query.getActiveIntegrationsView, {});
 	const integrations = $derived(query.data);
 
@@ -127,7 +122,7 @@
 								<Badge variant="secondary">{integ.category}</Badge>
 							</div>
 
-							<Button class="size-fit !p-2" variant="ghost" href={`/integrations/${integ._id}`}>
+							<Button class="size-fit !p-2" variant="ghost" href={`/integrations/${integ.slug}`}>
 								<Settings class="w-4" />
 							</Button>
 						</div>

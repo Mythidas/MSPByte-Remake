@@ -1,0 +1,12 @@
+{
+	"name": "@workspace/database",
+	"version": "0.0.1",
+	"type": "module",
+	"private": true,
+	"exports": {
+		"./convex/*": "./*.ts"
+	},
+	"dependencies": {
+		"convex": "^1.27.4"
+	}
+}

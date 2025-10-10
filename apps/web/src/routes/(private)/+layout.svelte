@@ -9,31 +9,20 @@
 		Bolt,
 		Earth,
 		ArrowBigRight,
-		HatGlasses,
+		HatGlasses
 	} from 'lucide-svelte';
 	import Navbar from '$lib/components/nav/Navbar.svelte';
 	import NavLink from '$lib/components/nav/NavLink.svelte';
 	import NavGroup from '$lib/components/nav/NavGroup.svelte';
 	import { setAppState } from '$lib/state/Application.svelte.js';
-	import { prettyText } from "@workspace/shared/lib/utils.js";
-	import { CONSTANTS } from "@workspace/shared/lib/constants.js";
 
 	let { children, data } = $props();
 
-	const appState = setAppState({ 
-		site: data.site, 
-		user: data.user, 
-		enabled_integrations: data.enabledIntegrations!, 
-		site_enabled_integrations: data.siteEnabledIntegrations 
+	const appState = setAppState({
+		user: data.user,
+		site: data.site,
+		siteLinkedIntegrations: data.site?.linkedIntegrations
 	});
-
-	const getMSPAgentIntegration = async () => {
-		const { data } = await appState.orm.getRow('data_sources', {
-			filters: [['integration_id', 'eq', 'msp-agent'], ['site_id', 'eq', CONSTANTS.SENTINEL_UUID]]
-		})
-
-		return data;
-	};
 </script>
 
 <div class="flex size-full">
@@ -56,23 +45,27 @@
 					{@const site = appState.getSite()!}
 					<NavGroup name="Sites" icon={Building}>
 						<NavLink href="/sites" label="All Sites" exact icon={Earth} />
-						<NavLink href={`/sites/${site.slug}`} label={site.name!} icon={ArrowBigRight} exact/>
+						<NavLink href={`/sites/${site.slug}`} label={site.name!} icon={ArrowBigRight} exact />
 
-						{#await getMSPAgentIntegration() then data}
-							{#if data && (data.config as any).psa_integration_id === site.psa_integration_id}
-								<NavLink href={`/sites/${site.slug}/integrations/msp-agent`} label="MSP Agent" icon={HatGlasses} />
-							{/if}
-						{/await}
+						{#if data.mspagent && data.mspagent.config.psaIntegrationId === site.psaIntegrationId}
+							<NavLink
+								href={`/sites/${site.slug}/integrations/msp-agent`}
+								label="MSP Agent"
+								icon={HatGlasses}
+							/>
+						{/if}
 
-						{#if (data.siteEnabledIntegrations && data.siteEnabledIntegrations.mapped_integration_count! > 0) || site.psa_integration_id}
+						{#if (appState.siteLinkedIntegrations && appState.siteLinkedIntegrations.length! > 0) || site.psaIntegrationId}
 							<NavGroup name="Integrations" icon={Bolt}>
-								{#if site.psa_integration_id}
-									<NavLink href={`/sites/${site.slug}/integrations/${site.psa_integration_id}`} label={site.psa_integration_name || site.psa_integration_id}/>
+								{#if site.psaIntegrationId}
+									<NavLink
+										href={`/sites/${site.slug}/integrations/${site.psaIntegrationId}`}
+										label={site.psaIntegrationName || site.psaIntegrationId}
+									/>
 								{/if}
 
-								{#each (data.siteEnabledIntegrations?.mapped_integration_ids || []) as id, idx}
-									{@const name = data.siteEnabledIntegrations?.mapped_integrations![idx] || prettyText(id)}
-									<NavLink href={`/sites/${site.slug}/integrations/${id}`} label={name} />
+								{#each appState.siteLinkedIntegrations || [] as { slug, name }, idx}
+									<NavLink href={`/sites/${site.slug}/integrations/${slug}`} label={name} />
 								{/each}
 							</NavGroup>
 						{/if}
