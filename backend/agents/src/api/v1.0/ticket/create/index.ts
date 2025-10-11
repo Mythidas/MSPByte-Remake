@@ -1,6 +1,5 @@
 import { HaloPSAConnector } from "@workspace/shared/lib/connectors/HaloPSAConnector.js";
 import Debug from "@workspace/shared/lib/Debug.js";
-import { generateUUID } from "@workspace/shared/lib/utils.server.js";
 import { HaloPSAConfig } from "@workspace/shared/types/integrations/halopsa/index.js";
 import { FastifyInstance } from "fastify";
 import { PerformanceTracker } from "@workspace/shared/lib/performance.js";
@@ -50,11 +49,11 @@ export default async function (fastify: FastifyInstance) {
         "db_fetch_records",
         async () => {
           const [agentRes, siteRes] = await Promise.all([
-            client.action(api.agents.internal.get, {
+            client.query(api.agents.crud_s.get, {
               id: deviceID as any,
               secret: CONVEX_API_KEY,
             }),
-            client.action(api.sites.internal.get, {
+            client.query(api.sites.crud_s.get, {
               id: siteID as any,
               secret: CONVEX_API_KEY,
             }),
@@ -64,13 +63,41 @@ export default async function (fastify: FastifyInstance) {
             throw new Error("Resources not found");
           }
 
-          const dataSourceRes = await client.action(
-            api.agents.internal.getPsaSourceFromAgents,
+          // Get PSA data source from agent integration config
+          const agentIntegration = await client.query(
+            api.integrations.crud_s.get,
             {
-              tenantId: siteRes.tenantId,
+              slug: "msp-agent",
               secret: CONVEX_API_KEY,
             }
           );
+
+          if (!agentIntegration) {
+            throw new Error("MSP Agent integration not found");
+          }
+
+          const agentSource = await client.query(api.datasources.crud_s.get, {
+            integrationId: agentIntegration._id,
+            isPrimary: true,
+            tenantId: siteRes.tenantId,
+            secret: CONVEX_API_KEY,
+          });
+
+          if (!agentSource) {
+            throw new Error("Agent data source not found");
+          }
+
+          const psaIntegrationId = agentSource.config?.psaIntegrationId;
+          if (!psaIntegrationId) {
+            return [agentRes, siteRes, null];
+          }
+
+          const dataSourceRes = await client.query(api.datasources.crud_s.get, {
+            integrationId: psaIntegrationId as any,
+            isPrimary: true,
+            tenantId: siteRes.tenantId,
+            secret: CONVEX_API_KEY,
+          });
 
           return [agentRes, siteRes, dataSourceRes];
         }
@@ -358,7 +385,7 @@ export default async function (fastify: FastifyInstance) {
       if (siteID && deviceID) {
         // Get tenant_id for logging (best effort)
         try {
-          const agent = await client.action(api.agents.internal.get, {
+          const agent = await client.query(api.agents.crud_s.get, {
             id: deviceID as any,
             secret: CONVEX_API_KEY,
           });

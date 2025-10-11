@@ -31,7 +31,7 @@ export default async function (fastify: FastifyInstance) {
       );
     }
 
-    const site = await client.action(api.sites.internal.get, {
+    const site = await client.query(api.sites.crud_s.get, {
       id: site_id as any,
       secret: process.env.CONVEX_API_KEY!,
     });
@@ -52,13 +52,13 @@ export default async function (fastify: FastifyInstance) {
 
     // Generate GUID using the new utility function
     const calculatedGuid = generateAgentGuid(guid, mac, hostname, site._id);
-    const agent = await client.action(api.agents.internal.getByGuid, {
+    const agent = await client.query(api.agents.crud_s.get, {
       guid: guid || "",
       secret: process.env.CONVEX_API_KEY!,
     });
 
     const result = !agent
-      ? await client.action(api.agents.internal.create, {
+      ? await client.mutation(api.agents.crud_s.create, {
           tenantId: site.tenantId,
           siteId: site._id,
           guid: calculatedGuid,
@@ -67,13 +67,14 @@ export default async function (fastify: FastifyInstance) {
           version,
           secret: process.env.CONVEX_API_KEY!,
         })
-      : await client.action(api.agents.internal.update, {
+      : await client.mutation(api.agents.crud_s.update, {
           id: agent._id,
-          siteId: site._id,
-          guid: calculatedGuid,
-          hostname,
-          platform,
-          version,
+          updates: {
+            siteId: site._id,
+            guid: calculatedGuid,
+            hostname,
+            version,
+          },
           secret: process.env.CONVEX_API_KEY!,
         });
 

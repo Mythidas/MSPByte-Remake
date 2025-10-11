@@ -76,7 +76,7 @@ export default async function (fastify: FastifyInstance) {
       const existingAgent = (await perf.trackSpan(
         "db_fetch_agent",
         async () => {
-          return client.action(api.agents.internal.get, {
+          return client.query(api.agents.crud_s.get, {
             id: deviceID as any,
             secret: process.env.CONVEX_API_KEY!,
           });
@@ -115,15 +115,17 @@ export default async function (fastify: FastifyInstance) {
 
       // Update agent information
       const result = await perf.trackSpan("db_update_agent", async () => {
-        return await client.action(api.agents.internal.update, {
+        return await client.mutation(api.agents.crud_s.update, {
           id: deviceID as any,
-          guid: calculatedGuid,
-          hostname,
-          ipAddress: ip_address || existingAgent.ipAddress,
-          extAddress: ext_address || existingAgent.extAddress,
-          version,
-          macAddress: mac_address || existingAgent.macAddress,
-          lastCheckinAt: new Date().getTime(),
+          updates: {
+            guid: calculatedGuid,
+            hostname,
+            ipAddress: ip_address || existingAgent.ipAddress,
+            extAddress: ext_address || existingAgent.extAddress,
+            version,
+            macAddress: mac_address || existingAgent.macAddress,
+            lastCheckinAt: new Date().getTime(),
+          },
           secret: process.env.CONVEX_API_KEY!,
         });
       });
@@ -165,7 +167,7 @@ export default async function (fastify: FastifyInstance) {
         // Get tenant_id for logging (best effort)
         try {
           const agent = (await perf.trackSpan("db_fetch_agent", async () => {
-            return client.action(api.agents.internal.get, {
+            return client.query(api.agents.crud_s.get, {
               id: deviceID as any,
               secret: process.env.CONVEX_API_KEY!,
             });
