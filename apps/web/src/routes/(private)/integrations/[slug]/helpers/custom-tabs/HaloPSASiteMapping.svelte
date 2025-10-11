@@ -23,7 +23,7 @@
 	let companyToUnlink = $state<{ id: string; name: string } | null>(null);
 	let companyToCreate = $state<any | null>(null);
 
-	const sitesQuery = useQuery(api.sites.query.getSites, {});
+	const sitesQuery = useQuery(api.sites.crud.list, {});
 	const psaCompaniesQuery = useQuery(api.entities.query.getCompaniesWithSite, {
 		integrationId: integration.integration._id
 	});

@@ -2,16 +2,8 @@ import { v } from "convex/values";
 import { query } from "../_generated/server.js";
 import { isAuthenticated, isValidTenant } from "../helpers/validators.js";
 
-export const getSites = query({
-  args: {},
-  handler: async (ctx, args) => {
-    const identity = await isAuthenticated(ctx);
-    return await ctx.db
-      .query("sites")
-      .withIndex("by_tenant", (q) => q.eq("tenantId", identity.tenantId))
-      .collect();
-  },
-});
+// Replaced by sites/crud.ts::list
+// export const getSites = ...
 
 export const getSiteWithIntegrationsView = query({
   args: {

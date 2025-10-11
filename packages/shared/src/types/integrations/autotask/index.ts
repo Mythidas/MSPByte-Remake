@@ -21,9 +21,9 @@ export type AutoTaskUserDefinedField = {
 
 export type AutoTaskDataSourceConfig = {
   server: string;
-  client_id: string;
-  tracker_id: string;
-  client_secret: string;
+  clientId: string;
+  trackerId: string;
+  clientSecret: string;
 };
 
 export type AutoTaskSearch<T> = {

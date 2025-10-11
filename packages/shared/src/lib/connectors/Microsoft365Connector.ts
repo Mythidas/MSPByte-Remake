@@ -137,7 +137,7 @@ export default class Microsoft365Connector implements IConnector {
   private async getGraphClient(): Promise<APIResponse<Client>> {
     try {
       const credential = new ClientSecretCredential(
-        this.config.tenant_id,
+        this.config.tenantId,
         process.env.NEXT_PUBLIC_MICROSOFT_CLIENT_ID!,
         process.env.NEXT_MICROSOFT_SECRET!
       );

@@ -23,8 +23,9 @@
 		return `${diffDays}d ago`;
 	};
 
-	const mostRecentJobQuery = useQuery(api.scheduledjobs.query.getRecentByDataSource, {
-		dataSourceId: integration.dataSource?._id || ('' as any)
+	const mostRecentJobQuery = useQuery(api.scheduledjobs.crud.get, {
+		dataSourceId: integration.dataSource?._id || ('' as any),
+		status: 'failed'
 	});
 	const mostRecentJob = $derived(mostRecentJobQuery.data);
 

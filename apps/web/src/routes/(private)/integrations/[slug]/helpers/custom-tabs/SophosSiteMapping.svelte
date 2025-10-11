@@ -10,101 +10,85 @@
 	import type { SophosPartnerTenant } from '@workspace/shared/types/integrations/sophos-partner/tenants.js';
 	import type { SophosTenantConfig } from '@workspace/shared/types/integrations/sophos-partner/index.js';
 	import { toast } from 'svelte-sonner';
-	import { type APIResponse } from '@workspace/shared/types/api.js';
 	import SearchBox from '$lib/components/SearchBox.svelte';
-	import type { Tables } from '@workspace/shared/types/database/index.js';
+	import { useQuery } from 'convex-svelte';
+	import { api } from '$lib/convex/index.js';
+	import { getAppState } from '$lib/state/Application.svelte.js';
 
 	const integration = getIntegration();
+	const appState = getAppState();
 
 	let searchQuery = $state('');
 	let filterType = $state('all');
 	let unlinkDialogOpen = $state(false);
 	let siteToUnlink = $state<{ id: string; name: string } | null>(null);
-	let sites = $state<Tables<'sophos_partner_sites_view'>[]>([]);
-	let tenants = $state<SophosPartnerTenant[]>([]);
-	let loading = $state(true);
 
-	async function fetchTenants() {
-		const dataSourceId = integration.dataSource?.id;
-
-		const [{ data: sitesData }, tenantsResponse] = await Promise.all([
-			integration.orm.getRows('sophos_partner_sites_view'),
-			fetch(`/api/v1.0/external/sophos/tenants?dataSourceId=${dataSourceId}`).then(
-				(res) => res.json() as Promise<APIResponse<SophosPartnerTenant[]>>
-			)
-		]);
-
-		sites = sitesData?.rows || [];
-		tenants = tenantsResponse.data || [];
-		loading = false;
-	}
-
-	$effect(() => {
-		fetchTenants();
+	const sitesQuery = useQuery(api.sites.crud.list, {});
+	const dataSourcesQuery = useQuery(api.datasources.crud.list, {
+		integrationId: integration.integration._id
+	});
+	const entitiesQuery = useQuery(api.entities.crud.list, {
+		integrationId: integration.integration._id,
+		entityType: 'companies'
 	});
 
-	async function onTenantSelect(siteId: string, tenant?: SophosPartnerTenant) {
+	const sites = $derived(sitesQuery.data);
+	const dataSources = $derived(dataSourcesQuery.data);
+	const entities = $derived(entitiesQuery.data);
+
+	// Map entities to tenants format
+	const tenants = $derived(
+		entities?.map((entity) => ({
+			id: entity.externalId,
+			showAs: entity.normalizedData?.name || entity.rawData?.name || entity.externalId,
+			apiHost: entity.normalizedData?.apiHost || entity.rawData?.apiHost || ''
+		})) || []
+	);
+
+	// Build the site view with linked tenant information
+	const sitesWithLinks = $derived(
+		sites?.map((site) => {
+			const dataSource = dataSources?.find((ds) => ds.siteId === site._id);
+			return {
+				...site,
+				isLinked: !!dataSource,
+				linkedTenantId: dataSource?.externalId || null,
+				linkedTenantName: dataSource
+					? tenants.find((t) => t.id === dataSource.externalId)?.showAs
+					: null,
+				linkedTenantApiHost: dataSource?.config?.api_host || null
+			};
+		}) || []
+	);
+
+	async function onTenantSelect(
+		siteId: string,
+		tenant?: { id: string; showAs: string; apiHost: string }
+	) {
 		if (!tenant) {
 			toast.error('Failed to get the full tenant info');
 			return;
 		}
 
 		const metadata = {
-			tenant_id: tenant.id,
-			tenant_name: tenant.showAs,
-			api_host: tenant.apiHost
+			tenantId: tenant.id,
+			tenantName: tenant.showAs,
+			apiHost: tenant.apiHost
 		} as SophosTenantConfig;
 
-		const { data } = await integration.orm.getRow('data_sources', {
-			filters: [
-				['site_id', 'eq', siteId],
-				['integration_id', 'eq', integration.integration?.id],
-				['external_id', 'eq', tenant.id]
-			]
-		});
-
-		if (data) {
-			const { error: deleteError } = await integration.orm.deleteRows('data_sources', {
-				filters: [['id', 'eq', data.id]]
+		try {
+			await appState.convex.mutation(api.datasources.mutate.createSiteMapping, {
+				siteId: siteId as any,
+				integrationId: integration.integration._id,
+				externalId: tenant.id,
+				config: metadata
 			});
-			if (deleteError) {
-				toast.error('Failed to modify existing link');
-				return;
-			}
-		}
 
-		const { error: insertError } = await integration.orm.insertRows('data_sources', {
-			rows: [
-				{
-					tenant_id: integration.dataSource?.tenant_id!,
-					integration_id: integration.dataSource?.integration_id!,
-					site_id: siteId,
-					config: metadata,
-					credential_expiration_at: '9999-12-31 23:59:59+00',
-					external_id: tenant.id
-				}
-			]
-		});
-
-		if (insertError) {
+			toast.info('Successfully created the link!');
+		} catch (error) {
 			toast.error('Failed to create link with tenant');
-			return;
+			console.error(error);
 		}
-
-		// Optimistically update local state
-		sites = sites.map((s) =>
-			s.id === siteId
-				? {
-						...s,
-						is_linked: true,
-						linked_tenant_id: tenant.id,
-						linked_tenant_name: tenant.showAs,
-						linked_tenant_api_host: tenant.apiHost
-					}
-				: s
-		);
-
-		toast.info('Successfully created the link!');
 	}
 
 	function openUnlinkDialog(siteId: string, siteName: string) {
@@ -115,37 +99,24 @@
 	async function confirmUnlink() {
 		if (!siteToUnlink) return;
 
-		const { error } = await integration.orm.deleteRows('data_sources', {
-			filters: [
-				['site_id', 'eq', siteToUnlink.id],
-				['integration_id', 'eq', integration.integration?.id]
-			]
-		});
+		try {
+			await appState.convex.mutation(api.datasources.mutate.deleteSiteMapping, {
+				siteId: siteToUnlink.id as any,
+				integrationId: integration.integration._id
+			});
 
-		if (error) {
-			toast.error('Failed to unlink site');
-		} else {
-			// Optimistically update local state
-			sites = sites.map((s) =>
-				s.id === siteToUnlink?.id
-					? {
-							...s,
-							is_linked: false,
-							linked_tenant_id: null,
-							linked_tenant_name: null,
-							linked_tenant_api_host: null
-						}
-					: s
-			);
 			toast.info('Site unlinked successfully');
+		} catch (error) {
+			toast.error('Failed to unlink site');
+			console.error(error);
 		}
 
 		unlinkDialogOpen = false;
 		siteToUnlink = null;
 	}
 
-	function getFilteredSites(sites: Tables<'sophos_partner_sites_view'>[], tenants: any[]) {
-		let filtered = sites;
+	function getFilteredSites() {
+		let filtered = sitesWithLinks;
 
 		// Filter by search query
 		if (searchQuery.trim()) {
@@ -156,31 +127,25 @@
 
 		// Filter by link status
 		if (filterType === 'linked') {
-			filtered = filtered.filter((site) => site.is_linked);
+			filtered = filtered.filter((site) => site.isLinked);
 		} else if (filterType === 'unlinked') {
-			filtered = filtered.filter((site) => !site.is_linked);
+			filtered = filtered.filter((site) => !site.isLinked);
 		}
 
 		return filtered;
 	}
-
-	function getLinkedTenantName(site: any, tenants: SophosPartnerTenant[]) {
-		if (!site.linked_tenant_id) return null;
-		const tenant = tenants.find((t) => t.id === site.linked_tenant_id);
-		return tenant?.showAs || null;
-	}
 </script>
 
-{#if loading}
+{#if sitesQuery.isLoading || dataSourcesQuery.isLoading || entitiesQuery.isLoading}
 	<div class="flex size-full items-center justify-center">
 		<Loader />
 	</div>
 {:else}
-	{@const filteredSites = getFilteredSites(sites, tenants)}
+	{@const filteredSites = getFilteredSites()}
 	<div class="flex size-full flex-col gap-4">
 		<div class="flex w-full max-w-md gap-2">
 			<SearchBar
-				placeholder={`Search sites (${sites.length})`}
+				placeholder={`Search sites (${sitesWithLinks.length})`}
 				icon={Search}
 				onSearch={(v) => (searchQuery = v)}
 			/>
@@ -199,13 +164,12 @@
 		<ScrollArea.Root class="w-full flex-1 overflow-auto pr-3">
 			<div class="grid gap-2">
 				{#each filteredSites as site}
-					{@const linkedTenantName = getLinkedTenantName(site, tenants)}
 					<div
 						class="flex w-full items-center justify-between rounded-lg border bg-card p-2 shadow-sm transition-shadow hover:shadow-md"
 					>
 						<div class="flex items-center gap-3">
 							<span class="font-medium">{site.name}</span>
-							{#if site.is_linked}
+							{#if site.isLinked}
 								<Link2 class="h-4 w-4 text-green-600" />
 							{/if}
 						</div>
@@ -213,11 +177,11 @@
 							{#if tenants.length === 0}
 								<span class="text-sm text-muted-foreground italic">No tenants available</span>
 							{:else}
-								{#if site.is_linked}
+								{#if site.isLinked}
 									<Button
 										variant="ghost"
 										size="icon"
-										onclick={() => openUnlinkDialog(site.id!, site.name!)}
+										onclick={() => openUnlinkDialog(site._id, site.name)}
 										class="h-9 w-9"
 									>
 										<Unlink class="h-4 w-4" />
@@ -228,11 +192,11 @@
 									options={tenants.map((t) => ({ label: t.showAs, value: t.id }))}
 									onSelect={(val) =>
 										onTenantSelect(
-											site.id!,
+											site._id,
 											tenants.find((t) => t.id === val)
 										)}
 									placeholder="Select Sophos tenant"
-									defaultValue={site.linked_tenant_id}
+									defaultValue={site.linkedTenantId}
 									delay={0}
 									class="w-96"
 								/>

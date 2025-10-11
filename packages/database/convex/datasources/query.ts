@@ -2,35 +2,11 @@ import { v } from "convex/values";
 import { query } from "../_generated/server.js";
 import { isAuthenticated, isValidTenant } from "../helpers/validators.js";
 
-export const getDataSource = query({
-  args: {
-    id: v.id("data_sources"),
-  },
-  handler: async (ctx, args) => {
-    const identity = await isAuthenticated(ctx);
-    const dataSource = await ctx.db.get(args.id);
+// Replaced by datasources/crud.ts::get
+// export const getDataSource = ...
 
-    if (dataSource) {
-      await isValidTenant(identity.tenantId, dataSource.tenantId);
-      return dataSource;
-    }
-  },
-});
+// Replaced by datasources/crud.ts::list
+// export const list = ...
 
-export const getPrimaryByIntegration = query({
-  args: {
-    id: v.id("integrations"),
-  },
-  handler: async (ctx, args) => {
-    const identity = await isAuthenticated(ctx);
-    return await ctx.db
-      .query("data_sources")
-      .withIndex("by_integration_primary", (q) =>
-        q
-          .eq("integrationId", args.id)
-          .eq("isPrimary", true)
-          .eq("tenantId", identity.tenantId)
-      )
-      .unique();
-  },
-});
+// Replaced by datasources/crud.ts::get with filters
+// export const getPrimaryByIntegration = ...

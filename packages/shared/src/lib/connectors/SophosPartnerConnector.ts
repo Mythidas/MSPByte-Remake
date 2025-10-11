@@ -91,13 +91,13 @@ export default class SophosPartnerConnector implements IConnector {
       if (tokenError) return { error: tokenError };
 
       const path = "/endpoint/v1/endpoints?pageSize=500&pageTotal=true";
-      const url = config.api_host + path;
+      const url = config.apiHost + path;
 
       const response = await fetch(url, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
-          "X-Tenant-ID": config.tenant_id,
+          "X-Tenant-ID": config.tenantId,
         },
       });
 
@@ -169,9 +169,9 @@ export default class SophosPartnerConnector implements IConnector {
         if (!expired) return { data: this.token };
       }
 
-      const clientId = this.config.client_id;
+      const clientId = this.config.clientId;
       const clientSecret = await Encryption.decrypt(
-        this.config.client_secret,
+        this.config.clientSecret,
         this.encryptionKey
       );
 

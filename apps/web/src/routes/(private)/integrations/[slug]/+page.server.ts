@@ -15,8 +15,9 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		error(404, 'Integration not found');
 	}
 
-	const dataSource = await locals.client.query(api.datasources.query.getPrimaryByIntegration, {
-		id: integration._id
+	const dataSource = await locals.client.query(api.datasources.crud.get, {
+		integrationId: integration._id,
+		isPrimary: true
 	});
 
 	return { integration, dataSource };
@@ -32,7 +33,7 @@ export const actions = {
 			return fail(400, { success: false, message: 'dataSourceId and integrationId are required' });
 		}
 
-		const dataSource = await locals.client.query(api.datasources.query.getDataSource, {
+		const dataSource = await locals.client.query(api.datasources.crud.get, {
 			id: dataSourceId as any
 		});
 
@@ -102,9 +103,11 @@ export const actions = {
 			}
 		}
 
-		const data = await locals.client.mutation(api.datasources.mutate.updateConfig, {
+		const data = await locals.client.mutation(api.datasources.crud.update, {
 			id: dataSourceId as any,
-			config: processedConfig
+			updates: {
+				config: processedConfig
+			}
 		});
 
 		if (!data) {

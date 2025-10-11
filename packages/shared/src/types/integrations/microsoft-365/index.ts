@@ -1,19 +1,19 @@
 export type Microsoft365IntegrationConfig = {
-  permission_version: number;
+  permissionVersion: number;
 };
 
 export type Microsoft365DataSourceConfig = {
   name: string;
-  tenant_id: string;
-  tenant_name: string;
-  domain_mappings: {
+  tenantId: string;
+  tenantName: string;
+  domainMappings: {
     domain: string;
-    site_id: string;
+    siteId: string;
   }[];
-  available_domains: {
+  availableDomains: {
     name: string;
-    is_default: boolean;
-    user_count: number;
+    isDefault: boolean;
+    userCount: number;
   }[];
-  permission_version: number;
+  permissionsVersion: number;
 };

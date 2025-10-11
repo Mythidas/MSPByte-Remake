@@ -1,7 +1,7 @@
 export type HaloPSAConfig = {
   url: string;
-  client_id: string;
-  client_secret: string;
+  clientId: string;
+  clientSecret: string;
 };
 
 export type HaloPSAPagination = {

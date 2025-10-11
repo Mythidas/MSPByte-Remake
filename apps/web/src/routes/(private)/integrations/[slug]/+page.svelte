@@ -201,7 +201,7 @@
 					<TabsTrigger value="configuration">Configuration</TabsTrigger>
 				{/if}
 				<TabsTrigger value="billing">Billing</TabsTrigger>
-				{#if integration.isValidConfig()}
+				{#if integration.isValidConfig() && (config.hasSyncStats === undefined || config.hasSyncStats)}
 					<TabsTrigger value="sync-status" class="relative">
 						Sync Status
 						{#if (totalFailedJobs || 0) > 0}

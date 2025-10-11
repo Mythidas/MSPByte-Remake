@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server.js";
 import { isAuthenticated } from "../helpers/validators.js";
+import { Query, QueryInitializer } from "convex/server";
+import { DataModel } from "../_generated/dataModel.js";
 
 export const getCompaniesWithSite = query({
   args: {
@@ -37,3 +39,6 @@ export const getCompaniesWithSite = query({
     );
   },
 });
+
+// Replaced by entities/crud.ts::list
+// export const list = ...

@@ -2,7 +2,6 @@ import type { Component } from 'svelte';
 import SophosSiteMapping from './custom-tabs/SophosSiteMapping.svelte';
 import MSPAgentConfig from './custom-tabs/MSPAgentConfig.svelte';
 import HaloPSASiteMapping from './custom-tabs/HaloPSASiteMapping.svelte';
-import type { Tables } from '@workspace/shared/types/database/index.js';
 import type { IntegrationState } from './integration/types.js';
 
 export type IntegrationBillingData = {
@@ -38,6 +37,8 @@ export interface IntegrationConfig {
 	}[];
 
 	getBillingData?: (integration: IntegrationState) => Promise<IntegrationBillingData>;
+
+	hasSyncStats?: boolean;
 }
 
 export const integrationConfigs: Record<string, IntegrationConfig> = {
@@ -145,10 +146,10 @@ export const integrationConfigs: Record<string, IntegrationConfig> = {
 			features: ['Installable Agent', 'PSA Ticket Submission', 'Per Agent Ticket Logs']
 		},
 		setup: {
-			requirements: [],
-			steps: []
+			requirements: ['Enabled PSA Integration in MSP Byte'],
+			steps: ['Choose the desired PSA in the "Configuration" tab']
 		},
 		configuration: MSPAgentConfig,
-		troubleshooting: []
+		hasSyncStats: false
 	}
 };

@@ -23,20 +23,6 @@ export const getFailedCountByDataSource = query({
   },
 });
 
-export const getRecentByDataSource = query({
-  args: {
-    dataSourceId: v.id("data_sources"),
-  },
-  handler: async (ctx, args) => {
-    const identity = await isAuthenticated(ctx);
-    return await ctx.db
-      .query("scheduled_jobs")
-      .withIndex("by_data_source_status", (q) =>
-        q
-          .eq("dataSourceId", args.dataSourceId)
-          .eq("status", "failed")
-          .eq("tenantId", identity.tenantId)
-      )
-      .unique();
-  },
-});
+// Replaced by scheduledjobs/crud.ts::get with filters
+// Note: Original used .unique(), CRUD uses .first() - similar but slightly different behavior
+// export const getRecentByDataSource = ...

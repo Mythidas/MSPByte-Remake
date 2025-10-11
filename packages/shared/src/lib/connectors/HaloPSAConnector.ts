@@ -262,10 +262,10 @@ export class HaloPSAConnector {
       },
       body: new URLSearchParams({
         grant_type: "client_credentials",
-        client_id: this.config.client_id,
+        client_id: this.config.clientId,
         client_secret:
           (await Encryption.decrypt(
-            this.config.client_secret,
+            this.config.clientSecret,
             this.encryptionKey
           )) || "",
         scope: "all",

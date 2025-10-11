@@ -26,16 +26,19 @@ export class AutoTaskConnector implements IConnector {
       };
 
       const secret =
-        (await Encryption.decrypt(this.config.client_secret, this.encryptionKey)) || "failed";
+        (await Encryption.decrypt(
+          this.config.clientSecret,
+          this.encryptionKey
+        )) || "failed";
 
       const response = await fetch(
         `https://${this.config.server}/ATServicesRest/V1.0/Companies/query?search=${JSON.stringify(search)}`,
         {
           method: "GET",
           headers: {
-            UserName: this.config.client_id,
+            UserName: this.config.clientId,
             Secret: secret,
-            ApiIntegrationCode: this.config.tracker_id,
+            ApiIntegrationCode: this.config.trackerId,
           },
         }
       );
