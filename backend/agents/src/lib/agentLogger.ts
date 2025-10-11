@@ -1,5 +1,6 @@
 import { PerformanceTracker } from "@workspace/shared/lib/performance.js";
-import { convexAgents } from "./convex.js";
+import { client } from "@workspace/shared/lib/db/convex.js";
+import { api } from "@workspace/database/convex/_generated/api.js";
 
 export interface AgentLogContext {
   endpoint: string;
@@ -32,12 +33,12 @@ export async function logAgentApiCall(
     const spans = performanceTracker.getSpans();
     const totalElapsed = performanceTracker.getTotalElapsed();
 
-    await convexAgents.createApiLog({
+    await client.action(api.agents.internal.createApiLog, {
       endpoint: context.endpoint,
       method: context.method,
-      agentId: context.agentId,
-      siteId: context.siteId,
-      tenantId: context.tenantId,
+      agentId: context.agentId as any,
+      siteId: context.siteId as any,
+      tenantId: context.tenantId as any,
       psaSiteId: context.psaSiteId,
       rmmDeviceId: context.rmmDeviceId,
       statusCode: result.statusCode,
@@ -49,6 +50,7 @@ export async function logAgentApiCall(
         ...((result.responseMetadata || {}) as any),
         spans,
       },
+      secret: process.env.CONVEX_API_KEY!,
     });
   } catch (error) {
     // Don't fail the request if logging fails

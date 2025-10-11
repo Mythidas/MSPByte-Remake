@@ -13,16 +13,15 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
-import type * as agents_mutate from "../agents/mutate.js";
-import type * as agents_query from "../agents/query.js";
+import type * as agents_internal from "../agents/internal.js";
 import type * as datasources_mutate from "../datasources/mutate.js";
 import type * as datasources_query from "../datasources/query.js";
 import type * as entities_query from "../entities/query.js";
-import type * as helper from "../helper.js";
-import type * as http from "../http.js";
+import type * as helpers_validators from "../helpers/validators.js";
 import type * as integrations_query from "../integrations/query.js";
 import type * as scheduledjobs_mutate from "../scheduledjobs/mutate.js";
 import type * as scheduledjobs_query from "../scheduledjobs/query.js";
+import type * as sites_internal from "../sites/internal.js";
 import type * as sites_mutate from "../sites/mutate.js";
 import type * as sites_query from "../sites/query.js";
 import type * as types from "../types.js";
@@ -38,16 +37,15 @@ import type * as users_query from "../users/query.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
-  "agents/mutate": typeof agents_mutate;
-  "agents/query": typeof agents_query;
+  "agents/internal": typeof agents_internal;
   "datasources/mutate": typeof datasources_mutate;
   "datasources/query": typeof datasources_query;
   "entities/query": typeof entities_query;
-  helper: typeof helper;
-  http: typeof http;
+  "helpers/validators": typeof helpers_validators;
   "integrations/query": typeof integrations_query;
   "scheduledjobs/mutate": typeof scheduledjobs_mutate;
   "scheduledjobs/query": typeof scheduledjobs_query;
+  "sites/internal": typeof sites_internal;
   "sites/mutate": typeof sites_mutate;
   "sites/query": typeof sites_query;
   types: typeof types;

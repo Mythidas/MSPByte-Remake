@@ -1,5 +1,6 @@
 import { generateAgentGuid } from "@/lib/utils.js";
-import { getRow, upsertRows } from "@workspace/shared/lib/db/orm.js";
+import { api } from "@workspace/database/convex/_generated/api.js";
+import { client } from "@workspace/shared/lib/db/convex.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import { FastifyInstance } from "fastify";
 
@@ -30,8 +31,9 @@ export default async function (fastify: FastifyInstance) {
       );
     }
 
-    const { data: site } = await getRow("sites", {
-      filters: [["id", "eq", site_id]],
+    const site = await client.action(api.sites.internal.get, {
+      id: site_id as any,
+      secret: process.env.CONVEX_API_KEY!,
     });
 
     if (!site) {
@@ -49,26 +51,33 @@ export default async function (fastify: FastifyInstance) {
     }
 
     // Generate GUID using the new utility function
-    const calculatedGuid = generateAgentGuid(guid, mac, hostname, site.id);
-
-    const result = await upsertRows("agents", {
-      rows: [
-        {
-          tenant_id: site.tenant_id,
-          site_id: site.id,
-          guid: calculatedGuid,
-          hostname: hostname,
-          platform: platform,
-          ip_address: "",
-          ext_address: "",
-          version: version,
-          mac_address: mac,
-        },
-      ],
-      onConflict: ["guid"],
+    const calculatedGuid = generateAgentGuid(guid, mac, hostname, site._id);
+    const agent = await client.action(api.agents.internal.getByGuid, {
+      guid: guid || "",
+      secret: process.env.CONVEX_API_KEY!,
     });
 
-    if (result.error) {
+    const result = !agent
+      ? await client.action(api.agents.internal.create, {
+          tenantId: site.tenantId,
+          siteId: site._id,
+          guid: calculatedGuid,
+          hostname,
+          platform,
+          version,
+          secret: process.env.CONVEX_API_KEY!,
+        })
+      : await client.action(api.agents.internal.update, {
+          id: agent._id,
+          siteId: site._id,
+          guid: calculatedGuid,
+          hostname,
+          platform,
+          version,
+          secret: process.env.CONVEX_API_KEY!,
+        });
+
+    if (!result) {
       return Debug.response(
         {
           error: {
@@ -85,8 +94,8 @@ export default async function (fastify: FastifyInstance) {
     return Debug.response(
       {
         data: {
-          device_id: result.data[0].id,
-          guid: result.data[0].guid,
+          device_id: result._id,
+          guid: result.guid,
         },
       },
       200

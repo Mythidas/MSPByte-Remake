@@ -3,7 +3,9 @@ import { FastifyInstance } from "fastify";
 import { PerformanceTracker } from "@workspace/shared/lib/performance.js";
 import { logAgentApiCall } from "@/lib/agentLogger.js";
 import { generateAgentGuid } from "@/lib/utils.js";
-import { convexAgents } from "@/lib/convex.js";
+import { client } from "@workspace/shared/lib/db/convex.js";
+import { api } from "@workspace/database/convex/_generated/api.js";
+import { Doc } from "@workspace/database/convex/_generated/dataModel.js";
 
 export default async function (fastify: FastifyInstance) {
   fastify.post("/", async (req) => {
@@ -71,10 +73,15 @@ export default async function (fastify: FastifyInstance) {
         );
       }
 
-      // Fetch existing agent
-      const existingAgent = await perf.trackSpan("db_fetch_agent", async () => {
-        return convexAgents.get(deviceID);
-      });
+      const existingAgent = (await perf.trackSpan(
+        "db_fetch_agent",
+        async () => {
+          return client.action(api.agents.internal.get, {
+            id: deviceID as any,
+            secret: process.env.CONVEX_API_KEY!,
+          });
+        }
+      )) as Doc<"agents">;
 
       if (!existingAgent) {
         statusCode = 404;
@@ -108,8 +115,8 @@ export default async function (fastify: FastifyInstance) {
 
       // Update agent information
       const result = await perf.trackSpan("db_update_agent", async () => {
-        return await convexAgents.update({
-          id: deviceID,
+        return await client.action(api.agents.internal.update, {
+          id: deviceID as any,
           guid: calculatedGuid,
           hostname,
           ipAddress: ip_address || existingAgent.ipAddress,
@@ -117,10 +124,11 @@ export default async function (fastify: FastifyInstance) {
           version,
           macAddress: mac_address || existingAgent.macAddress,
           lastCheckinAt: new Date().getTime(),
+          secret: process.env.CONVEX_API_KEY!,
         });
       });
 
-      if (!result?.success) {
+      if (!result) {
         statusCode = 500;
         errorMessage = "Failed to update agent";
         return Debug.response(
@@ -156,9 +164,12 @@ export default async function (fastify: FastifyInstance) {
       if (siteID && deviceID) {
         // Get tenant_id for logging (best effort)
         try {
-          const agent = await perf.trackSpan("db_fetch_agent", async () => {
-            return convexAgents.get(deviceID);
-          });
+          const agent = (await perf.trackSpan("db_fetch_agent", async () => {
+            return client.action(api.agents.internal.get, {
+              id: deviceID as any,
+              secret: process.env.CONVEX_API_KEY!,
+            });
+          })) as Doc<"agents">;
 
           if (agent) {
             await logAgentApiCall(
