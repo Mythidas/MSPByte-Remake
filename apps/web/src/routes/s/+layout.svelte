@@ -39,17 +39,17 @@
 
 			<!--Nav-->
 			<Navbar>
-				<NavLink href="/" label="Dashboard" icon={LayoutDashboard} />
+				<NavLink href="/s" label="Dashboard" exact icon={LayoutDashboard} />
 
 				{#if appState.getSite()}
 					{@const site = appState.getSite()!}
 					<NavGroup name="Sites" icon={Building}>
-						<NavLink href="/sites" label="All Sites" exact icon={Earth} />
-						<NavLink href={`/sites/${site.slug}`} label={site.name!} icon={ArrowBigRight} exact />
+						<NavLink href="/s/sites" label="All Sites" exact icon={Earth} />
+						<NavLink href={`/s/sites/${site.slug}`} label={site.name!} icon={ArrowBigRight} exact />
 
 						{#if data.mspagent && data.mspagent.config.psaIntegrationId === site.psaIntegrationId}
 							<NavLink
-								href={`/sites/${site.slug}/integrations/msp-agent`}
+								href={`/s/sites/${site.slug}/integrations/msp-agent`}
 								label="MSP Agent"
 								icon={HatGlasses}
 							/>
@@ -59,25 +59,25 @@
 							<NavGroup name="Integrations" icon={Bolt}>
 								{#if site.psaIntegrationId}
 									<NavLink
-										href={`/sites/${site.slug}/integrations/${site.psaIntegrationId}`}
+										href={`/s/sites/${site.slug}/integrations/${site.psaIntegrationId}`}
 										label={site.psaIntegrationName || site.psaIntegrationId}
 									/>
 								{/if}
 
 								{#each appState.siteLinkedIntegrations || [] as { slug, name }, idx}
-									<NavLink href={`/sites/${site.slug}/integrations/${slug}`} label={name} />
+									<NavLink href={`/s/sites/${site.slug}/integrations/${slug}`} label={name} />
 								{/each}
 							</NavGroup>
 						{/if}
 					</NavGroup>
 				{:else}
-					<NavLink href="/sites" label="Sites" icon={Building} />
+					<NavLink href="/s/sites" label="Sites" icon={Building} />
 				{/if}
 
 				<NavGroup name="Admin" icon={Settings}>
-					<NavLink href="/users" label="Users" icon={Users} />
-					<NavLink href="/roles" label="Roles" icon={Shield} />
-					<NavLink href="/integrations" label="Integrations" icon={Bolt} />
+					<NavLink href="/s/users" label="Users" icon={Users} />
+					<NavLink href="/s/roles" label="Roles" icon={Shield} />
+					<NavLink href="/s/integrations" label="Integrations" icon={Bolt} />
 				</NavGroup>
 			</Navbar>
 		</div>

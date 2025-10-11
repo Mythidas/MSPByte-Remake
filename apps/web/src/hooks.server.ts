@@ -26,9 +26,12 @@ const authGuard: Handle = async ({ event, resolve }) => {
 
 	const user = event.locals.auth();
 
-	if (!user.isAuthenticated && event.url.pathname === '/') {
-		throw redirect(303, '/public');
+	if (event.url.pathname === '/') {
+		if (user.isAuthenticated) {
+			throw redirect(303, '/s');
+		} else return resolve(event);
 	}
+
 	if (!user.isAuthenticated && !event.url.pathname.startsWith('/auth')) {
 		throw redirect(303, '/auth/login');
 	}

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { api } from '$lib/convex';
-	import { type SiteWithDetails } from '@workspace/database/convex/types.js';
 	import DataTable from '$lib/components/table/DataTable.svelte';
 	import { type DataTableCell } from '$lib/components/table/types.js';
 	import Button from '$lib/components/ui/button/button.svelte';
@@ -15,7 +14,7 @@
 
 	{#snippet cellSnip({ row }: DataTableCell<SiteWithDetails>)}
 		<Button
-			href={`/sites/${row.slug}`}
+			href={`/s/sites/${row.slug}`}
 			variant="link"
 			class="p-0 text-primary-foreground hover:text-primary hover:no-underline"
 			onclick={() => appState.setSite(row as any)}
@@ -26,7 +25,7 @@
 
 	<DataTable
 		fetcher={async (state) => {
-			const result = await appState.convex.query(api.sites.getSites, {
+			const result = await appState.convex.query(api.sites.crud.list, {
 				page: state.page ?? 0,
 				pageSize: state.size ?? 100,
 				search: state.globalSearch,
