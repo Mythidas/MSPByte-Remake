@@ -1,5 +1,4 @@
 import { HaloPSAConnector } from "@workspace/shared/lib/connectors/HaloPSAConnector.js";
-import { getRow } from "@workspace/shared/lib/db/orm.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import { generateUUID } from "@workspace/shared/lib/utils.server.js";
 import { HaloPSAConfig } from "@workspace/shared/types/integrations/halopsa/index.js";
@@ -7,8 +6,12 @@ import { FastifyInstance } from "fastify";
 import { PerformanceTracker } from "@workspace/shared/lib/performance.js";
 import { logAgentApiCall } from "@/lib/agentLogger.js";
 import { HaloPSAAsset } from "@workspace/shared/types/integrations/halopsa/assets.js";
+import { client } from "@workspace/shared/lib/db/convex.js";
+import { api } from "@workspace/database/convex/_generated/api.js";
 
 export default async function (fastify: FastifyInstance) {
+  const CONVEX_API_KEY = process.env.CONVEX_API_KEY!;
+
   fastify.post("/", async (req) => {
     const perf = new PerformanceTracker();
     let statusCode = 500;
@@ -43,27 +46,35 @@ export default async function (fastify: FastifyInstance) {
       }
 
       // Fetch agent, site, and data source from database
-      const [{ data: agent }, { data: site }, { data: dataSource }] =
-        await perf.trackSpan("db_fetch_records", async () => {
+      const [agent, site, dataSource] = await perf.trackSpan(
+        "db_fetch_records",
+        async () => {
           const [agentRes, siteRes] = await Promise.all([
-            getRow("agents", {
-              filters: [["id", "eq", deviceID]],
+            client.action(api.agents.internal.get, {
+              id: deviceID as any,
+              secret: CONVEX_API_KEY,
             }),
-            getRow("sites", {
-              filters: [["id", "eq", siteID]],
+            client.action(api.sites.internal.get, {
+              id: siteID as any,
+              secret: CONVEX_API_KEY,
             }),
           ]);
 
-          // TODO: Hard coded for current implementation... Will need a tenant settings or site settings to determine proper PSA
-          const dataSourceRes = await getRow("data_sources", {
-            filters: [
-              ["integration_id", "eq", "halopsa"],
-              ["site_id", "eq", await generateUUID(true)],
-            ],
-          });
+          if (!siteRes || !agentRes) {
+            throw new Error("Resources not found");
+          }
+
+          const dataSourceRes = await client.action(
+            api.agents.internal.getPsaSourceFromAgents,
+            {
+              tenantId: siteRes.tenantId,
+              secret: CONVEX_API_KEY,
+            }
+          );
 
           return [agentRes, siteRes, dataSourceRes];
-        });
+        }
+      );
 
       if (!dataSource || !site || !agent) {
         statusCode = 404;
@@ -84,7 +95,7 @@ export default async function (fastify: FastifyInstance) {
       Debug.log({
         module: "v1.0/ticket/create",
         context: "POST",
-        message: `Creating ticket for agent ${agent.hostname} (DeviceID: ${agent.id}) (SiteID: ${siteID})`,
+        message: `Creating ticket for agent ${agent.hostname} (DeviceID: ${agent._id}) (SiteID: ${siteID})`,
       });
 
       const connector = new HaloPSAConnector(
@@ -176,7 +187,7 @@ export default async function (fastify: FastifyInstance) {
           if (!body.rmm_id) {
             return { data: [] };
           }
-          return await connector.getAssets(site?.psa_company_id || "");
+          return await connector.getAssets(site?.psaCompanyId || "");
         }
       );
 
@@ -202,7 +213,7 @@ export default async function (fastify: FastifyInstance) {
       Debug.log({
         module: "v1.0/ticket/create",
         context: "POST",
-        message: `Found ${assets?.length || 0} HaloPSAAssets (HaloSiteID: ${site.psa_company_id})`,
+        message: `Found ${assets?.length || 0} HaloPSAAssets (HaloSiteID: ${site.psaCompanyId})`,
       });
 
       // Find matching asset
@@ -258,8 +269,8 @@ export default async function (fastify: FastifyInstance) {
       }
 
       const ticketInfo = {
-        siteId: Number(site.psa_company_id),
-        clientId: Number(site.psa_parent_company_id),
+        siteId: Number(site.psaCompanyId),
+        clientId: Number(site.psaParentCompanyId),
         summary: body.summary,
         details: body.description || "",
         user: {
@@ -269,7 +280,7 @@ export default async function (fastify: FastifyInstance) {
         },
         impact: body.impact,
         urgency: body.urgency,
-        assets: asset ? [asset.id] : [], // TODO: Find assets,
+        assets: asset ? [asset.id] : [],
         images: body.link ? [body.link] : [],
       };
 
@@ -312,10 +323,10 @@ export default async function (fastify: FastifyInstance) {
         {
           endpoint: "/v1.0/ticket/create",
           method: "POST",
-          deviceId: deviceID,
+          agentId: agent._id,
           siteId: siteID,
-          tenantId: agent.tenant_id,
-          psaSiteId: site.psa_company_id || undefined,
+          tenantId: agent.tenantId,
+          psaSiteId: site.psaCompanyId,
           rmmDeviceId: body.rmm_id,
         },
         {
@@ -347,8 +358,9 @@ export default async function (fastify: FastifyInstance) {
       if (siteID && deviceID) {
         // Get tenant_id for logging (best effort)
         try {
-          const { data: agent } = await getRow("agents", {
-            filters: [["id", "eq", deviceID]],
+          const agent = await client.action(api.agents.internal.get, {
+            id: deviceID as any,
+            secret: CONVEX_API_KEY,
           });
 
           if (agent) {
@@ -356,9 +368,9 @@ export default async function (fastify: FastifyInstance) {
               {
                 endpoint: "/v1.0/ticket/create",
                 method: "POST",
-                deviceId: agent.id,
-                siteId: agent.site_id,
-                tenantId: agent.tenant_id,
+                agentId: agent._id,
+                siteId: agent.siteId,
+                tenantId: agent.tenantId,
               },
               {
                 statusCode,

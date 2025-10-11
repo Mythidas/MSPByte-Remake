@@ -7,6 +7,7 @@ import {
 import { internal } from "../_generated/api.js";
 import { isValidSecret } from "../helpers/validators.js";
 import { Doc } from "../_generated/dataModel.js";
+import { RetryHandler } from "@microsoft/microsoft-graph-client";
 
 /**
  * Internal query to get an agent by ID
@@ -115,6 +116,43 @@ export const _createApiLog = internalMutation({
   },
 });
 
+export const _getPsaSourceFromAgents = internalQuery({
+  args: {
+    tenantId: v.id("tenants"),
+  },
+  handler: async (ctx, args) => {
+    const agentIntegration = await ctx.db
+      .query("integrations")
+      .withIndex("by_slug", (q) => q.eq("slug", "msp-agent"))
+      .unique();
+    if (!agentIntegration) throw new Error("Resources not found");
+
+    const agentSource = await ctx.db
+      .query("data_sources")
+      .withIndex("by_integration_primary", (q) =>
+        q
+          .eq("integrationId", agentIntegration._id)
+          .eq("isPrimary", true)
+          .eq("tenantId", args.tenantId)
+      )
+      .unique();
+    if (!agentSource) throw new Error("Resources not found");
+
+    const psaIntegrationId = agentSource.config?.psaIntegrationId;
+    if (!psaIntegrationId) return null;
+
+    return await ctx.db
+      .query("data_sources")
+      .withIndex("by_integration_primary", (q) =>
+        q
+          .eq("integrationId", psaIntegrationId as any)
+          .eq("isPrimary", true)
+          .eq("tenantId", args.tenantId)
+      )
+      .unique();
+  },
+});
+
 /**
  * Public action to get an agent by ID
  * Validates API secret before executing
@@ -220,5 +258,21 @@ export const createApiLog = action({
     }
 
     await ctx.runMutation(internal.agents.internal._createApiLog, args);
+  },
+});
+
+export const getPsaSourceFromAgents = action({
+  args: {
+    tenantId: v.id("tenants"),
+    secret: v.string(),
+  },
+  handler: async (ctx, args): Promise<Doc<"data_sources"> | null> => {
+    await isValidSecret(args.secret);
+    return await ctx.runQuery(
+      internal.agents.internal._getPsaSourceFromAgents,
+      {
+        tenantId: args.tenantId,
+      }
+    );
   },
 });

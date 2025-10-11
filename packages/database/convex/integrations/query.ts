@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { query } from "../_generated/server.js";
 import { isAuthenticated } from "../helpers/validators.js";
 
-export const getIntegration = query({
+export const get = query({
   args: {
     id: v.id("integrations"),
   },
@@ -12,7 +12,7 @@ export const getIntegration = query({
   },
 });
 
-export const getIntegrationBySlug = query({
+export const getBySlug = query({
   args: {
     slug: v.string(),
   },
@@ -22,38 +22,6 @@ export const getIntegrationBySlug = query({
       .query("integrations")
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .unique();
-  },
-});
-
-export const getActiveIntegrationsView = query({
-  args: {},
-  handler: async (ctx, args) => {
-    const identity = await isAuthenticated(ctx);
-    const integrations = await ctx.db
-      .query("integrations")
-      .withIndex("by_is_active")
-      .collect();
-
-    return Promise.all(
-      integrations.map(async (integration) => {
-        const dataSource = await ctx.db
-          .query("data_sources")
-          .withIndex("by_integration_primary", (q) =>
-            q
-              .eq("integrationId", integration._id)
-              .eq("isPrimary", true)
-              .eq("tenantId", identity.tenantId)
-          )
-          .unique();
-
-        return {
-          ...integration,
-          isEnabled: (dataSource && !dataSource.deletedAt) || false,
-          dataSourceId: dataSource?._id,
-          dataSourceStatus: dataSource?.status,
-        };
-      })
-    );
   },
 });
 
@@ -108,5 +76,51 @@ export const getStatusMatrix = query({
     });
 
     return syncStatuses;
+  },
+});
+
+export const listActiveWithDataSource = query({
+  args: {},
+  handler: async (ctx, args) => {
+    const identity = await isAuthenticated(ctx);
+    const integrations = await ctx.db
+      .query("integrations")
+      .withIndex("by_is_active")
+      .collect();
+
+    return Promise.all(
+      integrations.map(async (integration) => {
+        const dataSource = await ctx.db
+          .query("data_sources")
+          .withIndex("by_integration_primary", (q) =>
+            q
+              .eq("integrationId", integration._id)
+              .eq("isPrimary", true)
+              .eq("tenantId", identity.tenantId)
+          )
+          .unique();
+
+        return {
+          ...integration,
+          isEnabled: (dataSource && !dataSource.deletedAt) || false,
+          dataSourceId: dataSource?._id,
+          dataSourceStatus: dataSource?.status,
+        };
+      })
+    );
+  },
+});
+
+export const listActiveByCategory = query({
+  args: {
+    category: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await isAuthenticated(ctx);
+    return await ctx.db
+      .query("integrations")
+      .withIndex("by_category", (q) => q.eq("category", args.category))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect();
   },
 });

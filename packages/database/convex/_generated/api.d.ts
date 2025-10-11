@@ -14,6 +14,7 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as agents_internal from "../agents/internal.js";
+import type * as datasources_internal from "../datasources/internal.js";
 import type * as datasources_mutate from "../datasources/mutate.js";
 import type * as datasources_query from "../datasources/query.js";
 import type * as entities_query from "../entities/query.js";
@@ -38,6 +39,7 @@ import type * as users_query from "../users/query.js";
  */
 declare const fullApi: ApiFromModules<{
   "agents/internal": typeof agents_internal;
+  "datasources/internal": typeof datasources_internal;
   "datasources/mutate": typeof datasources_mutate;
   "datasources/query": typeof datasources_query;
   "entities/query": typeof entities_query;

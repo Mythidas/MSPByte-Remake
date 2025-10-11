@@ -10,12 +10,12 @@
  */
 
 // Re-export API and internal functions
-export { api, internal } from '@workspace/database/convex/_generated/api';
+export { api, internal } from '@workspace/database/convex/_generated/api.js';
 
 // Re-export types
 export type {
-  Id,
-  Doc,
-  DataModel,
-  TableNames
-} from '@workspace/database/convex/_generated/dataModel';
+	Id,
+	Doc,
+	DataModel,
+	TableNames
+} from '@workspace/database/convex/_generated/dataModel.js';

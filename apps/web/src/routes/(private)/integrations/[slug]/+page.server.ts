@@ -7,7 +7,7 @@ import Encryption from '@workspace/shared/lib/Encryption.js';
 import { api } from '$lib/convex';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
-	const integration = await locals.client.query(api.integrations.query.getIntegrationBySlug, {
+	const integration = await locals.client.query(api.integrations.query.getBySlug, {
 		slug: params.slug
 	});
 
@@ -73,7 +73,7 @@ export const actions = {
 			return fail(400, { success: false, message: 'Missing required fields' });
 		}
 
-		const integration = await locals.client.query(api.integrations.query.getIntegration, {
+		const integration = await locals.client.query(api.integrations.query.get, {
 			id: integrationId as any
 		});
 

@@ -1,17 +1,16 @@
 <script lang="ts">
-	import { api } from '../../../convex/_generated/api.js';
 	import SearchBar from '$lib/components/SearchBar.svelte';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
-	import { getAppState } from '$lib/state/Application.svelte.js';
+	import { api } from '$lib/convex/index.js';
 	import { useQuery } from 'convex-svelte';
 	import { Search, Settings } from 'lucide-svelte';
 
 	let search = $state('');
 	let tags: string[] = $state([]);
 
-	const query = useQuery(api.integrations.query.getActiveIntegrationsView, {});
+	const query = useQuery(api.integrations.query.listActiveWithDataSource, {});
 	const integrations = $derived(query.data);
 
 	// Computed: filtered integrations based on search and tags

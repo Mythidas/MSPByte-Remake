@@ -10,16 +10,13 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 			})
 		: undefined;
 
-	const mspAgent = await locals.client.query(api.integrations.query.getIntegrationBySlug, {
+	const mspAgent = await locals.client.query(api.integrations.query.getBySlug, {
 		slug: 'msp-agent'
 	});
 	if (mspAgent) {
-		const dataSource = await locals.client.query(
-			api.datasources.query.getPrimaryDataSourceByIntegration,
-			{
-				id: mspAgent._id
-			}
-		);
+		const dataSource = await locals.client.query(api.datasources.query.getPrimaryByIntegration, {
+			id: mspAgent._id
+		});
 
 		return {
 			user,
