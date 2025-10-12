@@ -1,12 +1,12 @@
 {
   "name": "@workspace/agents",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "type": "module",
   "private": true,
   "scripts": {
     "dev": "tsx watch src/app.ts",
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
-    "start": "node dist/backend/agents/src/app.js",
+    "start": "tsx dist/backend/agents/src/app.js",
     "test": "vitest",
     "typecheck": "tsc --noEmit"
   },

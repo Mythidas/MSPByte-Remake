@@ -3,12 +3,6 @@
   "compilerOptions": {
     "outDir": "./dist",
     "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"],
-      "@workspace/shared/*": ["../../packages/shared/src/*"],
-      "@workspace/services/*": ["../../backend/services/src/*"],
-      "@workspace/database/*": ["../../packages/database/*"]
-    },
     "declaration": true,
     "sourceMap": true
   },
