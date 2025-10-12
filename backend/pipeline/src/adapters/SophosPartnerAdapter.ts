@@ -2,17 +2,18 @@ import {
   BaseAdapter,
   RawDataProps,
 } from "@workspace/pipeline/adapters/BaseAdapter.js";
-import { getRow } from "@workspace/shared/lib/db/orm.js";
+import { api } from "@workspace/database/convex/_generated/api.js";
+import type { Doc } from "@workspace/database/convex/_generated/dataModel.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import Encryption from "@workspace/shared/lib/Encryption.js";
 import { APIResponse } from "@workspace/shared/types/api.js";
-import { Tables } from "@workspace/shared/types/database/import.js";
 import { DataFetchPayload } from "@workspace/shared/types/pipeline/events.js";
 import SophosPartnerConnector from "@workspace/shared/lib/connectors/SophosPartnerConnector.js";
 import {
   SophosPartnerConfig,
   SophosTenantConfig,
 } from "@workspace/shared/types/integrations/sophos-partner/index.js";
+import { client } from "@workspace/shared/lib/convex.js";
 
 export class SophosPartnerAdapter extends BaseAdapter {
   constructor() {
@@ -36,7 +37,7 @@ export class SophosPartnerAdapter extends BaseAdapter {
     Debug.log({
       module: "SophosPartnerAdapter",
       context: "getRawData",
-      message: `Fetching data for tenant ${tenantID}, dataSource ${dataSource.id || "N/A"}`,
+      message: `Fetching data for tenant ${tenantID}, dataSource ${dataSource._id || "N/A"}`,
     });
 
     switch (eventData.entityType) {
@@ -54,34 +55,52 @@ export class SophosPartnerAdapter extends BaseAdapter {
   }
 
   private async handleEndpointSync(
-    dataSource: Tables<"data_sources">
+    dataSource: Doc<"data_sources">
   ): Promise<APIResponse<DataFetchPayload[]>> {
-    const sophosSource = await getRow("data_sources", {
-      filters: [
-        ["integration_id", "eq", "sophos-partner"],
-        ["site_id", "is", null],
-      ],
+    // Get the global Sophos Partner data source (tenant-level, no siteId)
+    const sophosIntegration = await client.query(api.integrations.crud_s.get, {
+      slug: "sophos-partner",
+      secret: process.env.CONVEX_API_KEY!,
     });
-    if (sophosSource.error) {
+
+    if (!sophosIntegration) {
       return Debug.error({
         module: "SophosPartnerAdapter",
         context: "handleEndpointSync",
-        message: `Failed to fetch global data source`,
+        message: `Sophos Partner integration not found`,
         code: "DB_FAILURE",
       });
     }
-    const partnerConfig = sophosSource.data.config as SophosPartnerConfig;
+
+    const sophosDataSources = await client.query(api.datasources.crud_s.list, {
+      integrationId: sophosIntegration._id,
+      tenantId: dataSource.tenantId,
+      secret: process.env.CONVEX_API_KEY!,
+    });
+
+    // Find the global data source (no siteId)
+    const sophosSource = sophosDataSources.find((ds) => !ds.siteId);
+    if (!sophosSource) {
+      return Debug.error({
+        module: "SophosPartnerAdapter",
+        context: "handleEndpointSync",
+        message: `Failed to fetch global Sophos data source`,
+        code: "DB_FAILURE",
+      });
+    }
+
+    const partnerConfig = sophosSource.config as SophosPartnerConfig;
 
     const connector = new SophosPartnerConnector(
       partnerConfig,
-      process.env.NEXT_SECRET_KEY!
+      process.env.SECRET_KEY!
     );
     const health = await connector.checkHealth();
     if (!health) {
       return Debug.error({
         module: "SophosPartnerAdapter",
         context: "handleEndpointSync",
-        message: `Connector failed health check: ${dataSource.id}`,
+        message: `Connector failed health check: ${dataSource._id}`,
         code: "CONNECTOR_FAILURE",
       });
     }
@@ -106,7 +125,7 @@ export class SophosPartnerAdapter extends BaseAdapter {
 
           dataHash,
           rawData,
-          siteID: dataSource.site_id || undefined,
+          siteID: dataSource.siteId || undefined,
         };
       }),
     };

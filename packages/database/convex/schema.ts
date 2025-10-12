@@ -157,6 +157,7 @@ export default defineSchema({
   scheduled_jobs: defineTable({
     tenantId: v.id("tenants"),
     integrationId: v.id("integrations"),
+    integrationSlug: v.string(), // Slug for event routing (e.g., "autotask", "sophos-partner")
     dataSourceId: v.optional(v.id("data_sources")),
     action: v.string(), // e.g., "sync.sites", "sync.devices"
     payload: v.any(),
@@ -188,7 +189,9 @@ export default defineSchema({
     .index("by_scheduled_at", ["scheduledAt"])
     .index("by_tenant", ["tenantId"])
     .index("by_integration", ["integrationId"])
-    .index("by_next_retry", ["nextRetryAt"]),
+    .index("by_next_retry", ["nextRetryAt"])
+    // Optimized index for scheduler polling (pending jobs that are due and under retry limit)
+    .index("by_pending_due", ["status", "scheduledAt"]),
 
   // ============================================================================
   // LOGGING & MONITORING
@@ -284,7 +287,8 @@ export default defineSchema({
     entityType: v.union(
       v.literal("companies"),
       v.literal("endpoints"),
-      v.literal("identities")
+      v.literal("identities"),
+      v.literal("groups")
     ), // "device", "ticket", "company", etc.
     externalId: v.string(), // ID in the external system
     dataHash: v.string(), // Hash for change detection

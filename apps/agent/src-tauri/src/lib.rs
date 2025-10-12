@@ -84,43 +84,43 @@ pub fn run() {
             });
 
             // Create the tray application
-            let request_support_sc_i = MenuItem::with_id(
-                app,
-                "request_support_sc",
-                "Take Screenshot and Request Support",
-                true,
-                None::<&str>,
-            )?;
-            let request_support_i = MenuItem::with_id(
-                app,
-                "request_support",
-                "Request Support",
-                true,
-                None::<&str>,
-            )?;
-            let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            // let request_support_sc_i = MenuItem::with_id(
+            //     app,
+            //     "request_support_sc",
+            //     "Take Screenshot and Request Support",
+            //     true,
+            //     None::<&str>,
+            // )?;
+            // let request_support_i = MenuItem::with_id(
+            //     app,
+            //     "request_support",
+            //     "Request Support",
+            //     true,
+            //     None::<&str>,
+            // )?;
+            // let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
 
-            // Create menu with items
-            let menu =
-                Menu::with_items(app, &[&request_support_sc_i, &request_support_i, &quit_i])?;
+            // // Create menu with items
+            // let menu =
+            //     Menu::with_items(app, &[&request_support_sc_i, &request_support_i, &quit_i])?;
 
-            // Build tray icon with menu
-            let _tray = TrayIconBuilder::new()
-                .icon(app.default_window_icon().unwrap().clone())
-                .menu(&menu)
-                .on_menu_event(|app, event| match event.id.as_ref() {
-                    "request_support_sc" => {
-                        handle_support_window(app, true);
-                    }
-                    "request_support" => {
-                        handle_support_window(app, false);
-                    }
-                    "quit" => {
-                        app.exit(0);
-                    }
-                    _ => {}
-                })
-                .build(app)?;
+            // // Build tray icon with menu
+            // let _tray = TrayIconBuilder::new()
+            //     .icon(app.default_window_icon().unwrap().clone())
+            //     .menu(&menu)
+            //     .on_menu_event(|app, event| match event.id.as_ref() {
+            //         "request_support_sc" => {
+            //             handle_support_window(app, true);
+            //         }
+            //         "request_support" => {
+            //             handle_support_window(app, false);
+            //         }
+            //         "quit" => {
+            //             app.exit(0);
+            //         }
+            //         _ => {}
+            //     })
+            //     .build(app)?;
 
             Ok(())
         })

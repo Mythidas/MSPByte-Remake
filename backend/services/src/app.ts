@@ -23,6 +23,7 @@ import dotenv from "dotenv";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+console.log(join(__dirname, "../../../../.env"));
 dotenv.config({ path: join(__dirname, "../../../.env") });
 
 class MSPByteBackend {

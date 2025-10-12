@@ -2,10 +2,10 @@ import {
   BaseAdapter,
   RawDataProps,
 } from "@workspace/pipeline/adapters/BaseAdapter.js";
+import type { Doc } from "@workspace/database/convex/_generated/dataModel.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import Encryption from "@workspace/shared/lib/Encryption.js";
 import { APIResponse } from "@workspace/shared/types/api.js";
-import { Tables } from "@workspace/shared/types/database/import.js";
 import { DataFetchPayload } from "@workspace/shared/types/pipeline/events.js";
 import { HaloPSAConnector } from "@workspace/shared/lib/connectors/HaloPSAConnector.js";
 import { HaloPSAConfig } from "@workspace/shared/types/integrations/halopsa/index.js";
@@ -32,7 +32,7 @@ export class HaloPSAAdapter extends BaseAdapter {
     Debug.log({
       module: "HaloPSAAdapter",
       context: "getRawData",
-      message: `Fetching data for tenant ${tenantID}, dataSource ${dataSource.id || "N/A"}`,
+      message: `Fetching data for tenant ${tenantID}, dataSource ${dataSource._id || "N/A"}`,
     });
 
     switch (eventData.entityType) {
@@ -50,18 +50,18 @@ export class HaloPSAAdapter extends BaseAdapter {
   }
 
   private async handleCompanySync(
-    dataSource: Tables<"data_sources">
+    dataSource: Doc<"data_sources">
   ): Promise<APIResponse<DataFetchPayload[]>> {
     const connector = new HaloPSAConnector(
       dataSource.config as HaloPSAConfig,
-      process.env.NEXT_SECRET_KEY!
+      process.env.SECRET_KEY!
     );
     const health = await connector.checkHealth();
     if (!health) {
       return Debug.error({
         module: "HaloPSAAdapter",
         context: "handleCompanySync",
-        message: `Connector failed health check: ${dataSource.id}`,
+        message: `Connector failed health check: ${dataSource._id}`,
         code: "CONNECTOR_FAILURE",
       });
     }

@@ -20,9 +20,17 @@ export const createScheduledJob = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await isAuthenticated(ctx);
+
+    // Fetch integration to get slug for event routing
+    const integration = await ctx.db.get(args.integrationId);
+    if (!integration) {
+      throw new Error(`Integration not found: ${args.integrationId}`);
+    }
+
     await ctx.db.insert("scheduled_jobs", {
       tenantId: identity.tenantId,
       ...args,
+      integrationSlug: integration.slug,
       createdBy: identity.email,
       scheduledAt: new Date().getTime(),
       createdAt: new Date().getTime(),
@@ -39,10 +47,18 @@ export const scheduleJobsByIntegration = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await isAuthenticated(ctx);
+
+    // Fetch integration to get slug for event routing
+    const integration = await ctx.db.get(args.integrationId);
+    if (!integration) {
+      throw new Error(`Integration not found: ${args.integrationId}`);
+    }
+
     for (const type of args.supportedTypes) {
       await ctx.db.insert("scheduled_jobs", {
         tenantId: identity.tenantId,
         integrationId: args.integrationId,
+        integrationSlug: integration.slug,
         dataSourceId: args.dataSourceId,
         action: `sync.${type}`,
         payload: {},

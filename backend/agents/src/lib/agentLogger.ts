@@ -1,6 +1,6 @@
 import { PerformanceTracker } from "@workspace/shared/lib/performance.js";
-import { client } from "@workspace/shared/lib/db/convex.js";
 import { api } from "@workspace/database/convex/_generated/api.js";
+import { client } from "@workspace/shared/lib/convex.js";
 
 export interface AgentLogContext {
   endpoint: string;

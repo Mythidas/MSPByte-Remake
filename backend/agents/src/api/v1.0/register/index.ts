@@ -1,6 +1,6 @@
 import { generateAgentGuid } from "@/lib/utils.js";
 import { api } from "@workspace/database/convex/_generated/api.js";
-import { client } from "@workspace/shared/lib/db/convex.js";
+import { client } from "@workspace/shared/lib/convex.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import { FastifyInstance } from "fastify";
 

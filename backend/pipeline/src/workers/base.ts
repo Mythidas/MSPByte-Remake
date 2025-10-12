@@ -1,6 +1,7 @@
 import Debug from "@workspace/shared/lib/Debug.js";
 import { natsClient } from "@workspace/pipeline/helpers/nats.js";
-import { insertRows, updateRow } from "@workspace/shared/lib/db/orm.js";
+import { api } from "@workspace/database/convex/_generated/api.js";
+import { client } from "@workspace/shared/lib/convex.js";
 
 export abstract class BaseWorker {
   protected entityType: string;
@@ -78,35 +79,28 @@ export abstract class BaseWorker {
     payload: any,
     status: "pending" | "completed" | "failed" = "completed"
   ): Promise<void> {
-    await insertRows("events_log", {
-      rows: [
-        {
-          entity_id: entityId,
-          tenant_id: tenantId,
-          event_type: eventType,
-          payload,
-          processed_at: new Date().toISOString(),
-          status,
-        },
-      ],
+    await client.mutation(api.events_log.crud_s.create, {
+      entityId: entityId as any,
+      tenantId: tenantId as any,
+      eventType,
+      payload,
+      processedAt: Date.now(),
+      status,
+      secret: process.env.CONVEX_API_KEY!,
     });
   }
 
   private async markEntityComplete(entityId: string): Promise<void> {
     // Add a processing status field to the entity to track completion
     // This assumes you might want to add a status field to entities table
-    const { error } = await updateRow("entities", {
-      row: {
-        updated_at: new Date().toISOString(),
+    await client.mutation(api.entities.crud_s.update, {
+      id: entityId as any,
+      updates: {
         // Uncomment if you add a processing_status field to entities table
-        // processing_status: 'completed'
+        // processingStatus: 'completed'
       },
-      id: entityId,
+      secret: process.env.CONVEX_API_KEY!,
     });
-
-    if (error) {
-      throw new Error(`Failed to mark entity complete: ${error.message}`);
-    }
   }
 
   private async logError(
@@ -115,20 +109,17 @@ export abstract class BaseWorker {
     error: any,
     tenantId: string
   ): Promise<void> {
-    await insertRows("events_log", {
-      rows: [
-        {
-          entity_id: entityId,
-          tenant_id: tenantId,
-          event_type: "pipeline_error",
-          payload: {
-            stage,
-            error: error instanceof Error ? error.message : "Unknown error",
-          },
-          processed_at: new Date().toISOString(),
-          status: "failed",
-        },
-      ],
+    await client.mutation(api.events_log.crud_s.create, {
+      entityId: entityId as any,
+      tenantId: tenantId as any,
+      eventType: "pipeline_error",
+      payload: {
+        stage,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      processedAt: Date.now(),
+      status: "failed",
+      secret: process.env.CONVEX_API_KEY!,
     });
   }
 }

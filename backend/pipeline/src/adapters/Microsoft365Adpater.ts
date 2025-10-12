@@ -2,11 +2,11 @@ import {
   BaseAdapter,
   RawDataProps,
 } from "@workspace/pipeline/adapters/BaseAdapter.js";
+import type { Doc } from "@workspace/database/convex/_generated/dataModel.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import Encryption from "@workspace/shared/lib/Encryption.js";
 import Microsoft365Connector from "@workspace/shared/lib/connectors/Microsoft365Connector.js";
 import { APIResponse } from "@workspace/shared/types/api.js";
-import { Tables } from "@workspace/shared/types/database/import.js";
 import { DataFetchPayload } from "@workspace/shared/types/pipeline/events.js";
 import { Microsoft365DataSourceConfig } from "@workspace/shared/types/integrations/microsoft-365/index.js";
 
@@ -44,7 +44,7 @@ export class Microsoft365Adapter extends BaseAdapter {
     });
   }
 
-  private async handleIdentitySync(dataSource: Tables<"data_sources">) {
+  private async handleIdentitySync(dataSource: Doc<"data_sources">) {
     const config = dataSource.config as Microsoft365DataSourceConfig;
 
     const connector = new Microsoft365Connector(config);
@@ -53,7 +53,7 @@ export class Microsoft365Adapter extends BaseAdapter {
       return Debug.error({
         module: "Microsoft365Adapter",
         context: "handleIdentitySync",
-        message: `Connector failed health check: ${dataSource.id}`,
+        message: `Connector failed health check: ${dataSource._id}`,
         code: "CONNECTOR_FAILURE",
       });
     }
@@ -74,7 +74,7 @@ export class Microsoft365Adapter extends BaseAdapter {
         );
         const siteID = config.domain_mappings.find((map) =>
           rawData.userPrincipalName.endsWith(map.domain)
-        )?.site_id;
+        )?.siteId;
 
         return {
           externalID: rawData.id,
@@ -87,7 +87,7 @@ export class Microsoft365Adapter extends BaseAdapter {
     };
   }
 
-  private async handleGroupSync(dataSource: Tables<"data_sources">) {
+  private async handleGroupSync(dataSource: Doc<"data_sources">) {
     const config = dataSource.config as Microsoft365DataSourceConfig;
 
     const connector = new Microsoft365Connector(config);
@@ -96,7 +96,7 @@ export class Microsoft365Adapter extends BaseAdapter {
       return Debug.error({
         module: "Microsoft365Adapter",
         context: "handleIdentitySync",
-        message: `Connector failed health check: ${dataSource.id}`,
+        message: `Connector failed health check: ${dataSource._id}`,
         code: "CONNECTOR_FAILURE",
       });
     }

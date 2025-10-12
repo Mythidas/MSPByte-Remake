@@ -189,6 +189,7 @@
       "version": "0.0.1",
       "devDependencies": {
         "@types/minimatch": "^6.0.0",
+        "@workspace/database": "workspace:*",
       },
     },
     "packages/typescript-config": {

@@ -5,8 +5,8 @@ import { FastifyInstance } from "fastify";
 import { PerformanceTracker } from "@workspace/shared/lib/performance.js";
 import { logAgentApiCall } from "@/lib/agentLogger.js";
 import { HaloPSAAsset } from "@workspace/shared/types/integrations/halopsa/assets.js";
-import { client } from "@workspace/shared/lib/db/convex.js";
 import { api } from "@workspace/database/convex/_generated/api.js";
+import { client } from "@workspace/shared/lib/convex.js";
 
 export default async function (fastify: FastifyInstance) {
   const CONVEX_API_KEY = process.env.CONVEX_API_KEY!;
@@ -127,7 +127,7 @@ export default async function (fastify: FastifyInstance) {
 
       const connector = new HaloPSAConnector(
         dataSource.config as HaloPSAConfig,
-        process.env.NEXT_SECRET_KEY!
+        process.env.SECRET_KEY!
       );
 
       // Parse and validate request body (multipart/form-data or JSON)

@@ -10,9 +10,10 @@ import { paginationOptsValidator } from "convex/server";
 // ============================================================================
 
 const statusValidator = v.union(
-  v.literal("active"),
-  v.literal("inactive"),
-  v.literal("error")
+  v.literal("pending"),
+  v.literal("processing"),
+  v.literal("completed"),
+  v.literal("failed")
 );
 
 // ============================================================================
@@ -20,64 +21,40 @@ const statusValidator = v.union(
 // ============================================================================
 
 /**
- * Builds a progressive query for data_sources based on provided filters.
+ * Builds a progressive query for events_log based on provided filters.
  * Note: tenantId is optional for server queries (allows cross-tenant operations)
  */
 function buildProgressiveQuery(
   ctx: any,
   tenantId: Id<"tenants"> | undefined,
   filters: {
-    integrationId?: Id<"integrations">;
-    isPrimary?: boolean;
-    siteId?: Id<"sites">;
-    status?: "active" | "inactive" | "error";
+    entityId?: Id<"entities">;
+    status?: "pending" | "processing" | "completed" | "failed";
+    eventType?: string;
   }
-): Query<DataModel["data_sources"]> {
-  const { integrationId, isPrimary, siteId, status } = filters;
+): Query<DataModel["events_log"]> {
+  const { entityId, status, eventType } = filters;
 
   // Progressive index selection with optional tenant filtering
-  if (integrationId && isPrimary !== undefined && tenantId) {
+  if (entityId) {
     return ctx.db
-      .query("data_sources")
-      .withIndex("by_integration_primary", (q: any) =>
-        q
-          .eq("integrationId", integrationId)
-          .eq("isPrimary", isPrimary)
-          .eq("tenantId", tenantId)
-      );
-  } else if (integrationId && tenantId) {
+      .query("events_log")
+      .withIndex("by_entity", (q: any) => q.eq("entityId", entityId));
+  } else if (status) {
     return ctx.db
-      .query("data_sources")
-      .withIndex("by_integration_ordered", (q: any) =>
-        q.eq("integrationId", integrationId).eq("tenantId", tenantId)
-      );
-  } else if (siteId && tenantId) {
+      .query("events_log")
+      .withIndex("by_status", (q: any) => q.eq("status", status));
+  } else if (eventType) {
     return ctx.db
-      .query("data_sources")
-      .withIndex("by_site_ordered", (q: any) =>
-        q.eq("siteId", siteId).eq("tenantId", tenantId)
-      );
-  } else if (status && tenantId) {
-    return ctx.db
-      .query("data_sources")
-      .withIndex("by_status", (q: any) =>
-        q.eq("status", status).eq("tenantId", tenantId)
-      );
+      .query("events_log")
+      .withIndex("by_type", (q: any) => q.eq("eventType", eventType));
   } else if (tenantId) {
-    // Tenant-only filter
     return ctx.db
-      .query("data_sources")
-      .withIndex("by_status", (q: any) => q.eq("status", "active").eq("tenantId", tenantId))
-      .filter((q: any) =>
-        q.or(
-          q.eq(q.field("status"), "active"),
-          q.eq(q.field("status"), "inactive"),
-          q.eq(q.field("status"), "error")
-        )
-      );
+      .query("events_log")
+      .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId));
   } else {
-    // No tenant filter - return all data sources (admin use case)
-    return ctx.db.query("data_sources");
+    // No filters - return all events
+    return ctx.db.query("events_log");
   }
 }
 
@@ -94,10 +71,9 @@ export const list = query({
   args: {
     secret: v.string(),
     tenantId: v.optional(v.id("tenants")),
-    integrationId: v.optional(v.id("integrations")),
-    isPrimary: v.optional(v.boolean()),
-    siteId: v.optional(v.id("sites")),
+    entityId: v.optional(v.id("entities")),
     status: v.optional(statusValidator),
+    eventType: v.optional(v.string()),
     order: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
   },
   handler: async (ctx, args) => {
@@ -108,7 +84,7 @@ export const list = query({
     let indexedQuery = buildProgressiveQuery(ctx, tenantId, filters);
 
     // Apply ordering
-    let query: OrderedQuery<DataModel["data_sources"]> = indexedQuery;
+    let query: OrderedQuery<DataModel["events_log"]> = indexedQuery;
     query = indexedQuery.order(order);
 
     return await query.collect();
@@ -124,10 +100,9 @@ export const paginate = query({
   args: {
     secret: v.string(),
     tenantId: v.optional(v.id("tenants")),
-    integrationId: v.optional(v.id("integrations")),
-    isPrimary: v.optional(v.boolean()),
-    siteId: v.optional(v.id("sites")),
+    entityId: v.optional(v.id("entities")),
     status: v.optional(statusValidator),
+    eventType: v.optional(v.string()),
     order: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
     paginationOpts: paginationOptsValidator,
   },
@@ -139,7 +114,7 @@ export const paginate = query({
     let indexedQuery = buildProgressiveQuery(ctx, tenantId, filters);
 
     // Apply ordering
-    let query: OrderedQuery<DataModel["data_sources"]> = indexedQuery;
+    let query: OrderedQuery<DataModel["events_log"]> = indexedQuery;
     query = indexedQuery.order(order);
 
     return await query.paginate(paginationOpts);
@@ -153,13 +128,11 @@ export const paginate = query({
 export const get = query({
   args: {
     secret: v.string(),
-    id: v.optional(v.id("data_sources")),
+    id: v.optional(v.id("events_log")),
     tenantId: v.optional(v.id("tenants")),
-    integrationId: v.optional(v.id("integrations")),
-    isPrimary: v.optional(v.boolean()),
-    siteId: v.optional(v.id("sites")),
+    entityId: v.optional(v.id("entities")),
     status: v.optional(statusValidator),
-    externalId: v.optional(v.string()),
+    eventType: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await isValidSecret(args.secret);
@@ -169,18 +142,8 @@ export const get = query({
       return await ctx.db.get(args.id);
     }
 
-    // Filter-based mode - special case for externalId lookup
-    if (args.externalId && args.tenantId) {
-      return await ctx.db
-        .query("data_sources")
-        .withIndex("by_external_id", (q) =>
-          q.eq("externalId", args.externalId!).eq("tenantId", args.tenantId!)
-        )
-        .first();
-    }
-
     // Filter-based mode - use progressive query builder
-    const { secret, id, externalId, tenantId, ...filters } = args;
+    const { secret, id, tenantId, ...filters } = args;
     const query = buildProgressiveQuery(ctx, tenantId, filters);
 
     // Always get newest record when using filters
@@ -195,27 +158,24 @@ export const create = mutation({
   args: {
     secret: v.string(),
     tenantId: v.id("tenants"),
-    integrationId: v.id("integrations"),
-    siteId: v.optional(v.id("sites")),
-    externalId: v.optional(v.string()),
-    isPrimary: v.boolean(),
+    entityId: v.id("entities"),
+    eventType: v.string(),
     status: statusValidator,
-    config: v.any(),
-    metadata: v.optional(v.any()),
-    credentialExpirationAt: v.number(),
-    lastSyncAt: v.optional(v.number()),
+    payload: v.any(),
+    processedAt: v.number(),
+    retryCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await isValidSecret(args.secret);
     const { secret, ...data } = args;
 
-    const dataSourceId = await ctx.db.insert("data_sources", {
+    const eventId = await ctx.db.insert("events_log", {
       ...data,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
 
-    return await ctx.db.get(dataSourceId);
+    return await ctx.db.get(eventId);
   },
 });
 
@@ -225,24 +185,20 @@ export const create = mutation({
 export const update = mutation({
   args: {
     secret: v.string(),
-    id: v.id("data_sources"),
+    id: v.id("events_log"),
     updates: v.object({
-      siteId: v.optional(v.id("sites")),
-      externalId: v.optional(v.string()),
-      isPrimary: v.optional(v.boolean()),
       status: v.optional(statusValidator),
-      config: v.optional(v.any()),
-      metadata: v.optional(v.any()),
-      credentialExpirationAt: v.optional(v.number()),
-      lastSyncAt: v.optional(v.number()),
+      payload: v.optional(v.any()),
+      processedAt: v.optional(v.number()),
+      retryCount: v.optional(v.number()),
     }),
   },
   handler: async (ctx, args) => {
     await isValidSecret(args.secret);
 
-    const dataSource = await ctx.db.get(args.id);
-    if (!dataSource) {
-      throw new Error("Data source not found");
+    const event = await ctx.db.get(args.id);
+    if (!event) {
+      throw new Error("Event not found");
     }
 
     // Update with automatic timestamp
@@ -252,39 +208,5 @@ export const update = mutation({
     });
 
     return await ctx.db.get(args.id);
-  },
-});
-
-/**
- * Server-side delete with secret authentication.
- * Supports both soft delete (default) and hard delete.
- */
-export const deleteDataSource = mutation({
-  args: {
-    secret: v.string(),
-    id: v.id("data_sources"),
-    hard: v.optional(v.boolean()),
-  },
-  handler: async (ctx, args) => {
-    await isValidSecret(args.secret);
-
-    const dataSource = await ctx.db.get(args.id);
-    if (!dataSource) {
-      throw new Error("Data source not found");
-    }
-
-    if (args.hard) {
-      // Hard delete
-      await ctx.db.delete(args.id);
-    } else {
-      // Soft delete
-      await ctx.db.patch(args.id, {
-        status: "inactive",
-        deletedAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-    }
-
-    return true;
   },
 });

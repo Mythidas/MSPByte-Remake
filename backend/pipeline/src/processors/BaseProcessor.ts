@@ -1,17 +1,14 @@
 import { natsClient } from "@workspace/pipeline/helpers/nats.js";
-import { getRows, upsertRows } from "@workspace/shared/lib/db/orm.js";
-import Debug from "@workspace/shared/lib/Debug.js";
-import { APIResponse } from "@workspace/shared/types/api.js";
-import {
-  Tables,
-  TablesInsert,
-} from "@workspace/shared/types/database/index.js";
-import {
+import { api } from "@workspace/database/convex/_generated/api.js";
+import type { Doc } from "@workspace/database/convex/_generated/dataModel.js";
+import type {
   Company,
   Endpoint,
   Group,
   Identity,
-} from "@workspace/shared/types/database/normalized.js";
+} from "@workspace/database/convex/types/normalized.js";
+import Debug from "@workspace/shared/lib/Debug.js";
+import { APIResponse } from "@workspace/shared/types/api.js";
 import {
   EntityType,
   IntegrationType,
@@ -22,6 +19,7 @@ import {
   buildEventName,
   flowResolver,
 } from "@workspace/shared/types/pipeline/index.js";
+import { client } from "@workspace/shared/lib/convex.js";
 
 export interface ProcessedEntityData<T = any> {
   normalized: T;
@@ -147,25 +145,37 @@ export abstract class BaseProcessor<T = any> {
     integrationID: string,
     tenantID: string,
     type: EntityType
-  ) {
-    return await getRows("entities", {
-      filters: [
-        ["integration_id", "eq", integrationID],
-        ["tenant_id", "eq", tenantID],
-        ["entity_type", "eq", type],
-      ],
-    });
+  ): Promise<APIResponse<{ rows: Doc<"entities">[] }>> {
+    try {
+      const entities = await client.query(api.entities.crud_s.list, {
+        integrationId: integrationID as any,
+        tenantId: tenantID as any,
+        entityType: type,
+        secret: process.env.CONVEX_API_KEY!,
+      });
+      return { data: { rows: entities } };
+    } catch (error) {
+      return {
+        error: {
+          module: "BaseProcessor",
+          context: "getExistingData",
+          code: "DB_FAILURE",
+          message: error instanceof Error ? error.message : "Unknown error",
+          time: new Date().toISOString(),
+        },
+      };
+    }
   }
 
   private filterChangedData(
     rawData: DataFetchPayload[],
-    existingData: Tables<"entities">[]
+    existingData: Doc<"entities">[]
   ) {
     return rawData.filter((data) => {
       const existing = existingData.find(
-        (row) => row.external_id === data.externalID
+        (row) => row.externalId === data.externalID
       );
-      return existing?.data_hash !== data.dataHash;
+      return existing?.dataHash !== data.dataHash;
     });
   }
 
@@ -175,38 +185,69 @@ export abstract class BaseProcessor<T = any> {
     integrationID: string,
     entityType: EntityType,
     normalized: ProcessedEntityData<T>[]
-  ): Promise<APIResponse<Tables<"entities">[]>> {
-    const records = normalized.map((row) => {
+  ): Promise<APIResponse<Doc<"entities">[]>> {
+    try {
+      const storedEntities: Doc<"entities">[] = [];
+
+      for (const row of normalized) {
+        // Check if entity exists using the unique constraint fields
+        const existing = await client.query(api.entities.crud_s.get, {
+          tenantId: tenantID as any,
+          integrationId: integrationID as any,
+          dataSourceId: dataSourceID as any,
+          externalId: row.externalID,
+          entityType: entityType,
+          secret: process.env.CONVEX_API_KEY!,
+        });
+
+        let entity: Doc<"entities">;
+        if (existing) {
+          // Update existing entity
+          entity = (await client.mutation(api.entities.crud_s.update, {
+            id: existing._id,
+            updates: {
+              dataHash: row.hash,
+              normalizedData: row.normalized as any,
+              rawData: row.raw,
+            },
+            secret: process.env.CONVEX_API_KEY!,
+          }))!;
+        } else {
+          // Create new entity
+          entity = (await client.mutation(api.entities.crud_s.create, {
+            tenantId: tenantID as any,
+            integrationId: integrationID as any,
+            dataSourceId: dataSourceID as any,
+            externalId: row.externalID,
+            siteId: row.siteID as any,
+            entityType: entityType,
+            dataHash: row.hash,
+            normalizedData: row.normalized as any,
+            rawData: row.raw,
+            secret: process.env.CONVEX_API_KEY!,
+          }))!;
+        }
+
+        storedEntities.push(entity);
+      }
+
+      return { data: storedEntities };
+    } catch (error) {
       return {
-        tenant_id: tenantID,
-        integration_id: integrationID,
-        data_source_id: dataSourceID,
-        external_id: row.externalID,
-        site_id: row.siteID,
-
-        entity_type: entityType,
-        data_hash: row.hash,
-
-        normalized_data: row.normalized as any,
-        raw_data: row.raw,
-      } as TablesInsert<"entities">;
-    });
-
-    return await upsertRows("entities", {
-      rows: records,
-      onConflict: [
-        "tenant_id",
-        "entity_type",
-        "integration_id",
-        "external_id",
-        "data_source_id",
-      ],
-    });
+        error: {
+          module: "BaseProcessor",
+          context: "getExistingData",
+          code: "DB_FAILURE",
+          message: error instanceof Error ? error.message : "Unknown error",
+          time: new Date().toISOString(),
+        },
+      };
+    }
   }
 
   private async publishProcessedEvent(
     originalEvent: FetchedEventPayload,
-    storedEntities: Tables<"entities">[],
+    storedEntities: Doc<"entities">[],
     totalProcessed: number
   ): Promise<void> {
     const processedEvent: ProcessedEventPayload = {
@@ -217,16 +258,14 @@ export abstract class BaseProcessor<T = any> {
       dataSourceID: originalEvent.dataSourceID,
       entityType: originalEvent.entityType,
       stage: "processed",
-      createdAt: new Date().toISOString(),
+      createdAt: Date.now(),
       parentEventID: originalEvent.eventID,
 
-      entityIDs: storedEntities.map((e) => e.id),
-      entitiesCreated: storedEntities.filter(
-        (e) => e.created_at === e.updated_at
-      ).length,
-      entitiesUpdated: storedEntities.filter(
-        (e) => e.created_at !== e.updated_at
-      ).length,
+      entityIDs: storedEntities.map((e) => e._id),
+      entitiesCreated: storedEntities.filter((e) => e.createdAt === e.updatedAt)
+        .length,
+      entitiesUpdated: storedEntities.filter((e) => e.createdAt !== e.updatedAt)
+        .length,
       entitiesSkipped: originalEvent.total - totalProcessed,
     };
 
@@ -262,7 +301,7 @@ export abstract class BaseProcessor<T = any> {
       dataSourceID: originalEvent.dataSourceID,
       entityType: originalEvent.entityType,
       stage: "failed",
-      createdAt: new Date().toISOString(),
+      createdAt: Date.now(),
       parentEventID: originalEvent.eventID,
 
       error: {

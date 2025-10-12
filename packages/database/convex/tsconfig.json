@@ -20,6 +20,6 @@
     "isolatedModules": true,
     "noEmit": true
   },
-  "include": ["./**/*"],
+  "include": ["./**/*", "../../shared/src/lib/convex.ts"],
   "exclude": ["./_generated"]
 }

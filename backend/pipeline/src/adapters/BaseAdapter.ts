@@ -1,9 +1,10 @@
 import { natsClient } from "@workspace/pipeline/helpers/nats.js";
 import { Scheduler } from "@workspace/pipeline/scheduler/index.js";
-import { getRow } from "@workspace/shared/lib/db/orm.js";
+import { api } from "@workspace/database/convex/_generated/api.js";
+import { client } from "@workspace/shared/lib/convex.js";
+import type { Doc } from "@workspace/database/convex/_generated/dataModel.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import { APIResponse } from "@workspace/shared/types/api.js";
-import { Tables } from "@workspace/shared/types/database/import.js";
 import {
   IntegrationType,
   EntityType,
@@ -21,7 +22,7 @@ import {
 export type RawDataProps = {
   eventData: SyncEventPayload;
   tenantID: string;
-  dataSource?: Tables<"data_sources">;
+  dataSource?: Doc<"data_sources">;
 };
 
 export abstract class BaseAdapter {
@@ -57,17 +58,18 @@ export abstract class BaseAdapter {
     Debug.log({
       module: "BaseAdapter",
       context: "handleJob",
-      message: `Processing job: ${job.id}`,
+      message: `Processing job: ${job._id}`,
     });
 
     const rawData: DataFetchPayload[] = [];
 
     if (syncEvent.dataSourceID) {
-      const { data: dataSource, error } = await getRow("data_sources", {
-        filters: [["id", "eq", syncEvent.dataSourceID]],
+      const dataSource = await client.query(api.datasources.crud_s.get, {
+        id: syncEvent.dataSourceID as any,
+        secret: process.env.CONVEX_API_KEY!,
       });
       if (!dataSource) {
-        await Scheduler.failJob(job, error.message);
+        await Scheduler.failJob(job, "Data source not found");
         return;
       }
 
@@ -122,7 +124,7 @@ export abstract class BaseAdapter {
       dataSourceID: syncEvent.dataSourceID,
       entityType: entityType,
       stage: "fetched",
-      createdAt: new Date().toISOString(),
+      createdAt: Date.now(),
       parentEventID: syncEvent.eventID,
 
       data: rawData,

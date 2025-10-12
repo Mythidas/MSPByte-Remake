@@ -1,4 +1,4 @@
-import { Tables } from "@workspace/shared/types/database";
+import { Doc } from "@workspace/database/convex/_generated/dataModel.js";
 import {
   BasePipelineEvent,
   PipelineStage,
@@ -11,7 +11,7 @@ import {
 // Stage-specific payload interfaces
 export type SyncEventPayload = BasePipelineEvent & {
   stage: "sync";
-  job: Tables<"scheduled_jobs">;
+  job: Doc<"scheduled_jobs">;
 };
 
 export interface FetchedEventPayload extends BasePipelineEvent {

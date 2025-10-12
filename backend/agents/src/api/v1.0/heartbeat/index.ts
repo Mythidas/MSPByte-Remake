@@ -3,9 +3,9 @@ import { FastifyInstance } from "fastify";
 import { PerformanceTracker } from "@workspace/shared/lib/performance.js";
 import { logAgentApiCall } from "@/lib/agentLogger.js";
 import { generateAgentGuid } from "@/lib/utils.js";
-import { client } from "@workspace/shared/lib/db/convex.js";
 import { api } from "@workspace/database/convex/_generated/api.js";
 import { Doc } from "@workspace/database/convex/_generated/dataModel.js";
+import { client } from "@workspace/shared/lib/convex.js";
 
 export default async function (fastify: FastifyInstance) {
   fastify.post("/", async (req) => {

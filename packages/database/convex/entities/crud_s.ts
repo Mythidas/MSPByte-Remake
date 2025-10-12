@@ -12,7 +12,8 @@ import { paginationOptsValidator } from "convex/server";
 const entityTypeValidator = v.union(
   v.literal("companies"),
   v.literal("endpoints"),
-  v.literal("identities")
+  v.literal("identities"),
+  v.literal("groups")
 );
 
 // ============================================================================
@@ -28,7 +29,7 @@ function buildProgressiveQuery(
   tenantId: Id<"tenants"> | undefined,
   filters: {
     integrationId?: Id<"integrations">;
-    entityType?: "companies" | "endpoints" | "identities";
+    entityType?: "companies" | "endpoints" | "identities" | "groups";
     dataSourceId?: Id<"data_sources">;
     siteId?: Id<"sites">;
   }
@@ -85,6 +86,7 @@ function buildProgressiveQuery(
 
 /**
  * Server-side list with secret authentication.
+ * Always returns full array of results (no pagination).
  * Allows optional tenantId for cross-tenant queries.
  */
 export const list = query({
@@ -96,11 +98,10 @@ export const list = query({
     dataSourceId: v.optional(v.id("data_sources")),
     siteId: v.optional(v.id("sites")),
     order: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
-    paginationOpts: v.optional(paginationOptsValidator),
   },
   handler: async (ctx, args) => {
     await isValidSecret(args.secret);
-    const { secret, order = "desc", paginationOpts, tenantId, ...filters } = args;
+    const { secret, order = "desc", tenantId, ...filters } = args;
 
     // Build progressive query
     let indexedQuery = buildProgressiveQuery(ctx, tenantId, filters);
@@ -109,12 +110,44 @@ export const list = query({
     let query: OrderedQuery<DataModel["entities"]> = indexedQuery;
     query = indexedQuery.order(order);
 
-    // Return paginated or full results
-    if (paginationOpts) {
-      return await query.paginate(paginationOpts);
-    } else {
-      return await query.collect();
-    }
+    return await query.collect();
+  },
+});
+
+/**
+ * Server-side paginated list with secret authentication.
+ * Returns paginated results for large datasets.
+ * Allows optional tenantId for cross-tenant queries.
+ */
+export const paginate = query({
+  args: {
+    secret: v.string(),
+    tenantId: v.optional(v.id("tenants")),
+    integrationId: v.optional(v.id("integrations")),
+    entityType: v.optional(entityTypeValidator),
+    dataSourceId: v.optional(v.id("data_sources")),
+    siteId: v.optional(v.id("sites")),
+    order: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    await isValidSecret(args.secret);
+    const {
+      secret,
+      order = "desc",
+      paginationOpts,
+      tenantId,
+      ...filters
+    } = args;
+
+    // Build progressive query
+    let indexedQuery = buildProgressiveQuery(ctx, tenantId, filters);
+
+    // Apply ordering
+    let query: OrderedQuery<DataModel["entities"]> = indexedQuery;
+    query = indexedQuery.order(order);
+
+    return await query.paginate(paginationOpts);
   },
 });
 

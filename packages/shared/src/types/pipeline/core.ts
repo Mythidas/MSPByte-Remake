@@ -1,5 +1,7 @@
 // Core pipeline types that define the stages and entities in the data processing pipeline
 
+import { Id } from "@workspace/database/convex/_generated/dataModel.js";
+
 // All possible stages in the pipeline
 export type PipelineStage =
   | "sync" // Initial sync request from scheduler
@@ -11,18 +13,7 @@ export type PipelineStage =
   | "failed"; // Error state
 
 // All entity types that can flow through the pipeline
-export type EntityType =
-  | "companies"
-  | "endpoints"
-  | "contacts"
-  | "tickets"
-  | "assets"
-  | "identities"
-  | "users"
-  | "licenses"
-  | "license_assignments"
-  | "billing_records"
-  | "groups";
+export type EntityType = "companies" | "endpoints" | "identities" | "groups";
 
 // Integration types for adapter identification
 export type IntegrationType =
@@ -41,13 +32,13 @@ export type EventName<
 // Base event structure that all pipeline events extend
 export type BasePipelineEvent = {
   eventID: string;
-  tenantID: string;
-  integrationID: string;
+  tenantID: Id<"tenants">;
+  integrationID: Id<"integrations">;
   integrationType: IntegrationType;
-  dataSourceID: string;
+  dataSourceID: Id<"data_sources">;
   entityType: EntityType;
   stage: PipelineStage;
-  createdAt: string;
+  createdAt: number;
   parentEventID?: string; // For tracing event chains
 };
 

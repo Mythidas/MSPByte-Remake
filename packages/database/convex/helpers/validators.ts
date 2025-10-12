@@ -1,5 +1,5 @@
 import { QueryCtx } from "../_generated/server.js";
-import { UserJWT } from "../types.js";
+import { UserJWT } from "../types/index.js";
 
 export const isAuthenticated = async (ctx: QueryCtx) => {
   const identity = (await ctx.auth.getUserIdentity()) as UserJWT | undefined;
