@@ -13,7 +13,12 @@ export type PipelineStage =
   | "failed"; // Error state
 
 // All entity types that can flow through the pipeline
-export type EntityType = "companies" | "endpoints" | "identities" | "groups";
+export type EntityType =
+  | "companies"
+  | "endpoints"
+  | "identities"
+  | "groups"
+  | "licenseAssignments";
 
 // Integration types for adapter identification
 export type IntegrationType =

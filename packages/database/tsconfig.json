@@ -4,7 +4,10 @@
     "outDir": "./dist",
     "rootDir": ".",
     "declaration": true,
-    "declarationMap": true
+    "declarationMap": true,
+    "paths": {
+      "@workspace/shared/*": ["../../packages/shared/src/*"]
+    }
   },
   "include": ["convex/**/*"],
   "exclude": ["node_modules", "dist", "convex/_generated"]

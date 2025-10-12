@@ -180,14 +180,9 @@ export function parseEventName(
   const validEntityTypes: EntityType[] = [
     "companies",
     "endpoints",
-    "contacts",
-    "tickets",
-    "assets",
-    "users",
-    "licenses",
-    "license_assignments",
-    "billing_records",
     "identities",
+    "groups",
+    "licenseAssignments",
   ];
 
   if (

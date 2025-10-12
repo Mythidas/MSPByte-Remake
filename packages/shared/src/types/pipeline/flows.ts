@@ -23,17 +23,11 @@ const defaultEntityFlow: StandardFlow<EntityType> = {
 export const StandardFlows: Record<EntityType, StandardFlow<EntityType>> = {
   companies: defaultEntityFlow,
   endpoints: defaultEntityFlow,
-  contacts: defaultEntityFlow,
-  tickets: defaultEntityFlow,
-  assets: defaultEntityFlow,
-  users: defaultEntityFlow,
-  licenses: defaultEntityFlow,
-  billing_records: defaultEntityFlow,
   identities: defaultEntityFlow,
   groups: defaultEntityFlow,
 
   // Special case: license_assignments might not always need entity storage
-  license_assignments: {
+  licenseAssignments: {
     sync: "fetched",
     fetched: "processed", // Can go to processed for storage
     processed: "linked",
@@ -61,25 +55,13 @@ export type CustomFlow = {
 export const CustomFlows: CustomFlow[] = [
   {
     integration: "microsoft-365",
-    entity: "license_assignments",
+    entity: "licenseAssignments",
     overrides: {
       // Microsoft365 license assignments skip entity storage and go directly to relationship creation
       sync: "fetched",
       fetched: "resolved", // Skip processed stage
       resolved: "linked",
       linked: "completed",
-    },
-  },
-  {
-    integration: "autotask",
-    entity: "tickets",
-    overrides: {
-      // AutoTask tickets might need special processing
-      processed: "resolved", // Custom validation step before linking
-      resolved: "linked",
-    },
-    conditions: {
-      hasSpecialConfig: true,
     },
   },
 ];

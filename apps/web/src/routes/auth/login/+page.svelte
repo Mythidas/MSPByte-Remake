@@ -1,13 +1,5 @@
 <script lang="ts">
-	import { faMicrosoft } from '@fortawesome/free-brands-svg-icons';
-	import Fa from 'svelte-fa';
-	import { enhance } from '$app/forms';
-	import Card from '$lib/components/ui/card/card.svelte';
-	import Separator from '$lib/components/ui/separator/separator.svelte';
-	import Button from '$lib/components/ui/button/button.svelte';
 	import { SignIn } from 'svelte-clerk';
-
-	let loading = $state(false);
 </script>
 
 <main class="flex size-full gap-4 p-4">

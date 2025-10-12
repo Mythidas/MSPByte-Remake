@@ -4,17 +4,8 @@ import { isValidSecret } from "../helpers/validators.js";
 import type { OrderedQuery, Query } from "convex/server";
 import type { DataModel, Id } from "../_generated/dataModel.js";
 import { paginationOptsValidator } from "convex/server";
-
-// ============================================================================
-// TYPES
-// ============================================================================
-
-const entityTypeValidator = v.union(
-  v.literal("companies"),
-  v.literal("endpoints"),
-  v.literal("identities"),
-  v.literal("groups")
-);
+import { entityTypeValidator } from "../schema.js";
+import { EntityType } from "@workspace/shared/types/pipeline/core";
 
 // ============================================================================
 // SHARED HELPER
@@ -29,7 +20,7 @@ function buildProgressiveQuery(
   tenantId: Id<"tenants"> | undefined,
   filters: {
     integrationId?: Id<"integrations">;
-    entityType?: "companies" | "endpoints" | "identities" | "groups";
+    entityType?: EntityType;
     dataSourceId?: Id<"data_sources">;
     siteId?: Id<"sites">;
   }

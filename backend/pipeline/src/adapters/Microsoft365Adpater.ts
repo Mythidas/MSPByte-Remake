@@ -72,7 +72,7 @@ export class Microsoft365Adapter extends BaseAdapter {
             signInActivity: undefined,
           })
         );
-        const siteID = config.domain_mappings.find((map) =>
+        const siteID = config.domainMappings.find((map) =>
           rawData.userPrincipalName.endsWith(map.domain)
         )?.siteId;
 

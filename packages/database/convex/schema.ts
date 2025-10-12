@@ -1,6 +1,14 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+export const entityTypeValidator = v.union(
+  v.literal("companies"),
+  v.literal("endpoints"),
+  v.literal("identities"),
+  v.literal("groups"),
+  v.literal("licenseAssignments")
+);
+
 export default defineSchema({
   // Core entities
   tenants: defineTable({
@@ -284,12 +292,7 @@ export default defineSchema({
     integrationId: v.id("integrations"),
     dataSourceId: v.id("data_sources"),
     siteId: v.optional(v.id("sites")),
-    entityType: v.union(
-      v.literal("companies"),
-      v.literal("endpoints"),
-      v.literal("identities"),
-      v.literal("groups")
-    ), // "device", "ticket", "company", etc.
+    entityType: entityTypeValidator, // "device", "ticket", "company", etc.
     externalId: v.string(), // ID in the external system
     dataHash: v.string(), // Hash for change detection
     rawData: v.any(), // Original data from integration
