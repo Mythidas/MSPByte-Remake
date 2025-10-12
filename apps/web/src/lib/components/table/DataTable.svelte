@@ -180,11 +180,12 @@
 						<th
 							onclick={() => handleSort(col.key)}
 							class={cn(
-								'h-12 flex-1 px-4 text-left align-middle font-medium text-muted-foreground ',
+								'h-12 px-4 text-left align-middle font-medium text-muted-foreground',
+								!col.width && 'flex-1',
 								col.sortable &&
 									'items-center hover:cursor-pointer hover:bg-muted/50 [&>*]:inline-block [&>*]:align-middle'
 							)}
-							style="display: flex; align-items: center;"
+							style={`display: flex; align-items: center; ${col.width ? `width: ${col.width}; flex-shrink: 0;` : ''}`}
 						>
 							<span>{col.title}</span>
 							{#if col.sortable}
@@ -214,15 +215,24 @@
 					>
 						{#each tableState.columns.visibleColumns() as col}
 							{#if col.cell}
-								<td class="flex-1 p-4 align-middle" style="display: flex; align-items: center;">
+								<td
+									class={cn('p-4 align-middle', !col.width && 'flex-1')}
+									style={`display: flex; align-items: center; ${col.width ? `width: ${col.width}; flex-shrink: 0;` : ''}`}
+								>
 									{@render col.cell({ row, column: col })}
 								</td>
 							{:else if col.render}
-								<td class="flex-1 p-4 align-middle" style="display: flex; align-items: center;">
+								<td
+									class={cn('p-4 align-middle', !col.width && 'flex-1')}
+									style={`display: flex; align-items: center; ${col.width ? `width: ${col.width}; flex-shrink: 0;` : ''}`}
+								>
 									{col.render({ row, column: col })}
 								</td>
 							{:else}
-								<td class="flex-1 p-4 align-middle" style="display: flex; align-items: center;">
+								<td
+									class={cn('p-4 align-middle', !col.width && 'flex-1')}
+									style={`display: flex; align-items: center; ${col.width ? `width: ${col.width}; flex-shrink: 0;` : ''}`}
+								>
 									{row[col.key]}
 								</td>
 							{/if}

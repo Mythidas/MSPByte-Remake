@@ -57,10 +57,10 @@
 
 						{#if (appState.siteLinkedIntegrations && appState.siteLinkedIntegrations.length! > 0) || site.psaIntegrationId}
 							<NavGroup name="Integrations" icon={Bolt}>
-								{#if site.psaIntegrationId}
+								{#if site.psaIntegrationId && site.psaIntegrationSlug}
 									<NavLink
-										href={`/s/sites/${site.slug}/integrations/${site.psaIntegrationId}`}
-										label={site.psaIntegrationName || site.psaIntegrationId}
+										href={`/s/sites/${site.slug}/integrations/${site.psaIntegrationSlug}`}
+										label={site.psaIntegrationName || site.psaIntegrationSlug}
 									/>
 								{/if}
 

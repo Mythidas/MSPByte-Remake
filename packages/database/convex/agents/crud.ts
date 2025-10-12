@@ -63,7 +63,29 @@ export const list = query({
     siteId: v.optional(v.id("sites")),
     guid: v.optional(v.string()),
     order: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
-    paginationOpts: v.optional(paginationOptsValidator),
+  },
+  handler: async (ctx, args) => {
+    const identity = await isAuthenticated(ctx);
+    const { order = "desc", ...filters } = args;
+
+    // Build progressive query
+    let indexedQuery = buildProgressiveQuery(ctx, identity.tenantId, filters);
+
+    // Apply ordering
+    let query: OrderedQuery<DataModel["agents"]> = indexedQuery;
+    query = indexedQuery.order(order);
+
+    // Return paginated or full results
+    return await query.collect();
+  },
+});
+
+export const paginate = query({
+  args: {
+    siteId: v.optional(v.id("sites")),
+    guid: v.optional(v.string()),
+    order: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
+    paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
     const identity = await isAuthenticated(ctx);
@@ -77,11 +99,7 @@ export const list = query({
     query = indexedQuery.order(order);
 
     // Return paginated or full results
-    if (paginationOpts) {
-      return await query.paginate(paginationOpts);
-    } else {
-      return await query.collect();
-    }
+    return await query.paginate(paginationOpts);
   },
 });
 

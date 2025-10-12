@@ -28,6 +28,7 @@ import type * as events_log_crud_s from "../events_log/crud_s.js";
 import type * as helpers_validators from "../helpers/validators.js";
 import type * as integrations_crud_s from "../integrations/crud_s.js";
 import type * as integrations_query from "../integrations/query.js";
+import type * as roles_crud from "../roles/crud.js";
 import type * as scheduledjobs_crud from "../scheduledjobs/crud.js";
 import type * as scheduledjobs_crud_s from "../scheduledjobs/crud_s.js";
 import type * as scheduledjobs_mutate from "../scheduledjobs/mutate.js";
@@ -67,6 +68,7 @@ declare const fullApi: ApiFromModules<{
   "helpers/validators": typeof helpers_validators;
   "integrations/crud_s": typeof integrations_crud_s;
   "integrations/query": typeof integrations_query;
+  "roles/crud": typeof roles_crud;
   "scheduledjobs/crud": typeof scheduledjobs_crud;
   "scheduledjobs/crud_s": typeof scheduledjobs_crud_s;
   "scheduledjobs/mutate": typeof scheduledjobs_mutate;

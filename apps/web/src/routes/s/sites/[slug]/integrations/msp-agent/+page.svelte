@@ -1,72 +1,85 @@
 <script lang="ts">
-	import DataTable from "$lib/components/table/DataTable.svelte";
-	import { type DataTableCell } from "$lib/components/table/types.js";
-	import { Dates } from "$lib/Dates.js";
-	import { getAppState } from "$lib/state/Application.svelte.js";
-	import { type Tables } from "@workspace/shared/types/database/index.js";
+	import { api, type Doc } from '$lib/convex';
+	import DataTable from '$lib/components/table/DataTable.svelte';
+	import { getAppState } from '$lib/state/Application.svelte.js';
+	import { useInfiniteConvexTable } from '$lib/hooks/useInfiniteConvexTable.svelte.js';
+	import { Dates } from '$lib/Dates.js';
+	import { type DataTableCell } from '$lib/components/table/types.js';
+	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 
-  const appState = getAppState();
+	const appState = getAppState();
+
+	// Use the infinite scrolling hook
+	const table = useInfiniteConvexTable({
+		query: api.agents.crud.paginate,
+		baseArgs: {},
+		numItems: 50
+	});
 </script>
 
 <div class="flex size-full flex-col gap-4">
-	<h1 class="text-2xl">Users</h1>
+	<h1 class="text-2xl">Agents</h1>
 
-  {#snippet onlineSnip({ row }: DataTableCell<Tables<'agents'>>)}
-    {@const minutesAgo3 = new Dates().add({ minutes: -3 }).getTime()}
-    {#if minutesAgo3 <= new Date(row.last_checkin_at || '').getTime()}
-      <div class="rounded-full bg-chart-1 w-4 h-4"></div>
-    {:else}
-      <div class="rounded-full bg-destructive w-4 h-4"></div>
-    {/if}
-  {/snippet}
+	{#snippet onlineSnip({ row }: DataTableCell<Doc<'agents'>>)}
+		{@const minutesAgo3 = new Dates().add({ minutes: -3 }).getTime()}
+		<Tooltip.Provider>
+			<Tooltip.Root>
+				<Tooltip.Trigger>
+					{#if minutesAgo3 <= new Date(row.lastCheckinAt || '').getTime()}
+						<div class="h-4 w-4 rounded-full bg-chart-1"></div>
+					{:else}
+						<div class="h-4 w-4 rounded-full bg-destructive"></div>
+					{/if}
+				</Tooltip.Trigger>
+				<Tooltip.Content>
+					{new Date(row.lastCheckinAt || '').toLocaleString()}
+				</Tooltip.Content>
+			</Tooltip.Root>
+		</Tooltip.Provider>
+	{/snippet}
 
 	<DataTable
-		fetcher={async (state) => {
-			const { data } = await appState.orm.getRows('agents', {
-        filters: [['site_id', 'eq', appState.getSite()!.id]],
-				pagination: state
-			});
-
-			return (
-				data || {
-					rows: [],
-					total: 0
-				}
-			);
-		}}
+		rows={table.rows}
+		isLoading={table.isLoading}
+		isDone={table.isDone}
+		onLoadMore={table.loadMore}
+		onSearch={table.setSearch}
+		onSort={table.setSort}
+		rowHeight={48}
 		columns={[
+			{
+				key: 'lastCheckinAt',
+				title: '',
+				hideable: true,
+				sortable: true,
+				cell: onlineSnip,
+				width: '48px'
+			},
 			{
 				key: 'hostname',
 				title: 'Hostname',
-        sortable: true,
+				sortable: true,
 				searchable: true
 			},
 			{
 				key: 'version',
 				title: 'Version',
-        sortable: true,
+				sortable: true,
 				searchable: true
 			},
 			{
-				key: 'ip_address',
+				key: 'ipAddress',
 				title: 'IPv4',
 				searchable: true,
-        sortable: true,
-        hideable: true
+				sortable: true,
+				hideable: true
 			},
 			{
-				key: 'ext_address',
+				key: 'extAddress',
 				title: 'WAN',
-        searchable: true,
-        sortable: true,
-        hideable: true
-			},
-			{
-				key: 'last_checkin_at',
-				title: 'Last Active',
-        hideable: true,
-        sortable: true,
-        cell: onlineSnip
+				searchable: true,
+				sortable: true,
+				hideable: true
 			}
 		]}
 	/>

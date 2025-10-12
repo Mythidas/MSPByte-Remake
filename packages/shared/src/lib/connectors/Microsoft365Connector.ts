@@ -138,8 +138,8 @@ export default class Microsoft365Connector implements IConnector {
     try {
       const credential = new ClientSecretCredential(
         this.config.tenantId,
-        process.env.NEXT_PUBLIC_MICROSOFT_CLIENT_ID!,
-        process.env.NEXT_MICROSOFT_SECRET!
+        process.env.MICROSOFT_CLIENT_ID!,
+        process.env.MICROSOFT_SECRET!
       );
 
       const client = Client.initWithMiddleware({

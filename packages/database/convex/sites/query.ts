@@ -67,6 +67,9 @@ export const getSiteWithIntegrationsView = query({
       psaIntegrationName: integrations.find(
         (i) => i?._id === site.psaIntegrationId
       )?.name,
+      psaIntegrationSlug: integrations.find(
+        (i) => i?._id === site.psaIntegrationId
+      )?.slug,
       linkedIntegrations,
     };
   },

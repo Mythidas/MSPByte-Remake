@@ -7,14 +7,6 @@ import { api } from '$lib/convex';
 export function createIntegrationActions(state: IntegrationState) {
 	const appState = getAppState();
 
-	state.enable = () => {
-		// Trigger enable dialog in component
-	};
-
-	state.disable = () => {
-		// Trigger disable dialog in component
-	};
-
 	state.confirmEnable = async () => {
 		if (state.dataSource) {
 			const enable = appState.convex.mutation(api.datasources.mutate.enable, {
@@ -42,12 +34,6 @@ export function createIntegrationActions(state: IntegrationState) {
 			state.dataSource = data;
 			toast.info('Enabled integration successfully!');
 		}
-
-		await appState.convex.mutation(api.scheduledjobs.mutate.scheduleJobsByIntegration, {
-			integrationId: state.integration._id,
-			dataSourceId: state.dataSource?._id,
-			supportedTypes: state.integration.supportedTypes
-		});
 	};
 
 	state.confirmDisable = async () => {
@@ -61,9 +47,6 @@ export function createIntegrationActions(state: IntegrationState) {
 				return;
 			}
 		}
-
-		// TODO: Replace window.location.reload() with proper state reset
-		window.location.reload();
 	};
 
 	state.testConnection = async () => {
@@ -121,9 +104,16 @@ export function createIntegrationActions(state: IntegrationState) {
 			const result = await response.json();
 
 			if (result.type === 'success') {
-				// Update local dataSource config
 				if (state.dataSource) {
 					state.dataSource.config = config;
+				}
+
+				if (state.isValidConfig()) {
+					await appState.convex.mutation(api.scheduledjobs.mutate.scheduleJobsByIntegration, {
+						integrationId: state.integration._id,
+						dataSourceId: state.dataSource?._id,
+						supportedTypes: state.integration.supportedTypes
+					});
 				}
 				toast.info(result.data?.message || 'Configuration saved successfully!');
 			} else {

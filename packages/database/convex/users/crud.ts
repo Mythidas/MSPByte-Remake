@@ -81,11 +81,10 @@ export const list = query({
     status: v.optional(statusValidator),
     roleId: v.optional(v.id("roles")),
     order: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
-    paginationOpts: v.optional(paginationOptsValidator),
   },
   handler: async (ctx, args) => {
     const identity = await isAuthenticated(ctx);
-    const { order = "desc", paginationOpts, ...filters } = args;
+    const { order = "desc", ...filters } = args;
 
     // Build progressive query
     let indexedQuery = buildProgressiveQuery(ctx, identity.tenantId, filters);
@@ -99,11 +98,79 @@ export const list = query({
     }
 
     // Return paginated or full results
-    if (paginationOpts) {
-      return await query.paginate(paginationOpts);
-    } else {
-      return await query.collect();
+    return await query.collect();
+  },
+});
+
+export const paginate = query({
+  args: {
+    clerkId: v.optional(v.string()),
+    email: v.optional(v.string()),
+    status: v.optional(statusValidator),
+    roleId: v.optional(v.id("roles")),
+    order: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
+    sortColumn: v.optional(v.string()),
+    sortDirection: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
+    globalSearch: v.optional(v.string()),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    const identity = await isAuthenticated(ctx);
+    const {
+      order = "desc",
+      paginationOpts,
+      sortColumn,
+      sortDirection,
+      globalSearch,
+      ...filters
+    } = args;
+
+    // Build progressive query
+    let indexedQuery = buildProgressiveQuery(ctx, identity.tenantId, filters);
+
+    let query: OrderedQuery<DataModel["users"]> = indexedQuery;
+    const orderDirection = sortColumn && sortDirection ? sortDirection : order;
+    query = indexedQuery.order(orderDirection);
+
+    // Apply additional filter for roleId if provided (not in index)
+    if (filters.roleId) {
+      query = query.filter((q) => q.eq(q.field("roleId"), filters.roleId!));
     }
+
+    // Apply global search filter if provided
+    if (globalSearch && globalSearch.trim()) {
+      const searchLower = globalSearch.toLowerCase().trim();
+      query = query.filter((q) => {
+        const user = q as any;
+        return (
+          user.name?.toLowerCase().includes(searchLower) ||
+          user.email?.toLowerCase().includes(searchLower)
+        );
+      });
+    }
+
+    // Get paginated results
+    const result = await query.paginate(paginationOpts);
+
+    // Batch fetch all unique roles for enrichment
+    const uniqueRoleIds = [...new Set(result.page.map((u) => u.roleId))];
+    const roles = await Promise.all(uniqueRoleIds.map((id) => ctx.db.get(id)));
+
+    // Create role lookup map for O(1) access
+    const roleMap = new Map(
+      roles.filter((r): r is NonNullable<typeof r> => r !== null).map((r) => [r._id, r])
+    );
+
+    // Enrich users with roleName
+    const enrichedUsers = result.page.map((user) => ({
+      ...user,
+      roleName: roleMap.get(user.roleId)?.name,
+    }));
+
+    return {
+      ...result,
+      page: enrichedUsers,
+    };
   },
 });
 

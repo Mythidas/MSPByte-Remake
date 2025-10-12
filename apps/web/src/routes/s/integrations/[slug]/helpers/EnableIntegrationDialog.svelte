@@ -43,8 +43,8 @@
 			</AlertDialogTitle>
 			<AlertDialogDescription class="space-y-3 pt-2">
 				<p>
-					This will enable the <strong>{integration.integration?.name}</strong> integration for
-					your organization.
+					This will enable the <strong>{integration.integration?.name}</strong> integration for your
+					organization.
 				</p>
 				<p class="text-foreground">
 					<strong>Important:</strong> You will not be billed until you have completed the integration

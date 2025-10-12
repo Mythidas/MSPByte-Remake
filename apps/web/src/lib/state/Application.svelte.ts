@@ -4,7 +4,7 @@ import type { ConvexClient } from 'convex/browser';
 import { getContext, setContext } from 'svelte';
 
 type SiteLinkedIntegration = { id: Id<'integrations'>; slug: string; name: string };
-type Site = Doc<'sites'> & { psaIntegrationName?: string };
+type Site = Doc<'sites'> & { psaIntegrationName?: string; psaIntegrationSlug?: string };
 
 type AppStateConfig = {
 	user: Doc<'users'>;

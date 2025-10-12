@@ -141,8 +141,40 @@ export const paginate = query({
       });
     }
 
-    // Return paginated results
-    return await query.paginate(paginationOpts);
+    // Get paginated results
+    const result = await query.paginate(paginationOpts);
+
+    // Batch fetch all unique integrations for enrichment
+    const uniqueIntegrationIds = [
+      ...new Set(
+        result.page
+          .map((s) => s.psaIntegrationId)
+          .filter((id): id is NonNullable<typeof id> => id !== undefined)
+      ),
+    ];
+    const integrations = await Promise.all(
+      uniqueIntegrationIds.map((id) => ctx.db.get(id))
+    );
+
+    // Create integration lookup map for O(1) access
+    const integrationMap = new Map(
+      integrations
+        .filter((i): i is NonNullable<typeof i> => i !== null)
+        .map((i) => [i._id, i])
+    );
+
+    // Enrich sites with psaIntegrationName
+    const enrichedSites = result.page.map((site) => ({
+      ...site,
+      psaIntegrationName: site.psaIntegrationId
+        ? integrationMap.get(site.psaIntegrationId)?.name
+        : undefined,
+    }));
+
+    return {
+      ...result,
+      page: enrichedSites,
+    };
   },
 });
 

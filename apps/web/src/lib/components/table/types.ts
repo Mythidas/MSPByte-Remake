@@ -15,6 +15,7 @@ export type DataTableColumn = {
 	sortable?: boolean;
 	hideable?: boolean;
 	searchable?: boolean;
+	width?: string;
 };
 
 export type DataTableFilter = Record<string, any>;

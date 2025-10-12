@@ -1,27 +1,12 @@
-import { error, fail } from '@sveltejs/kit';
-import type { Actions, PageServerLoad } from './$types.js';
+import { fail } from '@sveltejs/kit';
+import type { Actions } from './$types.js';
 import { getConnector } from '@workspace/shared/lib/connectors/index.js';
 import { ENCRYPTION_KEY } from '$env/static/private';
 import type { IntegrationType } from '@workspace/shared/types/pipeline/core.js';
 import Encryption from '@workspace/shared/lib/Encryption.js';
 import { api } from '$lib/convex';
 
-export const load: PageServerLoad = async ({ locals, params }) => {
-	const integration = await locals.client.query(api.integrations.query.getBySlug, {
-		slug: params.slug
-	});
-
-	if (!integration) {
-		error(404, 'Integration not found');
-	}
-
-	const dataSource = await locals.client.query(api.datasources.crud.get, {
-		integrationId: integration._id,
-		isPrimary: true
-	});
-
-	return { integration, dataSource };
-};
+// Load function removed - data is now fetched client-side via Convex for reactivity
 
 export const actions = {
 	testConnection: async ({ request, locals }) => {
