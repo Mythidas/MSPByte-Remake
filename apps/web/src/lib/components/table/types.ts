@@ -17,4 +17,23 @@ export type DataTableColumn = {
 	searchable?: boolean;
 };
 
-export type DataTableFilter = {};
+export type DataTableFilter = Record<string, any>;
+
+export type SortDirection = 'asc' | 'desc';
+
+export type DataTableSort = {
+	column: string;
+	direction: SortDirection;
+};
+
+export type InfiniteDataTableProps = {
+	rows: any[];
+	columns: DataTableColumn[];
+	isLoading: boolean;
+	isDone: boolean;
+	onLoadMore: () => void;
+	onSearch?: (query: string) => void;
+	onSort?: (column: string, direction: SortDirection) => void;
+	onFilter?: (filters: DataTableFilter) => void;
+	rowHeight?: number; // For virtual scrolling, defaults to 53px
+};

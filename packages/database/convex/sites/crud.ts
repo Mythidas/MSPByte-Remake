@@ -81,11 +81,10 @@ export const list = query({
     slug: v.optional(v.string()),
     psaCompanyId: v.optional(v.string()),
     order: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
-    paginationOpts: v.optional(paginationOptsValidator),
   },
   handler: async (ctx, args) => {
     const identity = await isAuthenticated(ctx);
-    const { order = "desc", paginationOpts, ...filters } = args;
+    const { order = "desc", ...filters } = args;
 
     // Build progressive query
     let indexedQuery = buildProgressiveQuery(ctx, identity.tenantId, filters);
@@ -95,11 +94,55 @@ export const list = query({
     query = indexedQuery.order(order);
 
     // Return paginated or full results
-    if (paginationOpts) {
-      return await query.paginate(paginationOpts);
-    } else {
-      return await query.collect();
+    return await query.collect();
+  },
+});
+
+export const paginate = query({
+  args: {
+    status: v.optional(statusValidator),
+    slug: v.optional(v.string()),
+    psaCompanyId: v.optional(v.string()),
+    order: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
+    sortColumn: v.optional(v.string()),
+    sortDirection: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
+    globalSearch: v.optional(v.string()),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    const identity = await isAuthenticated(ctx);
+    const {
+      order = "desc",
+      paginationOpts,
+      sortColumn,
+      sortDirection,
+      globalSearch,
+      ...filters
+    } = args;
+
+    // Build progressive query
+    let indexedQuery = buildProgressiveQuery(ctx, identity.tenantId, filters);
+
+    // Apply ordering (use sortDirection if sortColumn is provided, otherwise use order)
+    let query: OrderedQuery<DataModel["sites"]> = indexedQuery;
+    const orderDirection = sortColumn && sortDirection ? sortDirection : order;
+    query = indexedQuery.order(orderDirection);
+
+    // Apply global search filter if provided
+    if (globalSearch && globalSearch.trim()) {
+      const searchLower = globalSearch.toLowerCase().trim();
+      query = query.filter((q) => {
+        const site = q as any;
+        return (
+          site.name?.toLowerCase().includes(searchLower) ||
+          site.slug?.toLowerCase().includes(searchLower) ||
+          site.psaCompanyId?.toLowerCase().includes(searchLower)
+        );
+      });
     }
+
+    // Return paginated results
+    return await query.paginate(paginationOpts);
   },
 });
 
