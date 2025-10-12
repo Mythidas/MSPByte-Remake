@@ -2,11 +2,13 @@ import Debug from "@workspace/shared/lib/Debug.js";
 import { FastifyInstance } from "fastify";
 import { PerformanceTracker } from "@workspace/shared/lib/performance.js";
 import { logAgentApiCall } from "@/lib/agentLogger.js";
-import { generateAgentGuid } from "@/lib/utils.js";
+import { generateAgentGuid, isVersionGte } from "@/lib/utils.js";
 import { api } from "@workspace/database/convex/_generated/api.js";
 import { Doc } from "@workspace/database/convex/_generated/dataModel.js";
 import { client } from "@workspace/shared/lib/convex.js";
 import { getHeartbeatManager } from "@/lib/heartbeatManager.js";
+
+const COMPATIBLE_AGENT_VERSION = "0.1.11";
 
 export default async function (fastify: FastifyInstance) {
   fastify.post("/", async (req) => {
@@ -58,7 +60,11 @@ export default async function (fastify: FastifyInstance) {
         guid?: string;
       };
 
-      if (!hostname || !version) {
+      if (
+        !hostname ||
+        !version ||
+        !isVersionGte(version, COMPATIBLE_AGENT_VERSION)
+      ) {
         statusCode = 400;
         errorMessage = "Hostname and version are required";
         return Debug.response(

@@ -23,3 +23,22 @@ export function generateAgentGuid(
     .update(JSON.stringify({ hostname, siteId }))
     .digest("hex");
 }
+
+export function isVersionGte(value: string, target: string): boolean {
+  const splitV1 = value.split(".").map(Number);
+  const splitV2 = target.split(".").map(Number);
+
+  const len = Math.max(splitV1.length, splitV2.length);
+
+  for (let i = 0; i < len; i++) {
+    const num1 = splitV1[i] ?? 0; // default to 0 if undefined
+    const num2 = splitV2[i] ?? 0;
+
+    if (num1 > num2) return true;
+    if (num1 < num2) return false;
+    // if equal, continue to next part
+  }
+
+  // all parts equal
+  return true;
+}
