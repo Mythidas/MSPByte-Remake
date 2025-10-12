@@ -5,7 +5,13 @@ import type { OrderedQuery, Query } from "convex/server";
 import type { DataModel, Id } from "../_generated/dataModel.js";
 import { paginationOptsValidator } from "convex/server";
 import { entityTypeValidator } from "../schema.js";
-import { EntityType } from "@workspace/shared/types/pipeline/core";
+
+export type EntityType =
+  | "companies"
+  | "endpoints"
+  | "identities"
+  | "groups"
+  | "licenseAssignments";
 
 // ============================================================================
 // SHARED HELPER

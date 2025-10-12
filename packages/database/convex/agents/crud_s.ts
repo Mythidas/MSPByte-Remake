@@ -58,11 +58,10 @@ export const list = query({
     siteId: v.optional(v.id("sites")),
     guid: v.optional(v.string()),
     order: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
-    paginationOpts: v.optional(paginationOptsValidator),
   },
   handler: async (ctx, args) => {
     await isValidSecret(args.secret);
-    const { secret, order = "desc", paginationOpts, tenantId, ...filters } = args;
+    const { secret, order = "desc", tenantId, ...filters } = args;
 
     // Build progressive query
     let indexedQuery = buildProgressiveQuery(ctx, tenantId, filters);
@@ -72,11 +71,38 @@ export const list = query({
     query = indexedQuery.order(order);
 
     // Return paginated or full results
-    if (paginationOpts) {
-      return await query.paginate(paginationOpts);
-    } else {
-      return await query.collect();
-    }
+    return await query.collect();
+  },
+});
+
+export const paginate = query({
+  args: {
+    secret: v.string(),
+    tenantId: v.optional(v.id("tenants")),
+    siteId: v.optional(v.id("sites")),
+    guid: v.optional(v.string()),
+    order: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    await isValidSecret(args.secret);
+    const {
+      secret,
+      order = "desc",
+      paginationOpts,
+      tenantId,
+      ...filters
+    } = args;
+
+    // Build progressive query
+    let indexedQuery = buildProgressiveQuery(ctx, tenantId, filters);
+
+    // Apply ordering
+    let query: OrderedQuery<DataModel["agents"]> = indexedQuery;
+    query = indexedQuery.order(order);
+
+    // Return paginated or full results
+    return await query.paginate(paginationOpts);
   },
 });
 
@@ -157,6 +183,10 @@ export const update = mutation({
       ipAddress: v.optional(v.string()),
       macAddress: v.optional(v.string()),
       extAddress: v.optional(v.string()),
+      status: v.optional(
+        v.union(v.literal("online"), v.literal("offline"), v.literal("unknown"))
+      ),
+      statusChangedAt: v.optional(v.number()),
       registeredAt: v.optional(v.number()),
       lastCheckinAt: v.optional(v.number()),
     }),

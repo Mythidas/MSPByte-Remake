@@ -11,7 +11,6 @@
     "./convex/_generated/server": "./convex/_generated/server.d.ts"
   },
   "scripts": {
-    "dev": "convex dev",
     "deploy": "convex deploy"
   },
   "dependencies": {

@@ -6,6 +6,7 @@ import { generateAgentGuid } from "@/lib/utils.js";
 import { api } from "@workspace/database/convex/_generated/api.js";
 import { Doc } from "@workspace/database/convex/_generated/dataModel.js";
 import { client } from "@workspace/shared/lib/convex.js";
+import { getHeartbeatManager } from "@/lib/heartbeatManager.js";
 
 export default async function (fastify: FastifyInstance) {
   fastify.post("/", async (req) => {
@@ -73,6 +74,21 @@ export default async function (fastify: FastifyInstance) {
         );
       }
 
+      // Generate GUID using the new function
+      const calculatedGuid = generateAgentGuid(
+        agentGuid,
+        mac_address,
+        hostname,
+        siteID
+      );
+
+      // Record heartbeat in Redis (fast, no DB write)
+      const heartbeatManager = getHeartbeatManager();
+      await perf.trackSpan("record_heartbeat_redis", async () => {
+        await heartbeatManager.recordHeartbeat(deviceID as any);
+      });
+
+      // Fetch agent metadata from Convex (only for validation and metadata comparison)
       const existingAgent = (await perf.trackSpan(
         "db_fetch_agent",
         async () => {
@@ -99,51 +115,44 @@ export default async function (fastify: FastifyInstance) {
         );
       }
 
-      // Generate GUID using the new function
-      const calculatedGuid = generateAgentGuid(
-        agentGuid,
-        mac_address,
-        hostname,
-        siteID
-      );
-
       Debug.log({
         module: "v1.0/heartbeat",
         context: "POST",
         message: `Heartbeat from agent ${hostname} (DeviceID: ${deviceID}) (GUID: ${calculatedGuid})`,
       });
 
-      // Update agent information
-      const result = await perf.trackSpan("db_update_agent", async () => {
-        return await client.mutation(api.agents.crud_s.update, {
-          id: deviceID as any,
-          updates: {
-            guid: calculatedGuid,
-            hostname,
-            ipAddress: ip_address || existingAgent.ipAddress,
-            extAddress: ext_address || existingAgent.extAddress,
-            version,
-            macAddress: mac_address || existingAgent.macAddress,
-            lastCheckinAt: new Date().getTime(),
-          },
-          secret: process.env.CONVEX_API_KEY!,
-        });
-      });
+      // Check if metadata has changed - only update Convex if needed
+      const metadataChanged =
+        existingAgent.guid !== calculatedGuid ||
+        existingAgent.hostname !== hostname ||
+        existingAgent.version !== version ||
+        (ip_address && existingAgent.ipAddress !== ip_address) ||
+        (ext_address && existingAgent.extAddress !== ext_address) ||
+        (mac_address && existingAgent.macAddress !== mac_address);
 
-      if (!result) {
-        statusCode = 500;
-        errorMessage = "Failed to update agent";
-        return Debug.response(
-          {
-            error: {
-              module: "v1.0/heartbeat",
-              context: "POST",
-              message: "Failed to update agent",
-              code: "500",
+      if (metadataChanged) {
+        Debug.log({
+          module: "v1.0/heartbeat",
+          context: "POST",
+          message: `Agent metadata changed for ${deviceID}, updating Convex`,
+        });
+
+        // Update agent metadata in Convex
+        await perf.trackSpan("db_update_agent_metadata", async () => {
+          await client.mutation(api.agents.crud_s.update, {
+            id: deviceID as any,
+            updates: {
+              guid: calculatedGuid,
+              hostname,
+              ipAddress: ip_address || existingAgent.ipAddress,
+              extAddress: ext_address || existingAgent.extAddress,
+              version,
+              macAddress: mac_address || existingAgent.macAddress,
+              lastCheckinAt: new Date().getTime(),
             },
-          },
-          500
-        );
+            secret: process.env.CONVEX_API_KEY!,
+          });
+        });
       }
 
       statusCode = 200;

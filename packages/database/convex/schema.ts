@@ -148,6 +148,10 @@ export default defineSchema({
     ipAddress: v.optional(v.string()),
     macAddress: v.optional(v.string()),
     extAddress: v.optional(v.string()),
+    status: v.optional(
+      v.union(v.literal("online"), v.literal("offline"), v.literal("unknown"))
+    ),
+    statusChangedAt: v.optional(v.number()),
     registeredAt: v.optional(v.number()),
     lastCheckinAt: v.optional(v.number()),
     createdAt: v.number(),
@@ -158,6 +162,7 @@ export default defineSchema({
     .index("by_site", ["siteId"])
     .index("by_guid", ["guid"])
     .index("by_last_checkin", ["lastCheckinAt"])
+    .index("by_status_tenant", ["status", "tenantId"])
     // Optimized indexes for pagination with time-based ordering
     .index("by_tenant_ordered", ["tenantId", "createdAt"])
     .index("by_site_ordered", ["siteId", "createdAt"]),

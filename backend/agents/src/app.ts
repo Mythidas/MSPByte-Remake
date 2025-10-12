@@ -5,12 +5,29 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import autoload from "@fastify/autoload";
+import { startHeartbeatManager, stopHeartbeatManager } from "./lib/heartbeatManager.js";
+import Debug from "@workspace/shared/lib/Debug.js";
 
 // Compute __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 dotenv.config({ path: join(__dirname, "../../../.env") });
+
+// Initialize Heartbeat Manager
+Debug.log({
+  module: "app",
+  context: "startup",
+  message: "Initializing heartbeat manager...",
+});
+
+await startHeartbeatManager();
+
+Debug.log({
+  module: "app",
+  context: "startup",
+  message: "Heartbeat manager initialized successfully",
+});
 
 // Initialize Fastify server
 const fastify = Fastify({ logger: false });
@@ -36,5 +53,34 @@ await fastify.register(autoload, {
 const port = process.env.PORT || 3001;
 await fastify.listen({ port: port as number, host: "0.0.0.0" });
 
-process.on("SIGTERM", () => fastify.close());
-process.on("SIGINT", () => fastify.close());
+Debug.log({
+  module: "app",
+  context: "startup",
+  message: `Server listening on port ${port}`,
+});
+
+// Graceful shutdown handlers
+async function shutdown(signal: string) {
+  Debug.log({
+    module: "app",
+    context: "shutdown",
+    message: `Received ${signal}, shutting down gracefully...`,
+  });
+
+  // Stop heartbeat manager (flushes pending updates)
+  await stopHeartbeatManager();
+
+  // Close Fastify server
+  await fastify.close();
+
+  Debug.log({
+    module: "app",
+    context: "shutdown",
+    message: "Shutdown complete",
+  });
+
+  process.exit(0);
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));

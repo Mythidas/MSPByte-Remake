@@ -6,6 +6,7 @@
 	import { Dates } from '$lib/Dates.js';
 	import { type DataTableCell } from '$lib/components/table/types.js';
 	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
+	import { onMount, onDestroy } from 'svelte';
 
 	const appState = getAppState();
 
@@ -15,17 +16,31 @@
 		baseArgs: {},
 		numItems: 50
 	});
+
+	let currentTime = $state(Date.now());
+	let intervalId: ReturnType<typeof setInterval> | undefined;
+
+	onMount(() => {
+		intervalId = setInterval(() => {
+			currentTime = Date.now();
+		}, 30000); // Update every 30 seconds
+	});
+
+	onDestroy(() => {
+		if (intervalId) clearInterval(intervalId);
+	});
 </script>
 
 <div class="flex size-full flex-col gap-4">
 	<h1 class="text-2xl">Agents</h1>
 
 	{#snippet onlineSnip({ row }: DataTableCell<Doc<'agents'>>)}
-		{@const minutesAgo3 = new Dates().add({ minutes: -3 }).getTime()}
+		{@const minutesAgo3 = currentTime - 3 * 60 * 1000}
+		{@const lastCheckin = new Date(row.lastCheckinAt || '').getTime()}
 		<Tooltip.Provider>
 			<Tooltip.Root>
 				<Tooltip.Trigger>
-					{#if minutesAgo3 <= new Date(row.lastCheckinAt || '').getTime()}
+					{#if lastCheckin >= minutesAgo3}
 						<div class="h-4 w-4 rounded-full bg-chart-1"></div>
 					{:else}
 						<div class="h-4 w-4 rounded-full bg-destructive"></div>

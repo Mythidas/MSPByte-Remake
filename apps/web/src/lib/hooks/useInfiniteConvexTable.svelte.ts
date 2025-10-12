@@ -103,6 +103,10 @@ export function useInfiniteConvexTable<
 		return args;
 	});
 
+	// Track loaded pages by cursor to enable reactive updates
+	let loadedPages = $state<Map<string | null, T[]>>(new Map());
+	let cursorOrder = $state<(string | null)[]>([]);
+
 	// Effect to accumulate rows and detect resets
 	$effect(() => {
 		const data = result.data as PaginatedResult<T> | undefined;
@@ -117,6 +121,8 @@ export function useInfiniteConvexTable<
 			// Reset accumulated rows and cursor
 			cursor = null;
 			accumulatedRows = [];
+			loadedPages = new Map();
+			cursorOrder = [];
 			previousCursor = undefined;
 
 			prevSearch = search;
@@ -125,13 +131,23 @@ export function useInfiniteConvexTable<
 			prevSortDirection = sortDirection;
 		}
 
-		// Accumulate new rows when data arrives
+		// Update or accumulate rows when data arrives
 		if (data && data.page.length > 0) {
-			// Only accumulate if this is a new page (cursor changed)
-			if (cursor !== previousCursor) {
-				accumulatedRows = [...accumulatedRows, ...data.page];
-				previousCursor = cursor;
+			// Track if this is a new page
+			const isNewPage = !loadedPages.has(cursor);
+
+			// Store/update the current page data indexed by cursor
+			loadedPages.set(cursor, data.page);
+
+			// Add to cursor order if this is a new page
+			if (isNewPage) {
+				cursorOrder = [...cursorOrder, cursor];
 			}
+
+			// Rebuild accumulated rows from all loaded pages in order
+			accumulatedRows = cursorOrder.flatMap(c => loadedPages.get(c) ?? []);
+
+			previousCursor = cursor;
 		}
 	});
 

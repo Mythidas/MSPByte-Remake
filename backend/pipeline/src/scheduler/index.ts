@@ -7,7 +7,7 @@ import { SyncEventPayload } from "@workspace/shared/types/pipeline/index.js";
 import { client } from "@workspace/shared/lib/convex.js";
 
 export class Scheduler {
-  private pollInterval: number = 10000; // 30 seconds
+  private pollInterval: number = 60000; // 60 seconds (reduced from 10s to save function calls)
   private isRunning: boolean = false;
 
   constructor() {}
