@@ -82,12 +82,6 @@ export default async function (fastify: FastifyInstance) {
         siteID
       );
 
-      // Record heartbeat in Redis (fast, no DB write)
-      const heartbeatManager = getHeartbeatManager();
-      await perf.trackSpan("record_heartbeat_redis", async () => {
-        await heartbeatManager.recordHeartbeat(deviceID as any);
-      });
-
       // Fetch agent metadata from Convex (only for validation and metadata comparison)
       const existingAgent = (await perf.trackSpan(
         "db_fetch_agent",
@@ -114,6 +108,12 @@ export default async function (fastify: FastifyInstance) {
           404
         );
       }
+
+      // Record heartbeat in Redis (fast, no DB write)
+      const heartbeatManager = getHeartbeatManager();
+      await perf.trackSpan("record_heartbeat_redis", async () => {
+        await heartbeatManager.recordHeartbeat(deviceID as any);
+      });
 
       Debug.log({
         module: "v1.0/heartbeat",

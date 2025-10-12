@@ -3,10 +3,8 @@
 	import DataTable from '$lib/components/table/DataTable.svelte';
 	import { getAppState } from '$lib/state/Application.svelte.js';
 	import { useInfiniteConvexTable } from '$lib/hooks/useInfiniteConvexTable.svelte.js';
-	import { Dates } from '$lib/Dates.js';
 	import { type DataTableCell } from '$lib/components/table/types.js';
 	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
-	import { onMount, onDestroy } from 'svelte';
 
 	const appState = getAppState();
 
@@ -16,38 +14,32 @@
 		baseArgs: {},
 		numItems: 50
 	});
-
-	let currentTime = $state(Date.now());
-	let intervalId: ReturnType<typeof setInterval> | undefined;
-
-	onMount(() => {
-		intervalId = setInterval(() => {
-			currentTime = Date.now();
-		}, 30000); // Update every 30 seconds
-	});
-
-	onDestroy(() => {
-		if (intervalId) clearInterval(intervalId);
-	});
 </script>
 
 <div class="flex size-full flex-col gap-4">
 	<h1 class="text-2xl">Agents</h1>
 
-	{#snippet onlineSnip({ row }: DataTableCell<Doc<'agents'>>)}
-		{@const minutesAgo3 = currentTime - 3 * 60 * 1000}
-		{@const lastCheckin = new Date(row.lastCheckinAt || '').getTime()}
+	{#snippet statusSnip({ row }: DataTableCell<Doc<'agents'>>)}
+		{@const status = row.status || 'unknown'}
+		{@const lastCheckin = row.lastCheckinAt
+			? new Date(row.lastCheckinAt).toLocaleString()
+			: 'Never'}
 		<Tooltip.Provider>
 			<Tooltip.Root>
 				<Tooltip.Trigger>
-					{#if lastCheckin >= minutesAgo3}
-						<div class="h-4 w-4 rounded-full bg-chart-1"></div>
+					{#if status === 'online'}
+						<div class="h-4 w-4 rounded-full bg-chart-1" title="Online"></div>
+					{:else if status === 'offline'}
+						<div class="h-4 w-4 rounded-full bg-destructive" title="Offline"></div>
 					{:else}
-						<div class="h-4 w-4 rounded-full bg-destructive"></div>
+						<div class="h-4 w-4 rounded-full bg-muted" title="Unknown"></div>
 					{/if}
 				</Tooltip.Trigger>
 				<Tooltip.Content>
-					{new Date(row.lastCheckinAt || '').toLocaleString()}
+					<div class="flex flex-col gap-1">
+						<div class="font-semibold capitalize">{status}</div>
+						<div class="text-xs">Last seen: {lastCheckin}</div>
+					</div>
 				</Tooltip.Content>
 			</Tooltip.Root>
 		</Tooltip.Provider>
@@ -63,11 +55,11 @@
 		rowHeight={48}
 		columns={[
 			{
-				key: 'lastCheckinAt',
+				key: 'status',
 				title: '',
 				hideable: true,
 				sortable: true,
-				cell: onlineSnip,
+				cell: statusSnip,
 				width: '48px'
 			},
 			{
