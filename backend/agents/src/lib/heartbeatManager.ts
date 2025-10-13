@@ -37,7 +37,7 @@ export class HeartbeatManager {
   private updateQueue: AgentUpdate[] = [];
   private readonly STALE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes
   private readonly STALE_CHECK_INTERVAL_MS = 30 * 1000; // 30 seconds
-  private readonly SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+  private readonly SYNC_INTERVAL_MS = 1 * 60 * 1000; // 10 minutes
   private readonly BATCH_SIZE = 50; // Max updates per batch
   private isRunning = false;
 
@@ -465,6 +465,12 @@ export class HeartbeatManager {
 
       try {
         await this.checkStaleAgents();
+
+        Debug.log({
+          module: "HeartbeatManager",
+          context: "staleChecker",
+          message: `Queued updates: ${this.updateQueue.length}`,
+        });
       } catch (error) {
         Debug.error({
           module: "HeartbeatManager",
