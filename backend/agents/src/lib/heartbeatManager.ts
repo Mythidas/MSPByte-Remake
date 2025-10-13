@@ -174,14 +174,8 @@ export class HeartbeatManager {
     const redisUpdate: Record<string, string | number> = {
       lastHeartbeat: now,
       status: "online",
+      ...metadata,
     };
-
-    if (metadata.guid) redisUpdate.guid = metadata.guid;
-    if (metadata.hostname) redisUpdate.hostname = metadata.hostname;
-    if (metadata.version) redisUpdate.version = metadata.version;
-    if (metadata.ipAddress) redisUpdate.ipAddress = metadata.ipAddress;
-    if (metadata.extAddress) redisUpdate.extAddress = metadata.extAddress;
-    if (metadata.macAddress) redisUpdate.macAddress = metadata.macAddress;
 
     // Update Redis with heartbeat + metadata
     await this.redis.hset(key, redisUpdate);
@@ -205,7 +199,7 @@ export class HeartbeatManager {
     }
 
     // Check metadata changes
-    if (metadata.guid && current.guid && metadata.guid !== current.guid) {
+    if (metadata.guid && metadata.guid !== current.guid) {
       Debug.log({
         module: "HeartbeatManager",
         context: "recordHeartbeat",
@@ -215,11 +209,7 @@ export class HeartbeatManager {
       needsUpdate = true;
     }
 
-    if (
-      metadata.hostname &&
-      current.hostname &&
-      metadata.hostname !== current.hostname
-    ) {
+    if (metadata.hostname && metadata.hostname !== current.hostname) {
       Debug.log({
         module: "HeartbeatManager",
         context: "recordHeartbeat",
@@ -229,11 +219,7 @@ export class HeartbeatManager {
       needsUpdate = true;
     }
 
-    if (
-      metadata.version &&
-      current.version &&
-      metadata.version !== current.version
-    ) {
+    if (metadata.version && metadata.version !== current.version) {
       Debug.log({
         module: "HeartbeatManager",
         context: "recordHeartbeat",
@@ -243,11 +229,7 @@ export class HeartbeatManager {
       needsUpdate = true;
     }
 
-    if (
-      metadata.ipAddress &&
-      current.ipAddress &&
-      metadata.ipAddress !== current.ipAddress
-    ) {
+    if (metadata.ipAddress && metadata.ipAddress !== current.ipAddress) {
       Debug.log({
         module: "HeartbeatManager",
         context: "recordHeartbeat",
@@ -257,11 +239,7 @@ export class HeartbeatManager {
       needsUpdate = true;
     }
 
-    if (
-      metadata.extAddress &&
-      current.extAddress &&
-      metadata.extAddress !== current.extAddress
-    ) {
+    if (metadata.extAddress && metadata.extAddress !== current.extAddress) {
       Debug.log({
         module: "HeartbeatManager",
         context: "recordHeartbeat",
@@ -271,11 +249,7 @@ export class HeartbeatManager {
       needsUpdate = true;
     }
 
-    if (
-      metadata.macAddress &&
-      current.macAddress &&
-      metadata.macAddress !== current.macAddress
-    ) {
+    if (metadata.macAddress && metadata.macAddress !== current.macAddress) {
       Debug.log({
         module: "HeartbeatManager",
         context: "recordHeartbeat",
@@ -611,7 +585,6 @@ export class HeartbeatManager {
       const batch: AgentUpdate[] = [];
       const updateKeys: string[] = [];
 
-      console.log(results?.[0] || ("" as string));
       for (let i = 0; i < agentIds.length; i++) {
         const agentId = agentIds[i] as Id<"agents">;
         const result = results?.[i];
