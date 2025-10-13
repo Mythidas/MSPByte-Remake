@@ -159,6 +159,8 @@ export const create = mutation({
       ...data,
       registeredAt: Date.now(),
       lastCheckinAt: Date.now(),
+      statusChangedAt: Date.now(),
+      status: "online",
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
