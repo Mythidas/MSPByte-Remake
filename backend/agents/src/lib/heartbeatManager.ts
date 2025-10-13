@@ -9,20 +9,32 @@ type AgentStatus = "online" | "offline" | "unknown";
 interface HeartbeatData {
   lastHeartbeat: number;
   status: AgentStatus;
+  guid?: string;
+  hostname?: string;
+  version?: string;
+  ipAddress?: string;
+  extAddress?: string;
+  macAddress?: string;
 }
 
-interface StatusUpdate {
+interface AgentUpdate {
   id: Id<"agents">;
   status: AgentStatus;
   statusChangedAt: number;
   lastCheckinAt?: number;
+  guid?: string;
+  hostname?: string;
+  version?: string;
+  ipAddress?: string;
+  extAddress?: string;
+  macAddress?: string;
 }
 
 export class HeartbeatManager {
   private redis: Redis;
   private staleCheckInterval?: NodeJS.Timeout;
   private syncInterval?: NodeJS.Timeout;
-  private statusUpdateQueue: StatusUpdate[] = [];
+  private updateQueue: AgentUpdate[] = [];
   private readonly STALE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes
   private readonly STALE_CHECK_INTERVAL_MS = 30 * 1000; // 30 seconds
   private readonly SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
@@ -132,13 +144,23 @@ export class HeartbeatManager {
 
   /**
    * Record a heartbeat from an agent.
-   * Updates Redis timestamp and queues status change if needed.
+   * Updates Redis timestamp and queues status/metadata changes if needed.
    */
-  async recordHeartbeat(agentId: Id<"agents">): Promise<void> {
+  async recordHeartbeat(
+    agentId: Id<"agents">,
+    metadata: {
+      guid?: string;
+      hostname?: string;
+      version?: string;
+      ipAddress?: string;
+      extAddress?: string;
+      macAddress?: string;
+    }
+  ): Promise<void> {
     const now = Date.now();
     const key = this.getRedisKey(agentId);
 
-    // Get current status
+    // Get current data from Redis
     const current = await this.redis.hgetall(key);
     const currentStatus = current.status as AgentStatus | undefined;
 
@@ -148,26 +170,125 @@ export class HeartbeatManager {
       message: `Heartbeat for ${agentId}: current status = ${currentStatus || "undefined"}`,
     });
 
-    // Update heartbeat timestamp
-    await this.redis.hset(key, {
+    // Build update data
+    const redisUpdate: Record<string, string | number> = {
       lastHeartbeat: now,
       status: "online",
-    });
+    };
 
-    // If agent was offline or unknown, queue status update
+    if (metadata.guid) redisUpdate.guid = metadata.guid;
+    if (metadata.hostname) redisUpdate.hostname = metadata.hostname;
+    if (metadata.version) redisUpdate.version = metadata.version;
+    if (metadata.ipAddress) redisUpdate.ipAddress = metadata.ipAddress;
+    if (metadata.extAddress) redisUpdate.extAddress = metadata.extAddress;
+    if (metadata.macAddress) redisUpdate.macAddress = metadata.macAddress;
+
+    // Update Redis with heartbeat + metadata
+    await this.redis.hset(key, redisUpdate);
+
+    // Check if we need to queue updates to Convex
+    let needsUpdate = false;
+    const update: AgentUpdate = {
+      id: agentId,
+      status: "online",
+      statusChangedAt: now,
+      lastCheckinAt: now,
+    };
+
+    // Check status change
     if (currentStatus && currentStatus !== "online") {
       Debug.log({
         module: "HeartbeatManager",
         context: "recordHeartbeat",
         message: `Agent ${agentId} status changed: ${currentStatus} → online`,
       });
+      needsUpdate = true;
+    }
 
-      this.queueStatusUpdate({
-        id: agentId,
-        status: "online",
-        statusChangedAt: now,
-        lastCheckinAt: now,
+    // Check metadata changes
+    if (metadata.guid && current.guid && metadata.guid !== current.guid) {
+      Debug.log({
+        module: "HeartbeatManager",
+        context: "recordHeartbeat",
+        message: `Agent ${agentId} GUID changed`,
       });
+      update.guid = metadata.guid;
+      needsUpdate = true;
+    }
+
+    if (
+      metadata.hostname &&
+      current.hostname &&
+      metadata.hostname !== current.hostname
+    ) {
+      Debug.log({
+        module: "HeartbeatManager",
+        context: "recordHeartbeat",
+        message: `Agent ${agentId} hostname changed`,
+      });
+      update.hostname = metadata.hostname;
+      needsUpdate = true;
+    }
+
+    if (
+      metadata.version &&
+      current.version &&
+      metadata.version !== current.version
+    ) {
+      Debug.log({
+        module: "HeartbeatManager",
+        context: "recordHeartbeat",
+        message: `Agent ${agentId} version changed`,
+      });
+      update.version = metadata.version;
+      needsUpdate = true;
+    }
+
+    if (
+      metadata.ipAddress &&
+      current.ipAddress &&
+      metadata.ipAddress !== current.ipAddress
+    ) {
+      Debug.log({
+        module: "HeartbeatManager",
+        context: "recordHeartbeat",
+        message: `Agent ${agentId} IP address changed`,
+      });
+      update.ipAddress = metadata.ipAddress;
+      needsUpdate = true;
+    }
+
+    if (
+      metadata.extAddress &&
+      current.extAddress &&
+      metadata.extAddress !== current.extAddress
+    ) {
+      Debug.log({
+        module: "HeartbeatManager",
+        context: "recordHeartbeat",
+        message: `Agent ${agentId} external address changed`,
+      });
+      update.extAddress = metadata.extAddress;
+      needsUpdate = true;
+    }
+
+    if (
+      metadata.macAddress &&
+      current.macAddress &&
+      metadata.macAddress !== current.macAddress
+    ) {
+      Debug.log({
+        module: "HeartbeatManager",
+        context: "recordHeartbeat",
+        message: `Agent ${agentId} MAC address changed`,
+      });
+      update.macAddress = metadata.macAddress;
+      needsUpdate = true;
+    }
+
+    // Queue update if anything changed
+    if (needsUpdate) {
+      this.queueUpdate(update);
     } else if (!currentStatus) {
       Debug.log({
         module: "HeartbeatManager",
@@ -178,20 +299,96 @@ export class HeartbeatManager {
   }
 
   /**
-   * Get agent status from Redis.
+   * Get agent data from Redis, fetching from Convex if not cached.
+   * This eliminates per-heartbeat Convex queries.
    */
-  async getAgentStatus(agentId: Id<"agents">): Promise<HeartbeatData | null> {
+  async getOrFetchAgent(agentId: Id<"agents">): Promise<HeartbeatData | null> {
     const key = this.getRedisKey(agentId);
     const data = await this.redis.hgetall(key);
 
-    if (!data.lastHeartbeat || !data.status) {
-      return null;
+    // If we have data in Redis, return it
+    if (data.lastHeartbeat && data.status) {
+      return {
+        lastHeartbeat: parseInt(data.lastHeartbeat, 10),
+        status: data.status as AgentStatus,
+        guid: data.guid,
+        hostname: data.hostname,
+        version: data.version,
+        ipAddress: data.ipAddress,
+        extAddress: data.extAddress,
+        macAddress: data.macAddress,
+      };
     }
 
-    return {
-      lastHeartbeat: parseInt(data.lastHeartbeat, 10),
-      status: data.status as AgentStatus,
-    };
+    // Cache miss - fetch from Convex and seed Redis
+    Debug.log({
+      module: "HeartbeatManager",
+      context: "getOrFetchAgent",
+      message: `Cache miss for ${agentId}, fetching from Convex`,
+    });
+
+    try {
+      const agent = await client.query(api.agents.crud_s.get, {
+        id: agentId,
+        secret: process.env.CONVEX_API_KEY!,
+      });
+
+      if (!agent) {
+        Debug.log({
+          module: "HeartbeatManager",
+          context: "getOrFetchAgent",
+          message: `Agent ${agentId} not found in Convex`,
+        });
+        return null;
+      }
+
+      // Seed Redis with agent data
+      const redisData: Record<string, string | number> = {
+        lastHeartbeat: agent.statusChangedAt || Date.now(),
+        status: agent.status || "unknown",
+      };
+
+      if (agent.guid) redisData.guid = agent.guid;
+      if (agent.hostname) redisData.hostname = agent.hostname;
+      if (agent.version) redisData.version = agent.version;
+      if (agent.ipAddress) redisData.ipAddress = agent.ipAddress;
+      if (agent.extAddress) redisData.extAddress = agent.extAddress;
+      if (agent.macAddress) redisData.macAddress = agent.macAddress;
+
+      await this.redis.hset(key, redisData);
+
+      Debug.log({
+        module: "HeartbeatManager",
+        context: "getOrFetchAgent",
+        message: `Cached agent ${agentId} in Redis`,
+      });
+
+      return {
+        lastHeartbeat: agent.statusChangedAt || Date.now(),
+        status: (agent.status as AgentStatus) || "unknown",
+        guid: agent.guid,
+        hostname: agent.hostname,
+        version: agent.version,
+        ipAddress: agent.ipAddress,
+        extAddress: agent.extAddress,
+        macAddress: agent.macAddress,
+      };
+    } catch (error) {
+      Debug.error({
+        module: "HeartbeatManager",
+        context: "getOrFetchAgent",
+        message: `Failed to fetch agent ${agentId} from Convex: ${error}`,
+        code: "FETCH_AGENT_ERROR",
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Get agent status from Redis (legacy method for backward compatibility).
+   */
+  async getAgentStatus(agentId: Id<"agents">): Promise<HeartbeatData | null> {
+    return this.getOrFetchAgent(agentId);
   }
 
   /**
@@ -225,10 +422,20 @@ export class HeartbeatManager {
         const status = agent.status || "unknown";
         const lastHeartbeat = agent.statusChangedAt || Date.now();
 
-        pipeline.hset(key, {
+        // Store full agent metadata in Redis
+        const redisData: Record<string, string | number> = {
           lastHeartbeat,
           status,
-        });
+        };
+
+        if (agent.guid) redisData.guid = agent.guid;
+        if (agent.hostname) redisData.hostname = agent.hostname;
+        if (agent.version) redisData.version = agent.version;
+        if (agent.ipAddress) redisData.ipAddress = agent.ipAddress;
+        if (agent.extAddress) redisData.extAddress = agent.extAddress;
+        if (agent.macAddress) redisData.macAddress = agent.macAddress;
+
+        pipeline.hset(key, redisData);
       }
 
       await pipeline.exec();
@@ -277,7 +484,7 @@ export class HeartbeatManager {
     Debug.log({
       module: "HeartbeatManager",
       context: "startSyncWorker",
-      message: `Starting sync worker (interval: ${this.SYNC_INTERVAL_MS}ms)`,
+      message: `Starting sync worker, next job at ${new Date(Date.now() + this.SYNC_INTERVAL_MS).toLocaleString()} (interval: ${this.SYNC_INTERVAL_MS}ms)`,
     });
 
     this.syncInterval = setInterval(async () => {
@@ -285,6 +492,12 @@ export class HeartbeatManager {
 
       try {
         await this.syncToConvex();
+
+        Debug.log({
+          module: "HeartbeatManager",
+          context: "startSyncWorker",
+          message: `Next job at ${new Date(Date.now() + this.SYNC_INTERVAL_MS).toLocaleString()} (interval: ${this.SYNC_INTERVAL_MS}ms)`,
+        });
       } catch (error) {
         Debug.error({
           module: "HeartbeatManager",
@@ -333,7 +546,7 @@ export class HeartbeatManager {
           await this.redis.hset(key, "status", "offline");
 
           // Queue Convex update
-          this.queueStatusUpdate({
+          this.queueUpdate({
             id: agentId,
             status: "offline",
             statusChangedAt: now,
@@ -361,36 +574,33 @@ export class HeartbeatManager {
   }
 
   /**
-   * Sync queued status updates to Convex in batches.
+   * Sync queued agent updates to Convex in batches.
    */
   private async syncToConvex(): Promise<void> {
     Debug.log({
       module: "HeartbeatManager",
       context: "syncToConvex",
-      message: `Sync triggered. Queue size: ${this.statusUpdateQueue.length}`,
+      message: `Sync triggered. Queue size: ${this.updateQueue.length}`,
     });
 
-    if (this.statusUpdateQueue.length === 0) {
+    if (this.updateQueue.length === 0) {
       return;
     }
 
     // Take batch from queue
-    const batch = this.statusUpdateQueue.splice(0, this.BATCH_SIZE);
+    const batch = this.updateQueue.splice(0, this.BATCH_SIZE);
 
     Debug.log({
       module: "HeartbeatManager",
       context: "syncToConvex",
-      message: `Syncing ${batch.length} status updates to Convex`,
+      message: `Syncing ${batch.length} agent updates to Convex`,
     });
 
     try {
-      const result = await client.mutation(
-        api.agents.internal.batchUpdateStatus,
-        {
-          secret: process.env.CONVEX_API_KEY!,
-          updates: batch,
-        }
-      );
+      const result = await client.mutation(api.agents.internal.batchUpdate, {
+        secret: process.env.CONVEX_API_KEY!,
+        updates: batch,
+      });
 
       Debug.log({
         module: "HeartbeatManager",
@@ -417,42 +627,43 @@ export class HeartbeatManager {
       });
 
       // Re-queue failed updates
-      this.statusUpdateQueue.unshift(...batch);
+      this.updateQueue.unshift(...batch);
     }
   }
 
   /**
-   * Queue a status update for batching.
+   * Queue an agent update for batching.
    */
-  private queueStatusUpdate(update: StatusUpdate): void {
+  private queueUpdate(update: AgentUpdate): void {
     // Check if update already exists in queue for this agent
-    const existingIndex = this.statusUpdateQueue.findIndex(
-      (u) => u.id === update.id
-    );
+    const existingIndex = this.updateQueue.findIndex((u) => u.id === update.id);
 
     if (existingIndex >= 0) {
-      // Replace existing update with newer one
-      this.statusUpdateQueue[existingIndex] = update;
+      // Merge with existing update (keep newest data)
+      this.updateQueue[existingIndex] = {
+        ...this.updateQueue[existingIndex],
+        ...update,
+      };
       Debug.log({
         module: "HeartbeatManager",
-        context: "queueStatusUpdate",
+        context: "queueUpdate",
         message: `Updated existing queue entry for ${update.id} to ${update.status}`,
       });
     } else {
       // Add new update
-      this.statusUpdateQueue.push(update);
+      this.updateQueue.push(update);
       Debug.log({
         module: "HeartbeatManager",
-        context: "queueStatusUpdate",
-        message: `Queued new status update for ${update.id}: ${update.status} (queue size: ${this.statusUpdateQueue.length})`,
+        context: "queueUpdate",
+        message: `Queued new update for ${update.id}: ${update.status} (queue size: ${this.updateQueue.length})`,
       });
     }
 
     // If queue is getting large, trigger immediate sync
-    if (this.statusUpdateQueue.length >= this.BATCH_SIZE) {
+    if (this.updateQueue.length >= this.BATCH_SIZE) {
       Debug.log({
         module: "HeartbeatManager",
-        context: "queueStatusUpdate",
+        context: "queueUpdate",
         message: `Queue reached batch size (${this.BATCH_SIZE}), triggering immediate sync`,
       });
       void this.syncToConvex();
