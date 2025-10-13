@@ -611,6 +611,7 @@ export class HeartbeatManager {
       const batch: AgentUpdate[] = [];
       const updateKeys: string[] = [];
 
+      console.log(results?.[0] || ("" as string));
       for (let i = 0; i < agentIds.length; i++) {
         const agentId = agentIds[i] as Id<"agents">;
         const result = results?.[i];
