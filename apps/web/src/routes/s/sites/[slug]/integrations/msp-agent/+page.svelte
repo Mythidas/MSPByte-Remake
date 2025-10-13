@@ -21,8 +21,8 @@
 
 	{#snippet statusSnip({ row }: DataTableCell<Doc<'agents'>>)}
 		{@const status = row.status || 'unknown'}
-		{@const lastCheckin = row.lastCheckinAt
-			? new Date(row.lastCheckinAt).toLocaleString()
+		{@const lastCheckin = row.statusChangedAt
+			? new Date(row.statusChangedAt).toLocaleString()
 			: 'Never'}
 		<Tooltip.Provider>
 			<Tooltip.Root>

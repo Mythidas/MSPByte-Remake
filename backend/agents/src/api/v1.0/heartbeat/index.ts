@@ -154,7 +154,7 @@ export default async function (fastify: FastifyInstance) {
               extAddress: ext_address || existingAgent.extAddress,
               version,
               macAddress: mac_address || existingAgent.macAddress,
-              lastCheckinAt: new Date().getTime(),
+              statusChangedAt: new Date().getTime(),
             },
             secret: process.env.CONVEX_API_KEY!,
           });

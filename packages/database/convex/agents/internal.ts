@@ -87,7 +87,6 @@ export const batchUpdateStatus = mutation({
           v.literal("unknown")
         ),
         statusChangedAt: v.number(),
-        lastCheckinAt: v.optional(v.number()),
       })
     ),
   },
@@ -100,14 +99,17 @@ export const batchUpdateStatus = mutation({
     for (const update of args.updates) {
       const agent = await ctx.db.get(update.id);
       if (!agent) {
-        results.push({ id: update.id, success: false, error: "Agent not found" });
+        results.push({
+          id: update.id,
+          success: false,
+          error: "Agent not found",
+        });
         continue;
       }
 
       await ctx.db.patch(update.id, {
         status: update.status,
         statusChangedAt: update.statusChangedAt,
-        lastCheckinAt: update.lastCheckinAt,
         updatedAt: now,
       });
 

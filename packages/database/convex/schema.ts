@@ -153,7 +153,6 @@ export default defineSchema({
     ),
     statusChangedAt: v.optional(v.number()),
     registeredAt: v.optional(v.number()),
-    lastCheckinAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
     deletedAt: v.optional(v.number()),
@@ -161,7 +160,7 @@ export default defineSchema({
     .index("by_tenant", ["tenantId"])
     .index("by_site", ["siteId"])
     .index("by_guid", ["guid"])
-    .index("by_last_checkin", ["lastCheckinAt"])
+    .index("by_last_status_change", ["statusChangedAt"])
     .index("by_status_tenant", ["status", "tenantId"])
     // Optimized indexes for pagination with time-based ordering
     .index("by_tenant_ordered", ["tenantId", "createdAt"])

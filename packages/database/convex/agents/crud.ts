@@ -163,7 +163,6 @@ export const update = mutation({
       macAddress: v.optional(v.string()),
       extAddress: v.optional(v.string()),
       registeredAt: v.optional(v.number()),
-      lastCheckinAt: v.optional(v.number()),
     }),
   },
   handler: async (ctx, args) => {

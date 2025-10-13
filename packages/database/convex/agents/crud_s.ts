@@ -158,7 +158,6 @@ export const create = mutation({
     const agentId = await ctx.db.insert("agents", {
       ...data,
       registeredAt: Date.now(),
-      lastCheckinAt: Date.now(),
       statusChangedAt: Date.now(),
       status: "online",
       createdAt: Date.now(),
@@ -190,7 +189,6 @@ export const update = mutation({
       ),
       statusChangedAt: v.optional(v.number()),
       registeredAt: v.optional(v.number()),
-      lastCheckinAt: v.optional(v.number()),
     }),
   },
   handler: async (ctx, args) => {
