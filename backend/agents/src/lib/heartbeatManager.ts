@@ -34,13 +34,12 @@ export class HeartbeatManager {
   private redis: Redis;
   private staleCheckInterval?: NodeJS.Timeout;
   private syncInterval?: NodeJS.Timeout;
-  private updateQueue: AgentUpdate[] = [];
   private readonly STALE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes
   private readonly STALE_CHECK_INTERVAL_MS = 30 * 1000; // 30 seconds
   private readonly SYNC_INTERVAL_MS = 1 * 60 * 1000; // 10 minutes
   private readonly BATCH_SIZE = 50; // Max updates per batch
+  private readonly QUEUE_KEY = "heartbeat:update_queue"; // Redis key for update queue
   private isRunning = false;
-  private uuid = crypto.randomUUID();
 
   constructor(redisUrl?: string) {
     this.redis = new Redis(redisUrl || process.env.REDIS_URL || "", {
@@ -289,7 +288,7 @@ export class HeartbeatManager {
 
     // Queue update if anything changed
     if (needsUpdate) {
-      this.queueUpdate(update);
+      await this.queueUpdate(update);
     } else if (!currentStatus) {
       Debug.log({
         module: "HeartbeatManager",
@@ -467,10 +466,11 @@ export class HeartbeatManager {
       try {
         await this.checkStaleAgents();
 
+        const queueSize = await this.redis.llen(this.QUEUE_KEY);
         Debug.log({
           module: "HeartbeatManager",
-          context: "staleChecker: " + this.uuid,
-          message: `Queued updates: ${this.updateQueue.length}`,
+          context: "staleChecker",
+          message: `Queued updates: ${queueSize}`,
         });
       } catch (error) {
         Debug.error({
@@ -553,7 +553,7 @@ export class HeartbeatManager {
           await this.redis.hset(key, "status", "offline");
 
           // Queue Convex update
-          this.queueUpdate({
+          await this.queueUpdate({
             id: agentId,
             status: "offline",
             statusChangedAt: now,
@@ -584,26 +584,52 @@ export class HeartbeatManager {
    * Sync queued agent updates to Convex in batches.
    */
   private async syncToConvex(): Promise<void> {
-    Debug.log({
-      module: "HeartbeatManager",
-      context: "syncToConvex",
-      message: `Sync triggered. Queue size: ${this.updateQueue.length}`,
-    });
-
-    if (this.updateQueue.length === 0) {
-      return;
-    }
-
-    // Take batch from queue
-    const batch = this.updateQueue.splice(0, this.BATCH_SIZE);
-
-    Debug.log({
-      module: "HeartbeatManager",
-      context: "syncToConvex",
-      message: `Syncing ${batch.length} agent updates to Convex`,
-    });
-
     try {
+      const queueSize = await this.redis.llen(this.QUEUE_KEY);
+
+      Debug.log({
+        module: "HeartbeatManager",
+        context: "syncToConvex",
+        message: `Sync triggered. Queue size: ${queueSize}`,
+      });
+
+      if (queueSize === 0) {
+        return;
+      }
+
+      // Take batch from queue (RPOP from right/tail of list, up to BATCH_SIZE items)
+      const batchJson = await this.redis.rpopBuffer(
+        this.QUEUE_KEY,
+        this.BATCH_SIZE
+      );
+
+      if (!batchJson || batchJson.length === 0) {
+        return;
+      }
+
+      // Deserialize batch
+      const batch: AgentUpdate[] = batchJson
+        .map((item) => {
+          try {
+            return JSON.parse(item.toString());
+          } catch (error) {
+            Debug.error({
+              module: "HeartbeatManager",
+              context: "syncToConvex",
+              message: `Failed to parse queue item: ${error}`,
+              code: "PARSE_ERROR",
+            });
+            return null;
+          }
+        })
+        .filter((item): item is AgentUpdate => item !== null);
+
+      Debug.log({
+        module: "HeartbeatManager",
+        context: "syncToConvex",
+        message: `Syncing ${batch.length} agent updates to Convex`,
+      });
+
       const result = await client.mutation(api.agents.internal.batchUpdate, {
         secret: process.env.CONVEX_API_KEY!,
         updates: batch,
@@ -615,7 +641,7 @@ export class HeartbeatManager {
         message: `Successfully updated ${result.totalUpdated} agents (${result.totalFailed} failed)`,
       });
 
-      // If there are failures, log them
+      // If there are failures, log them (no re-queuing since Redis provides durability)
       if (result.totalFailed > 0) {
         const failures = result.results.filter((r) => !r.success);
         Debug.error({
@@ -632,48 +658,42 @@ export class HeartbeatManager {
         message: `Failed to sync batch to Convex: ${error}`,
         code: "BATCH_UPDATE_ERROR",
       });
-
-      // Re-queue failed updates
-      this.updateQueue.unshift(...batch);
     }
   }
 
   /**
    * Queue an agent update for batching.
    */
-  private queueUpdate(update: AgentUpdate): void {
-    // Check if update already exists in queue for this agent
-    const existingIndex = this.updateQueue.findIndex((u) => u.id === update.id);
+  private async queueUpdate(update: AgentUpdate): Promise<void> {
+    try {
+      // Add update to Redis queue (LPUSH adds to left/head of list)
+      const updateJson = JSON.stringify(update);
+      await this.redis.lpush(this.QUEUE_KEY, updateJson);
 
-    if (existingIndex >= 0) {
-      // Merge with existing update (keep newest data)
-      this.updateQueue[existingIndex] = {
-        ...this.updateQueue[existingIndex],
-        ...update,
-      };
+      const queueSize = await this.redis.llen(this.QUEUE_KEY);
+
       Debug.log({
         module: "HeartbeatManager",
         context: "queueUpdate",
-        message: `Updated existing queue entry for ${update.id} to ${update.status}`,
+        message: `Queued new update for ${update.id}: ${update.status} (queue size: ${queueSize})`,
       });
-    } else {
-      // Add new update
-      this.updateQueue.push(update);
-      Debug.log({
-        module: "HeartbeatManager",
-        context: "queueUpdate: " + this.uuid,
-        message: `Queued new update for ${update.id}: ${update.status} (queue size: ${this.updateQueue.length})`,
-      });
-    }
 
-    // If queue is getting large, trigger immediate sync
-    if (this.updateQueue.length >= this.BATCH_SIZE) {
-      Debug.log({
+      // If queue is getting large, trigger immediate sync
+      if (queueSize >= this.BATCH_SIZE) {
+        Debug.log({
+          module: "HeartbeatManager",
+          context: "queueUpdate",
+          message: `Queue reached batch size (${this.BATCH_SIZE}), triggering immediate sync`,
+        });
+        void this.syncToConvex();
+      }
+    } catch (error) {
+      Debug.error({
         module: "HeartbeatManager",
         context: "queueUpdate",
-        message: `Queue reached batch size (${this.BATCH_SIZE}), triggering immediate sync`,
+        message: `Failed to queue update: ${error}`,
+        code: "QUEUE_UPDATE_ERROR",
       });
-      void this.syncToConvex();
     }
   }
 
