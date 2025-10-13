@@ -25,7 +25,7 @@ export class HeartbeatManager {
   private statusUpdateQueue: StatusUpdate[] = [];
   private readonly STALE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes
   private readonly STALE_CHECK_INTERVAL_MS = 30 * 1000; // 30 seconds
-  private readonly SYNC_INTERVAL_MS = 60 * 1000; // 60 seconds
+  private readonly SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
   private readonly BATCH_SIZE = 50; // Max updates per batch
   private isRunning = false;
 
@@ -142,6 +142,12 @@ export class HeartbeatManager {
     const current = await this.redis.hgetall(key);
     const currentStatus = current.status as AgentStatus | undefined;
 
+    Debug.log({
+      module: "HeartbeatManager",
+      context: "recordHeartbeat",
+      message: `Heartbeat for ${agentId}: current status = ${currentStatus || "undefined"}`,
+    });
+
     // Update heartbeat timestamp
     await this.redis.hset(key, {
       lastHeartbeat: now,
@@ -161,6 +167,12 @@ export class HeartbeatManager {
         status: "online",
         statusChangedAt: now,
         lastCheckinAt: now,
+      });
+    } else if (!currentStatus) {
+      Debug.log({
+        module: "HeartbeatManager",
+        context: "recordHeartbeat",
+        message: `Agent ${agentId} has no current status in Redis, not queuing update (will be seeded or is new)`,
       });
     }
   }
@@ -262,6 +274,12 @@ export class HeartbeatManager {
    * Syncs status changes to Convex in batches.
    */
   private startSyncWorker(): void {
+    Debug.log({
+      module: "HeartbeatManager",
+      context: "startSyncWorker",
+      message: `Starting sync worker (interval: ${this.SYNC_INTERVAL_MS}ms)`,
+    });
+
     this.syncInterval = setInterval(async () => {
       if (!this.isRunning) return;
 
@@ -346,6 +364,12 @@ export class HeartbeatManager {
    * Sync queued status updates to Convex in batches.
    */
   private async syncToConvex(): Promise<void> {
+    Debug.log({
+      module: "HeartbeatManager",
+      context: "syncToConvex",
+      message: `Sync triggered. Queue size: ${this.statusUpdateQueue.length}`,
+    });
+
     if (this.statusUpdateQueue.length === 0) {
       return;
     }
@@ -409,13 +433,28 @@ export class HeartbeatManager {
     if (existingIndex >= 0) {
       // Replace existing update with newer one
       this.statusUpdateQueue[existingIndex] = update;
+      Debug.log({
+        module: "HeartbeatManager",
+        context: "queueStatusUpdate",
+        message: `Updated existing queue entry for ${update.id} to ${update.status}`,
+      });
     } else {
       // Add new update
       this.statusUpdateQueue.push(update);
+      Debug.log({
+        module: "HeartbeatManager",
+        context: "queueStatusUpdate",
+        message: `Queued new status update for ${update.id}: ${update.status} (queue size: ${this.statusUpdateQueue.length})`,
+      });
     }
 
     // If queue is getting large, trigger immediate sync
     if (this.statusUpdateQueue.length >= this.BATCH_SIZE) {
+      Debug.log({
+        module: "HeartbeatManager",
+        context: "queueStatusUpdate",
+        message: `Queue reached batch size (${this.BATCH_SIZE}), triggering immediate sync`,
+      });
       void this.syncToConvex();
     }
   }
