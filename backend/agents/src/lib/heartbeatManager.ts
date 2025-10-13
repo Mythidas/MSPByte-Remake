@@ -635,10 +635,11 @@ export class HeartbeatManager {
         return;
       }
 
+      const example = batch[0];
       Debug.log({
         module: "HeartbeatManager",
         context: "syncToConvex",
-        message: `Syncing ${batch.length} agent updates to Convex`,
+        message: `Syncing ${batch.length} agent updates to Convex (Ex. ID: ${example.id}, Status: ${example.status}, ipAddress: ${example.ipAddress}, guid: ${example.guid})`,
       });
 
       const result = await client.mutation(api.agents.internal.batchUpdate, {
