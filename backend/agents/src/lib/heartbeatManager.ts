@@ -21,7 +21,6 @@ interface AgentUpdate {
   id: Id<"agents">;
   status: AgentStatus;
   statusChangedAt: number;
-  lastCheckinAt?: number;
   guid?: string;
   hostname?: string;
   version?: string;
@@ -36,7 +35,7 @@ export class HeartbeatManager {
   private syncInterval?: NodeJS.Timeout;
   private readonly STALE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes
   private readonly STALE_CHECK_INTERVAL_MS = 30 * 1000; // 30 seconds
-  private readonly SYNC_INTERVAL_MS = 1 * 60 * 1000; // 10 minutes
+  private readonly SYNC_INTERVAL_MS = 5 * 60 * 1000; // 10 minutes
   private readonly BATCH_SIZE = 50; // Max updates per batch
   private readonly QUEUE_KEY = "heartbeat:update_queue"; // Redis key for update queue
   private isRunning = false;
@@ -192,7 +191,6 @@ export class HeartbeatManager {
       id: agentId,
       status: "online",
       statusChangedAt: now,
-      lastCheckinAt: now,
     };
 
     // Check status change
@@ -465,13 +463,6 @@ export class HeartbeatManager {
 
       try {
         await this.checkStaleAgents();
-
-        const queueSize = await this.redis.llen(this.QUEUE_KEY);
-        Debug.log({
-          module: "HeartbeatManager",
-          context: "staleChecker",
-          message: `Queued updates: ${queueSize}`,
-        });
       } catch (error) {
         Debug.error({
           module: "HeartbeatManager",
