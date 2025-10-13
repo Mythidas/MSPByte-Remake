@@ -223,7 +223,7 @@ export class HeartbeatManager {
       for (const agent of agents) {
         const key = this.getRedisKey(agent._id);
         const status = agent.status || "unknown";
-        const lastHeartbeat = agent.lastCheckinAt || Date.now();
+        const lastHeartbeat = agent.statusChangedAt || Date.now();
 
         pipeline.hset(key, {
           lastHeartbeat,
