@@ -161,12 +161,12 @@ export class HeartbeatManager {
 
     // Get current data from Redis
     const current = await this.redis.hgetall(key);
-    const currentStatus = current.status as AgentStatus | undefined;
+    const currentStatus = current.status as AgentStatus | "unknown";
 
     Debug.log({
       module: "HeartbeatManager",
       context: "recordHeartbeat",
-      message: `Heartbeat for ${agentId}: current status = ${currentStatus || "undefined"}`,
+      message: `Heartbeat for ${agentId}: current status = ${currentStatus}`,
     });
 
     // Build update data
