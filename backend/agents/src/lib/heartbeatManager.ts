@@ -37,7 +37,8 @@ export class HeartbeatManager {
   private readonly STALE_CHECK_INTERVAL_MS = 30 * 1000; // 30 seconds
   private readonly SYNC_INTERVAL_MS = 5 * 60 * 1000; // 10 minutes
   private readonly BATCH_SIZE = 50; // Max updates per batch
-  private readonly QUEUE_KEY = "heartbeat:update_queue"; // Redis key for update queue
+  private readonly PENDING_AGENTS_KEY = "heartbeat:pending_agents"; // Redis SET of agent IDs with pending updates
+  private readonly UPDATE_KEY_PREFIX = "heartbeat:update:"; // Redis HASH key prefix for agent updates
   private isRunning = false;
 
   constructor(redisUrl?: string) {
@@ -573,10 +574,11 @@ export class HeartbeatManager {
 
   /**
    * Sync queued agent updates to Convex in batches.
+   * Uses SET+HASH structure to ensure only latest update per agent is processed.
    */
   private async syncToConvex(): Promise<void> {
     try {
-      const queueSize = await this.redis.llen(this.QUEUE_KEY);
+      const queueSize = await this.redis.scard(this.PENDING_AGENTS_KEY);
 
       Debug.log({
         module: "HeartbeatManager",
@@ -588,32 +590,50 @@ export class HeartbeatManager {
         return;
       }
 
-      // Take batch from queue (RPOP from right/tail of list, up to BATCH_SIZE items)
-      const batchJson = await this.redis.rpopBuffer(
-        this.QUEUE_KEY,
+      // Get batch of agent IDs from the pending set (SPOP removes and returns)
+      const agentIds = await this.redis.spop(
+        this.PENDING_AGENTS_KEY,
         this.BATCH_SIZE
       );
 
-      if (!batchJson || batchJson.length === 0) {
+      if (!agentIds || agentIds.length === 0) {
         return;
       }
 
-      // Deserialize batch
-      const batch: AgentUpdate[] = batchJson
-        .map((item) => {
+      // Fetch all updates for these agents
+      const pipeline = this.redis.pipeline();
+      for (const agentId of agentIds) {
+        pipeline.get(this.getUpdateKey(agentId as Id<"agents">));
+      }
+      const results = await pipeline.exec();
+
+      // Parse updates
+      const batch: AgentUpdate[] = [];
+      const updateKeys: string[] = [];
+
+      for (let i = 0; i < agentIds.length; i++) {
+        const agentId = agentIds[i] as Id<"agents">;
+        const result = results?.[i];
+
+        if (result && result[1]) {
           try {
-            return JSON.parse(item.toString());
+            const update = JSON.parse(result[1] as string);
+            batch.push(update);
+            updateKeys.push(this.getUpdateKey(agentId));
           } catch (error) {
             Debug.error({
               module: "HeartbeatManager",
               context: "syncToConvex",
-              message: `Failed to parse queue item: ${error}`,
+              message: `Failed to parse update for ${agentId}: ${error}`,
               code: "PARSE_ERROR",
             });
-            return null;
           }
-        })
-        .filter((item): item is AgentUpdate => item !== null);
+        }
+      }
+
+      if (batch.length === 0) {
+        return;
+      }
 
       Debug.log({
         module: "HeartbeatManager",
@@ -632,7 +652,12 @@ export class HeartbeatManager {
         message: `Successfully updated ${result.totalUpdated} agents (${result.totalFailed} failed)`,
       });
 
-      // If there are failures, log them (no re-queuing since Redis provides durability)
+      // Clean up processed updates
+      if (updateKeys.length > 0) {
+        await this.redis.del(...updateKeys);
+      }
+
+      // If there are failures, log them
       if (result.totalFailed > 0) {
         const failures = result.results.filter((r) => !r.success);
         Debug.error({
@@ -654,14 +679,19 @@ export class HeartbeatManager {
 
   /**
    * Queue an agent update for batching.
+   * Uses Redis SET+HASH for automatic deduplication - only the latest update per agent is kept.
    */
   private async queueUpdate(update: AgentUpdate): Promise<void> {
     try {
-      // Add update to Redis queue (LPUSH adds to left/head of list)
-      const updateJson = JSON.stringify(update);
-      await this.redis.lpush(this.QUEUE_KEY, updateJson);
+      // Add agent ID to pending set (automatically handles deduplication)
+      await this.redis.sadd(this.PENDING_AGENTS_KEY, update.id);
 
-      const queueSize = await this.redis.llen(this.QUEUE_KEY);
+      // Store the update data (overwrites any existing update for this agent)
+      const updateKey = this.getUpdateKey(update.id);
+      const updateJson = JSON.stringify(update);
+      await this.redis.set(updateKey, updateJson);
+
+      const queueSize = await this.redis.scard(this.PENDING_AGENTS_KEY);
 
       Debug.log({
         module: "HeartbeatManager",
@@ -689,10 +719,17 @@ export class HeartbeatManager {
   }
 
   /**
-   * Get Redis key for agent.
+   * Get Redis key for agent heartbeat data.
    */
   private getRedisKey(agentId: Id<"agents">): string {
     return `agent:${agentId}`;
+  }
+
+  /**
+   * Get Redis key for agent update.
+   */
+  private getUpdateKey(agentId: Id<"agents">): string {
+    return `${this.UPDATE_KEY_PREFIX}${agentId}`;
   }
 }
 

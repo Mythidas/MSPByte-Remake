@@ -38,7 +38,7 @@
 				<Tooltip.Content>
 					<div class="flex flex-col gap-1">
 						<div class="font-semibold capitalize">{status}</div>
-						<div class="text-xs">Last seen: {lastCheckin}</div>
+						<div class="text-xs">Last updated: {lastCheckin}</div>
 					</div>
 				</Tooltip.Content>
 			</Tooltip.Root>
