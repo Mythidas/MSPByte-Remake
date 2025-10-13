@@ -301,7 +301,7 @@ export class HeartbeatManager {
     });
 
     try {
-      const agent = await client.query(api.agents.crud_s.get, {
+      const agent = await client.query(api.agents.crud.get_s, {
         id: agentId,
         secret: process.env.CONVEX_API_KEY!,
       });
@@ -375,7 +375,7 @@ export class HeartbeatManager {
         message: "Seeding Redis with agent states from Convex",
       });
 
-      const agents = await client.query(api.agents.crud_s.list, {
+      const agents = await client.query(api.agents.crud.list_s, {
         secret: process.env.CONVEX_API_KEY!,
       });
 
@@ -616,7 +616,7 @@ export class HeartbeatManager {
         message: `Syncing ${batch.length} agent updates to Convex (Ex. ID: ${example.id}, Status: ${example.status}, ipAddress: ${example.ipAddress}, guid: ${example.guid})`,
       });
 
-      const result = await client.mutation(api.agents.internal.batchUpdate, {
+      const result = await client.mutation(api.agents.mutate_s.batchUpdate, {
         secret: process.env.CONVEX_API_KEY!,
         updates: batch,
       });

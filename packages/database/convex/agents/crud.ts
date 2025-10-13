@@ -6,6 +6,7 @@ import { createCrudOperations } from "../helpers/crudFactory.js";
 // ============================================================================
 
 const createValidator = v.object({
+  tenantId: v.id("tenants"),
   siteId: v.id("sites"),
   guid: v.string(),
   hostname: v.string(),
@@ -63,15 +64,8 @@ export const update = crud.update;
 export const deleteAgent = crud.delete;
 
 // Export internal functions for server-side use
-export const listInternal = crud.listInternal;
-export const getInternal = crud.getInternal;
-export const createInternal = crud.createInternal;
-export const updateInternal = crud.updateInternal;
-export const deleteInternal = crud.deleteInternal;
-
-// ============================================================================
-// CUSTOM AGENT-SPECIFIC OPERATIONS
-// ============================================================================
-
-// Add any agent-specific business logic here as separate functions
-// For example: registration, heartbeat handling, etc.
+export const list_s = crud.list_s;
+export const get_s = crud.get_s;
+export const create_s = crud.create_s;
+export const update_s = crud.update_s;
+export const deleteAgent_s = crud.delete_s;

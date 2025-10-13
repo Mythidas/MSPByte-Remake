@@ -33,7 +33,7 @@ export async function logAgentApiCall(
     const spans = performanceTracker.getSpans();
     const totalElapsed = performanceTracker.getTotalElapsed();
 
-    await client.action(api.agents.internal.createApiLog, {
+    await client.mutation(api.agents.mutate_s.createApiLog, {
       endpoint: context.endpoint,
       method: context.method,
       agentId: context.agentId as any,

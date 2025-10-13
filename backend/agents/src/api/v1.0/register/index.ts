@@ -52,22 +52,24 @@ export default async function (fastify: FastifyInstance) {
 
     // Generate GUID using the new utility function
     const calculatedGuid = generateAgentGuid(guid, mac, hostname, site._id);
-    const agent = await client.query(api.agents.crud_s.get, {
+    const agent = await client.query(api.agents.query_s.getByGuid, {
       guid: guid || "",
       secret: process.env.CONVEX_API_KEY!,
     });
 
     const result = !agent
-      ? await client.mutation(api.agents.crud_s.create, {
-          tenantId: site.tenantId,
-          siteId: site._id,
-          guid: calculatedGuid,
-          hostname,
-          platform,
-          version,
+      ? await client.mutation(api.agents.crud.create_s, {
+          data: {
+            siteId: site._id,
+            guid: calculatedGuid,
+            hostname,
+            platform,
+            version,
+            tenantId: site.tenantId,
+          },
           secret: process.env.CONVEX_API_KEY!,
         })
-      : await client.mutation(api.agents.crud_s.update, {
+      : await client.mutation(api.agents.crud.update_s, {
           id: agent._id,
           updates: {
             siteId: site._id,

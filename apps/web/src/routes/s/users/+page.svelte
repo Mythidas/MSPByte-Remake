@@ -1,32 +1,18 @@
 <script lang="ts">
 	import { api } from '$lib/convex';
 	import DataTable from '$lib/components/table/DataTable.svelte';
-	import Button from '$lib/components/ui/button/button.svelte';
-	import { getAppState } from '$lib/state/Application.svelte.js';
-	import { prettyText } from '@workspace/shared/lib/utils.js';
-	import { useInfiniteConvexTable } from '$lib/hooks/useInfiniteConvexTable.svelte.js';
-
-	const appState = getAppState();
+	import { useQuery } from 'convex-svelte';
 
 	// Use the infinite scrolling hook
-	const table = useInfiniteConvexTable({
-		query: api.users.crud.paginate,
-		baseArgs: {},
-		numItems: 50
-	});
+	const table = useQuery(api.users.crud.list, {});
 </script>
 
 <div class="flex size-full flex-col gap-4">
 	<h1 class="text-2xl">Users</h1>
 
 	<DataTable
-		rows={table.rows}
+		rows={table.data || []}
 		isLoading={table.isLoading}
-		isDone={table.isDone}
-		onLoadMore={table.loadMore}
-		onSearch={table.setSearch}
-		onSort={table.setSort}
-		rowHeight={48}
 		columns={[
 			{
 				key: 'name',

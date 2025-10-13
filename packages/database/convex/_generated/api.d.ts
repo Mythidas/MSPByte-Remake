@@ -14,8 +14,8 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as agents_crud from "../agents/crud.js";
-import type * as agents_crud_s from "../agents/crud_s.js";
-import type * as agents_internal from "../agents/internal.js";
+import type * as agents_mutate_s from "../agents/mutate_s.js";
+import type * as agents_query_s from "../agents/query_s.js";
 import type * as datasources_crud from "../datasources/crud.js";
 import type * as datasources_crud_s from "../datasources/crud_s.js";
 import type * as datasources_internal from "../datasources/internal.js";
@@ -55,8 +55,8 @@ import type * as users_query from "../users/query.js";
  */
 declare const fullApi: ApiFromModules<{
   "agents/crud": typeof agents_crud;
-  "agents/crud_s": typeof agents_crud_s;
-  "agents/internal": typeof agents_internal;
+  "agents/mutate_s": typeof agents_mutate_s;
+  "agents/query_s": typeof agents_query_s;
   "datasources/crud": typeof datasources_crud;
   "datasources/crud_s": typeof datasources_crud_s;
   "datasources/internal": typeof datasources_internal;

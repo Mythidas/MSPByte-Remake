@@ -1,11 +1,6 @@
 import { v, type Validator } from "convex/values";
-import {
-  query,
-  mutation,
-  internalQuery,
-  internalMutation,
-} from "../_generated/server.js";
-import { isAuthenticated } from "./validators.js";
+import { query, mutation } from "../_generated/server.js";
+import { isAuthenticated, isValidSecret } from "./validators.js";
 import type { DataModel, Doc } from "../_generated/dataModel.js";
 
 /**
@@ -122,14 +117,15 @@ export function createCrudOperations<
   });
 
   /**
-   * Internal list function (no auth required).
+   * _s list function (no auth required).
    */
-  const listInternal = internalQuery({
+  const list_s = query({
     args: {
-      tenantId: v.id("tenants"),
       filters: v.optional(filtersValidator),
+      secret: v.string(),
     },
     handler: async (ctx, args) => {
+      await isValidSecret(args.secret);
       let query: any;
 
       // Check if we have ONE filter that maps to an index
@@ -149,12 +145,7 @@ export function createCrudOperations<
 
       // Fallback: return ALL tenant records
       if (!query) {
-        query = ctx.db
-          .query(tableName)
-          .withIndex("by_tenant_ordered", (q: any) =>
-            q.eq("tenantId", args.tenantId)
-          )
-          .order("desc");
+        query = ctx.db.query(tableName).order("desc");
       }
 
       // Filter soft-deleted
@@ -198,20 +189,17 @@ export function createCrudOperations<
   });
 
   /**
-   * Internal get function (no auth required).
+   * _s get function (no auth required).
    */
-  const getInternal = internalQuery({
+  const get_s = query({
     args: {
       id: v.id(tableName),
-      tenantId: v.optional(v.id("tenants")),
+      secret: v.string(),
     },
     handler: async (ctx, args) => {
+      await isValidSecret(args.secret);
       const record = await ctx.db.get(args.id);
       if (!record) return null;
-
-      if (args.tenantId && (record as any).tenantId !== args.tenantId) {
-        return null;
-      }
 
       if (softDelete && (record as any).deletedAt) {
         return null;
@@ -244,17 +232,17 @@ export function createCrudOperations<
     },
   });
 
-  const createInternal = internalMutation({
+  const create_s = mutation({
     args: {
-      tenantId: v.id("tenants"),
       data: createValidator,
+      secret: v.string(),
     },
     handler: async (ctx, args) => {
+      await isValidSecret(args.secret);
       const now = Date.now();
 
       const id = await ctx.db.insert(tableName, {
         ...args.data,
-        tenantId: args.tenantId,
         createdAt: now,
         updatedAt: now,
       } as any);
@@ -293,13 +281,15 @@ export function createCrudOperations<
     },
   });
 
-  const updateInternal = internalMutation({
+  const update_s = mutation({
     args: {
       id: v.id(tableName),
       tenantId: v.optional(v.id("tenants")),
       updates: updateValidator,
+      secret: v.string(),
     },
     handler: async (ctx, args) => {
+      await isValidSecret(args.secret);
       const record = await ctx.db.get(args.id);
 
       if (!record) {
@@ -353,13 +343,15 @@ export function createCrudOperations<
     },
   });
 
-  const deleteInternal = internalMutation({
+  const delete_s = mutation({
     args: {
       id: v.id(tableName),
       tenantId: v.optional(v.id("tenants")),
       hard: v.optional(v.boolean()),
+      secret: v.string(),
     },
     handler: async (ctx, args) => {
+      await isValidSecret(args.secret);
       const record = await ctx.db.get(args.id);
 
       if (!record) {
@@ -391,11 +383,11 @@ export function createCrudOperations<
     update,
     delete: deleteRecord,
 
-    // Internal operations
-    listInternal,
-    getInternal,
-    createInternal,
-    updateInternal,
-    deleteInternal,
+    // _s operations
+    list_s,
+    get_s,
+    create_s,
+    update_s,
+    delete_s,
   };
 }

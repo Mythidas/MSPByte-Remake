@@ -49,7 +49,7 @@ export default async function (fastify: FastifyInstance) {
         "db_fetch_records",
         async () => {
           const [agentRes, siteRes] = await Promise.all([
-            client.query(api.agents.crud_s.get, {
+            client.query(api.agents.crud.get_s, {
               id: deviceID as any,
               secret: CONVEX_API_KEY,
             }),
@@ -385,7 +385,7 @@ export default async function (fastify: FastifyInstance) {
       if (siteID && deviceID) {
         // Get tenant_id for logging (best effort)
         try {
-          const agent = await client.query(api.agents.crud_s.get, {
+          const agent = await client.query(api.agents.crud.get_s, {
             id: deviceID as any,
             secret: CONVEX_API_KEY,
           });
