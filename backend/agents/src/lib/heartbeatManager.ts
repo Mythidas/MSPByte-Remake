@@ -40,6 +40,7 @@ export class HeartbeatManager {
   private readonly SYNC_INTERVAL_MS = 1 * 60 * 1000; // 10 minutes
   private readonly BATCH_SIZE = 50; // Max updates per batch
   private isRunning = false;
+  private uuid = crypto.randomUUID();
 
   constructor(redisUrl?: string) {
     this.redis = new Redis(redisUrl || process.env.REDIS_URL || "", {
@@ -468,7 +469,7 @@ export class HeartbeatManager {
 
         Debug.log({
           module: "HeartbeatManager",
-          context: "staleChecker",
+          context: "staleChecker: " + this.uuid,
           message: `Queued updates: ${this.updateQueue.length}`,
         });
       } catch (error) {
@@ -660,7 +661,7 @@ export class HeartbeatManager {
       this.updateQueue.push(update);
       Debug.log({
         module: "HeartbeatManager",
-        context: "queueUpdate",
+        context: "queueUpdate: " + this.uuid,
         message: `Queued new update for ${update.id}: ${update.status} (queue size: ${this.updateQueue.length})`,
       });
     }
