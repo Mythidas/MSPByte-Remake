@@ -35,6 +35,7 @@ export const create = mutation({
   args: {
     name: v.string(),
     psaIntegrationId: v.optional(v.id("integrations")),
+    psaIntegrationName: v.optional(v.string()),
     psaCompanyId: v.optional(v.string()),
     psaParentCompanyId: v.optional(v.string()),
     metadata: v.optional(v.any()),

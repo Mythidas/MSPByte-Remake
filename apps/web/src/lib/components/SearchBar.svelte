@@ -28,13 +28,15 @@
 	}: Props = $props();
 
 	let timeout: ReturnType<typeof setTimeout> | null = null;
+	let buffer = $state('');
 
 	function handleInput(e: Event) {
-		value = (e.target as HTMLInputElement).value;
+		buffer = (e.target as HTMLInputElement).value;
 
 		if (timeout) clearTimeout(timeout);
 		timeout = setTimeout(() => {
-			onSearch?.(value);
+			value = buffer;
+			onSearch?.(buffer);
 		}, delay);
 	}
 </script>

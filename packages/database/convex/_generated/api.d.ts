@@ -25,6 +25,7 @@ import type * as entities_crud from "../entities/crud.js";
 import type * as entities_crud_s from "../entities/crud_s.js";
 import type * as entities_query from "../entities/query.js";
 import type * as events_log_crud_s from "../events_log/crud_s.js";
+import type * as helpers_crudFactory from "../helpers/crudFactory.js";
 import type * as helpers_validators from "../helpers/validators.js";
 import type * as integrations_crud_s from "../integrations/crud_s.js";
 import type * as integrations_query from "../integrations/query.js";
@@ -65,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   "entities/crud_s": typeof entities_crud_s;
   "entities/query": typeof entities_query;
   "events_log/crud_s": typeof events_log_crud_s;
+  "helpers/crudFactory": typeof helpers_crudFactory;
   "helpers/validators": typeof helpers_validators;
   "integrations/crud_s": typeof integrations_crud_s;
   "integrations/query": typeof integrations_query;

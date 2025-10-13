@@ -4,6 +4,7 @@ import { isAuthenticated, isValidTenant } from "../helpers/validators.js";
 import type { OrderedQuery, Query } from "convex/server";
 import type { DataModel, Id } from "../_generated/dataModel.js";
 import { paginationOptsValidator } from "convex/server";
+import { PaginationArgs } from "../types/index.js";
 
 // ============================================================================
 // TYPES
@@ -20,8 +21,20 @@ const statusValidator = v.union(
 // ============================================================================
 
 /**
- * Builds a progressive query for sites based on provided filters.
- * Selects the most efficient index based on which filters are provided.
+ * Maps sort columns to their corresponding indices.
+ * Allows dynamic sorting by selecting the appropriate index based on sortColumn.
+ */
+const SORT_INDEX_MAP: Record<string, string> = {
+  name: "by_tenant_name",
+  psaIntegrationName: "by_tenant_psa",
+  psaCompanyId: "by_tenant_psaId",
+  status: "by_tenant_status_ordered",
+  createdAt: "by_tenant_ordered", // Default
+};
+
+/**
+ * Builds a progressive query for sites based on provided filters and sort column.
+ * Selects the most efficient index based on which filters and sort are provided.
  */
 function buildProgressiveQuery(
   ctx: any,
@@ -30,9 +43,18 @@ function buildProgressiveQuery(
     status?: "active" | "inactive" | "archived";
     slug?: string;
     psaCompanyId?: string;
-  }
+  },
+  sortColumn?: string
 ): Query<DataModel["sites"]> {
   const { status, slug, psaCompanyId } = filters;
+
+  // If sorting by a specific column, use that index
+  if (sortColumn && SORT_INDEX_MAP[sortColumn]) {
+    const indexName = SORT_INDEX_MAP[sortColumn];
+    return ctx.db
+      .query("sites")
+      .withIndex(indexName, (q: any) => q.eq("tenantId", tenantId));
+  }
 
   // Progressive index selection - choose most specific index with time ordering
   if (status) {
@@ -81,13 +103,19 @@ export const list = query({
     slug: v.optional(v.string()),
     psaCompanyId: v.optional(v.string()),
     order: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
+    sortColumn: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await isAuthenticated(ctx);
-    const { order = "desc", ...filters } = args;
+    const { order = "desc", sortColumn, ...filters } = args;
 
-    // Build progressive query
-    let indexedQuery = buildProgressiveQuery(ctx, identity.tenantId, filters);
+    // Build progressive query with sortColumn support
+    let indexedQuery = buildProgressiveQuery(
+      ctx,
+      identity.tenantId,
+      filters,
+      sortColumn
+    );
 
     // Apply ordering
     let query: OrderedQuery<DataModel["sites"]> = indexedQuery;
@@ -103,11 +131,7 @@ export const paginate = query({
     status: v.optional(statusValidator),
     slug: v.optional(v.string()),
     psaCompanyId: v.optional(v.string()),
-    order: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
-    sortColumn: v.optional(v.string()),
-    sortDirection: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
-    globalSearch: v.optional(v.string()),
-    paginationOpts: paginationOptsValidator,
+    ...PaginationArgs,
   },
   handler: async (ctx, args) => {
     const identity = await isAuthenticated(ctx);
@@ -120,8 +144,13 @@ export const paginate = query({
       ...filters
     } = args;
 
-    // Build progressive query
-    let indexedQuery = buildProgressiveQuery(ctx, identity.tenantId, filters);
+    // Build progressive query with sortColumn support
+    let indexedQuery = buildProgressiveQuery(
+      ctx,
+      identity.tenantId,
+      filters,
+      sortColumn
+    );
 
     // Apply ordering (use sortDirection if sortColumn is provided, otherwise use order)
     let query: OrderedQuery<DataModel["sites"]> = indexedQuery;
@@ -136,45 +165,14 @@ export const paginate = query({
         return (
           site.name?.toLowerCase().includes(searchLower) ||
           site.slug?.toLowerCase().includes(searchLower) ||
-          site.psaCompanyId?.toLowerCase().includes(searchLower)
+          site.psaCompanyId?.toLowerCase().includes(searchLower) ||
+          site.psaIntegrationName?.toLowerCase().includes(searchLower)
         );
       });
     }
 
-    // Get paginated results
-    const result = await query.paginate(paginationOpts);
-
-    // Batch fetch all unique integrations for enrichment
-    const uniqueIntegrationIds = [
-      ...new Set(
-        result.page
-          .map((s) => s.psaIntegrationId)
-          .filter((id): id is NonNullable<typeof id> => id !== undefined)
-      ),
-    ];
-    const integrations = await Promise.all(
-      uniqueIntegrationIds.map((id) => ctx.db.get(id))
-    );
-
-    // Create integration lookup map for O(1) access
-    const integrationMap = new Map(
-      integrations
-        .filter((i): i is NonNullable<typeof i> => i !== null)
-        .map((i) => [i._id, i])
-    );
-
-    // Enrich sites with psaIntegrationName
-    const enrichedSites = result.page.map((site) => ({
-      ...site,
-      psaIntegrationName: site.psaIntegrationId
-        ? integrationMap.get(site.psaIntegrationId)?.name
-        : undefined,
-    }));
-
-    return {
-      ...result,
-      page: enrichedSites,
-    };
+    // Get paginated results (psaIntegrationName is already denormalized)
+    return await query.paginate(paginationOpts);
   },
 });
 
@@ -249,9 +247,21 @@ export const update = mutation({
 
     await isValidTenant(identity.tenantId, site.tenantId);
 
-    // Update with automatic timestamp
+    // If psaIntegrationId is being updated, fetch and denormalize the integration name
+    let psaIntegrationName = site.psaIntegrationName;
+    if (args.updates.psaIntegrationId !== undefined) {
+      if (args.updates.psaIntegrationId) {
+        const integration = await ctx.db.get(args.updates.psaIntegrationId);
+        psaIntegrationName = integration?.name;
+      } else {
+        psaIntegrationName = undefined;
+      }
+    }
+
+    // Update with automatic timestamp and denormalized psaIntegrationName
     await ctx.db.patch(args.id, {
       ...args.updates,
+      psaIntegrationName,
       updatedAt: Date.now(),
     });
 

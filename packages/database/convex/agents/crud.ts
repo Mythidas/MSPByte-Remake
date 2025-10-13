@@ -1,222 +1,77 @@
 import { v } from "convex/values";
-import { query, mutation } from "../_generated/server.js";
-import { isAuthenticated, isValidTenant } from "../helpers/validators.js";
-import type { OrderedQuery, Query } from "convex/server";
-import type { DataModel, Id } from "../_generated/dataModel.js";
-import { paginationOptsValidator } from "convex/server";
+import { createCrudOperations } from "../helpers/crudFactory.js";
 
 // ============================================================================
-// SHARED HELPER
+// VALIDATORS
 // ============================================================================
 
-/**
- * Builds a progressive query for agents based on provided filters.
- * Selects the most efficient index based on which filters are provided.
- */
-function buildProgressiveQuery(
-  ctx: any,
-  tenantId: Id<"tenants">,
-  filters: {
-    siteId?: Id<"sites">;
-    guid?: string;
-  }
-): Query<DataModel["agents"]> {
-  const { siteId, guid } = filters;
+const createValidator = v.object({
+  siteId: v.id("sites"),
+  guid: v.string(),
+  hostname: v.string(),
+  platform: v.optional(v.string()),
+  version: v.optional(v.string()),
+  ipAddress: v.optional(v.string()),
+  macAddress: v.optional(v.string()),
+  extAddress: v.optional(v.string()),
+  status: v.optional(v.union(v.literal("online"), v.literal("offline"))),
+  registeredAt: v.optional(v.number()),
+});
 
-  // Progressive index selection - choose most specific index with time ordering
-  if (guid) {
-    return ctx.db
-      .query("agents")
-      .withIndex("by_guid", (q: any) => q.eq("guid", guid));
-  } else if (siteId) {
-    return ctx.db
-      .query("agents")
-      .withIndex("by_site_ordered", (q: any) => q.eq("siteId", siteId));
-  } else {
-    // Fallback to tenant-only query with time ordering
-    return ctx.db
-      .query("agents")
-      .withIndex("by_tenant_ordered", (q: any) => q.eq("tenantId", tenantId));
-  }
-}
+const updateValidator = v.object({
+  siteId: v.optional(v.id("sites")),
+  guid: v.optional(v.string()),
+  hostname: v.optional(v.string()),
+  platform: v.optional(v.string()),
+  version: v.optional(v.string()),
+  ipAddress: v.optional(v.string()),
+  macAddress: v.optional(v.string()),
+  extAddress: v.optional(v.string()),
+  status: v.optional(v.union(v.literal("online"), v.literal("offline"))),
+  statusChangedAt: v.optional(v.number()),
+  registeredAt: v.optional(v.number()),
+});
+
+const filtersValidator = v.object({
+  siteId: v.optional(v.id("sites")),
+  guid: v.optional(v.string()),
+  status: v.optional(v.union(v.literal("online"), v.literal("offline"))),
+});
 
 // ============================================================================
-// CRUD OPERATIONS
+// GENERATED CRUD OPERATIONS
 // ============================================================================
 
-/**
- * List agents with optional filtering, ordering, and pagination.
- *
- * @example
- * // Get all agents for a site
- * await ctx.runQuery(api.agents.crud.list, { siteId: "..." })
- *
- * @example
- * // Get paginated agents, newest first
- * await ctx.runQuery(api.agents.crud.list, {
- *   order: "desc",
- *   paginationOpts: { numItems: 50, cursor: null }
- * })
- */
-export const list = query({
-  args: {
-    siteId: v.optional(v.id("sites")),
-    guid: v.optional(v.string()),
-    order: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
-  },
-  handler: async (ctx, args) => {
-    const identity = await isAuthenticated(ctx);
-    const { order = "desc", ...filters } = args;
-
-    // Build progressive query
-    let indexedQuery = buildProgressiveQuery(ctx, identity.tenantId, filters);
-
-    // Apply ordering
-    let query: OrderedQuery<DataModel["agents"]> = indexedQuery;
-    query = indexedQuery.order(order);
-
-    // Return paginated or full results
-    return await query.collect();
+const crud = createCrudOperations({
+  tableName: "agents",
+  createValidator,
+  updateValidator,
+  filtersValidator,
+  softDelete: true,
+  // Map filters to efficient indices
+  indexMap: {
+    siteId: "by_site_ordered",
+    guid: "by_guid",
   },
 });
 
-export const paginate = query({
-  args: {
-    siteId: v.optional(v.id("sites")),
-    guid: v.optional(v.string()),
-    order: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
-    paginationOpts: paginationOptsValidator,
-  },
-  handler: async (ctx, args) => {
-    const identity = await isAuthenticated(ctx);
-    const { order = "desc", paginationOpts, ...filters } = args;
+// Export all generated CRUD operations
+export const list = crud.list;
+export const get = crud.get;
+export const create = crud.create;
+export const update = crud.update;
+export const deleteAgent = crud.delete;
 
-    // Build progressive query
-    let indexedQuery = buildProgressiveQuery(ctx, identity.tenantId, filters);
+// Export internal functions for server-side use
+export const listInternal = crud.listInternal;
+export const getInternal = crud.getInternal;
+export const createInternal = crud.createInternal;
+export const updateInternal = crud.updateInternal;
+export const deleteInternal = crud.deleteInternal;
 
-    // Apply ordering
-    let query: OrderedQuery<DataModel["agents"]> = indexedQuery;
-    query = indexedQuery.order(order);
+// ============================================================================
+// CUSTOM AGENT-SPECIFIC OPERATIONS
+// ============================================================================
 
-    // Return paginated or full results
-    return await query.paginate(paginationOpts);
-  },
-});
-
-/**
- * Get a single agent - supports both direct ID lookup and filter-based queries.
- *
- * @example
- * // Get by ID
- * await ctx.runQuery(api.agents.crud.get, { id: "..." })
- *
- * @example
- * // Get agent by GUID
- * await ctx.runQuery(api.agents.crud.get, { guid: "..." })
- */
-export const get = query({
-  args: {
-    id: v.optional(v.id("agents")),
-    siteId: v.optional(v.id("sites")),
-    guid: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const identity = await isAuthenticated(ctx);
-
-    // Direct ID lookup mode
-    if (args.id) {
-      const agent = await ctx.db.get(args.id);
-      if (agent) {
-        await isValidTenant(identity.tenantId, agent.tenantId);
-      }
-      return agent;
-    }
-
-    // Filter-based mode - use progressive query builder
-    const { id, ...filters } = args;
-    const query = buildProgressiveQuery(ctx, identity.tenantId, filters);
-
-    // Always get newest record when using filters
-    return await query.order("desc").first();
-  },
-});
-
-/**
- * Update an agent by ID.
- *
- * @example
- * await ctx.runMutation(api.agents.crud.update, {
- *   id: "...",
- *   updates: { hostname: "new-host", lastCheckinAt: Date.now() }
- * })
- */
-export const update = mutation({
-  args: {
-    id: v.id("agents"),
-    updates: v.object({
-      siteId: v.optional(v.id("sites")),
-      guid: v.optional(v.string()),
-      hostname: v.optional(v.string()),
-      platform: v.optional(v.string()),
-      version: v.optional(v.string()),
-      ipAddress: v.optional(v.string()),
-      macAddress: v.optional(v.string()),
-      extAddress: v.optional(v.string()),
-      registeredAt: v.optional(v.number()),
-    }),
-  },
-  handler: async (ctx, args) => {
-    const identity = await isAuthenticated(ctx);
-    const agent = await ctx.db.get(args.id);
-
-    if (!agent) {
-      throw new Error("Agent not found");
-    }
-
-    await isValidTenant(identity.tenantId, agent.tenantId);
-
-    // Update with automatic timestamp
-    await ctx.db.patch(args.id, {
-      ...args.updates,
-      updatedAt: Date.now(),
-    });
-
-    return await ctx.db.get(args.id);
-  },
-});
-
-/**
- * Delete an agent by ID (soft delete using deletedAt).
- *
- * @example
- * await ctx.runMutation(api.agents.crud.delete, { id: "..." })
- */
-export const deleteAgent = mutation({
-  args: {
-    id: v.id("agents"),
-    hard: v.optional(v.boolean()), // true for hard delete, false/undefined for soft delete
-  },
-  handler: async (ctx, args) => {
-    const identity = await isAuthenticated(ctx);
-    const agent = await ctx.db.get(args.id);
-
-    if (!agent) {
-      throw new Error("Agent not found");
-    }
-
-    await isValidTenant(identity.tenantId, agent.tenantId);
-
-    if (args.hard) {
-      // Hard delete
-      await ctx.db.delete(args.id);
-    } else {
-      // Soft delete
-      await ctx.db.patch(args.id, {
-        deletedAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-    }
-
-    return true;
-  },
-});
+// Add any agent-specific business logic here as separate functions
+// For example: registration, heartbeat handling, etc.

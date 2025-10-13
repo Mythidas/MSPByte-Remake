@@ -1,4 +1,6 @@
+import { v } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
+import { paginationOptsValidator } from "convex/server";
 
 export type UserJWT = {
   id: string;
@@ -68,4 +70,17 @@ export type QueryOptions = {
   search?: string;
   filters?: Filter[];
   sort?: SortConfig;
+};
+
+/**
+ * @deprecated Use client-side filtering with useClientTable instead.
+ * This is only kept for backward compatibility with sites, users, and roles.
+ * See agents/crud.ts for the new pattern using createCrudOperations.
+ */
+export const PaginationArgs = {
+  order: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
+  sortColumn: v.optional(v.string()),
+  sortDirection: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
+  globalSearch: v.optional(v.string()),
+  paginationOpts: paginationOptsValidator,
 };

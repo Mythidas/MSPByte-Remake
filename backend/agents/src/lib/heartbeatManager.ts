@@ -727,5 +727,6 @@ export async function startHeartbeatManager(): Promise<HeartbeatManager> {
 export async function stopHeartbeatManager(): Promise<void> {
   if (heartbeatManager) {
     await heartbeatManager.stop();
+    heartbeatManager = null;
   }
 }

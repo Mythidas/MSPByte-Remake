@@ -1,16 +1,19 @@
 import type { Component, Snippet } from 'svelte';
+import z from 'zod';
 
 export type DataTableCell<T> = {
 	row: T;
-	column: DataTableColumn;
+	column: DataTableColumn<T>;
 };
 
-export type DataTableColumn = {
+export type DataTableColumn<T> = {
 	key: string;
 	title: string;
 
-	render?: (cell: DataTableCell<any>) => string;
-	cell?: Snippet<[DataTableCell<any>]>;
+	render?: (cell: DataTableCell<T>) => string;
+	cell?: Snippet<[DataTableCell<T>]>;
+
+	sort?: (rowA: T, rowB: T, dir: 'asc' | 'desc') => number;
 
 	sortable?: boolean;
 	hideable?: boolean;
@@ -27,14 +30,12 @@ export type DataTableSort = {
 	direction: SortDirection;
 };
 
-export type InfiniteDataTableProps = {
-	rows: any[];
-	columns: DataTableColumn[];
-	isLoading: boolean;
-	isDone: boolean;
-	onLoadMore: () => void;
-	onSearch?: (query: string) => void;
-	onSort?: (column: string, direction: SortDirection) => void;
-	onFilter?: (filters: DataTableFilter) => void;
-	rowHeight?: number; // For virtual scrolling, defaults to 53px
-};
+export const DataTableURLStateSchema = z.object({
+	page: z.string().default('1'),
+	size: z.string().default('50'),
+
+	globalSearch: z.string().default(''),
+	sort: z.string().default('')
+});
+
+export type DataTableURLState = z.infer<typeof DataTableURLStateSchema>;

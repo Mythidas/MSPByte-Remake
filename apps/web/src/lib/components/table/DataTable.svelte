@@ -1,131 +1,52 @@
 <script lang="ts">
 	import SearchBar from '$lib/components/SearchBar.svelte';
-	import { setInfiniteTableState } from '$lib/state/InfiniteTable.svelte.js';
-	import type { DataTableColumn } from '$lib/components/table/types.js';
+	import { setTableState } from '$lib/state/DataTable.svelte.js';
+	import { DataTableURLStateSchema, type DataTableColumn } from '$lib/components/table/types.js';
 	import Button from '$lib/components/ui/button/button.svelte';
+	import * as Table from '$lib/components/ui/table/index.js';
+	import * as Select from '$lib/components/ui/select/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import {
+		ChevronLeft,
+		ChevronsLeft,
+		ChevronsRight,
+		ChevronsUpDown,
+		Eye,
+		Search
+	} from 'lucide-svelte';
 	import { cn } from '$lib/utils.js';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import ChevronUp from '@lucide/svelte/icons/chevron-up';
-	import { ChevronsUpDown, Eye, Search, LoaderCircle } from 'lucide-svelte';
-	import { onMount } from 'svelte';
-
-	type SortDirection = 'asc' | 'desc';
 
 	type Props = {
 		rows: any[];
-		columns: DataTableColumn[];
 		isLoading: boolean;
-		isDone: boolean;
-		onLoadMore: () => void;
-		onSearch?: (query: string) => void;
-		onSort?: (column: string, direction: SortDirection) => void;
-		rowHeight?: number;
+		columns: DataTableColumn<any>[];
 	};
 
-	const {
-		rows,
-		columns,
-		isLoading,
-		isDone,
-		onLoadMore,
-		onSearch,
-		onSort,
-		rowHeight = 57
-	}: Props = $props();
-
-	const tableState = setInfiniteTableState();
+	const { rows, columns }: Props = $props();
+	const tableState = setTableState();
 	tableState.columns.configs = columns;
 
-	// Virtual scrolling state
-	let scrollContainer: HTMLDivElement;
-	let scrollTop = $state(0);
-	let containerHeight = $state(0);
-
-	// Calculate visible rows for virtual scrolling
-	const visibleStartIndex = $derived(Math.floor(scrollTop / rowHeight));
-	const visibleEndIndex = $derived(
-		Math.min(visibleStartIndex + Math.ceil(containerHeight / rowHeight) + 1, rows.length)
-	);
-	const visibleRows = $derived(rows.slice(visibleStartIndex, visibleEndIndex));
-	const totalHeight = $derived(rows.length * rowHeight);
-
-	// Intersection observer for loading more
-	let sentinelElement: HTMLDivElement;
-
-	onMount(() => {
-		// Set up scroll listener
-		const handleScroll = () => {
-			if (scrollContainer) {
-				scrollTop = scrollContainer.scrollTop;
-			}
-		};
-
-		if (scrollContainer) {
-			scrollContainer.addEventListener('scroll', handleScroll);
-			containerHeight = scrollContainer.clientHeight;
-		}
-
-		// Set up intersection observer for load more
-		const observer = new IntersectionObserver(
-			(entries) => {
-				const entry = entries[0];
-				if (entry.isIntersecting && !isLoading && !isDone) {
-					onLoadMore();
-				}
-			},
-			{
-				root: scrollContainer,
-				threshold: 0.1
-			}
-		);
-
-		if (sentinelElement) {
-			observer.observe(sentinelElement);
-		}
-
-		// Handle resize
-		const resizeObserver = new ResizeObserver(() => {
-			if (scrollContainer) {
-				containerHeight = scrollContainer.clientHeight;
-			}
-		});
-
-		if (scrollContainer) {
-			resizeObserver.observe(scrollContainer);
-		}
-
-		return () => {
-			if (scrollContainer) {
-				scrollContainer.removeEventListener('scroll', handleScroll);
-			}
-			observer.disconnect();
-			resizeObserver.disconnect();
-		};
+	$effect(() => {
+		tableState.data = rows;
 	});
 
-	// Handle search
-	const handleSearch = (query: string) => {
-		tableState.globalSearch = query;
-		if (onSearch) {
-			onSearch(query);
-		}
-	};
+	// $effect(() => {
+	// 	const url = new URL(window.location.href);
+	// 	const urlState = tableState.getURLState();
 
-	// Handle sort
-	const handleSort = (columnKey: string) => {
-		const column = columns.find((col) => col.key === columnKey);
-		if (!column?.sortable) return;
+	// 	url.searchParams.set('page', urlState.page.toString());
+	// 	url.searchParams.set('size', urlState.size.toString());
 
-		tableState.columns.sortColumn(columnKey);
+	// 	if (urlState.globalSearch) {
+	// 		url.searchParams.set('search', urlState.globalSearch);
+	// 	} else url.searchParams.delete('search');
 
-		if (onSort && tableState.columns.sortedColumn) {
-			const [col, direction] = tableState.columns.sortedColumn;
-			onSort(col, direction);
-		} else if (onSort) {
-			onSort(columnKey, 'asc');
-		}
-	};
+	// 	if (url.toString() === window.location.href) return;
+	// 	goto(url, { replaceState: true, noScroll: true, keepFocus: true });
+	// });
 </script>
 
 <div class="flex size-full flex-col gap-2 overflow-hidden">
@@ -134,7 +55,8 @@
 		<SearchBar
 			icon={Search}
 			class="w-1/2"
-			onSearch={handleSearch}
+			onSearch={tableState.setGlobalSearch}
+			bind:value={tableState.globalSearch}
 			placeholder={`Search ${tableState.getGlobalSearchFields().join(', ')}`}
 		/>
 
@@ -165,106 +87,103 @@
 		</div>
 	</div>
 
-	<!--Table Container with Virtual Scrolling-->
-	<div bind:this={scrollContainer} class="relative flex-1 overflow-auto">
-		<table class="w-full caption-bottom text-sm">
-			<thead
-				class="sticky top-0 z-50 bg-input [&_tr]:border-b"
-				style="display: block; width: 100%;"
-			>
-				<tr
-					class="border-b transition-colors data-[state=selected]:bg-muted"
-					style="display: flex; width: 100%;"
-				>
-					{#each tableState.columns.visibleColumns() as col}
-						<th
-							onclick={() => handleSort(col.key)}
-							class={cn(
-								'h-12 px-4 text-left align-middle font-medium text-muted-foreground',
-								!col.width && 'flex-1',
-								col.sortable &&
-									'items-center hover:cursor-pointer hover:bg-muted/50 [&>*]:inline-block [&>*]:align-middle'
-							)}
-							style={`display: flex; align-items: center; ${col.width ? `width: ${col.width}; flex-shrink: 0;` : ''}`}
-						>
-							<span>{col.title}</span>
-							{#if col.sortable}
-								{#if tableState.columns.sortedColumn?.[0] === col.key}
-									{#if tableState.columns.sortedColumn[1] === 'asc'}
-										<ChevronDown class="w-4" />
-									{:else}
-										<ChevronUp class="w-4" />
-									{/if}
-								{:else}
-									<ChevronsUpDown class="w-4" />
-								{/if}
-							{/if}
-						</th>
-					{/each}
-				</tr>
-			</thead>
-			<tbody
-				class="[&_tr:last-child]:border-0"
-				style="display: block; position: relative; height: {totalHeight}px; width: 100%;"
-			>
-				{#each visibleRows as row, idx}
-					<tr
-						class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
-						style="position: absolute; top: {(visibleStartIndex + idx) *
-							rowHeight}px; height: {rowHeight}px; width: 100%; display: flex;"
+	<!--Table-->
+	<Table.Root>
+		<Table.Header>
+			<Table.Row class="sticky top-0 z-50 bg-input">
+				{#each tableState.columns.visibleColumns() as col}
+					<Table.Head
+						onclick={() => {
+							if (col.sortable) {
+								tableState.columns.sortColumn(col.key);
+							}
+						}}
+						class={cn(
+							col.sortable &&
+								'items-center hover:cursor-pointer [&>*]:inline-block [&>*]:align-middle'
+						)}
+						style={`width: ${col.width || ''}`}
 					>
-						{#each tableState.columns.visibleColumns() as col}
-							{#if col.cell}
-								<td
-									class={cn('p-4 align-middle', !col.width && 'flex-1')}
-									style={`display: flex; align-items: center; ${col.width ? `width: ${col.width}; flex-shrink: 0;` : ''}`}
-								>
-									{@render col.cell({ row, column: col })}
-								</td>
-							{:else if col.render}
-								<td
-									class={cn('p-4 align-middle', !col.width && 'flex-1')}
-									style={`display: flex; align-items: center; ${col.width ? `width: ${col.width}; flex-shrink: 0;` : ''}`}
-								>
-									{col.render({ row, column: col })}
-								</td>
+						<span>{col.title}</span>
+						{#if col.sortable}
+							{#if tableState.columns.sortedColumn?.[0] === col.key}
+								{#if tableState.columns.sortedColumn[1] === 'asc'}
+									<ChevronDown class="w-4" />
+								{:else}
+									<ChevronUp class="w-4" />
+								{/if}
 							{:else}
-								<td
-									class={cn('p-4 align-middle', !col.width && 'flex-1')}
-									style={`display: flex; align-items: center; ${col.width ? `width: ${col.width}; flex-shrink: 0;` : ''}`}
-								>
-									{row[col.key]}
-								</td>
+								<ChevronsUpDown class="w-4" />
 							{/if}
-						{/each}
-					</tr>
+						{/if}
+					</Table.Head>
 				{/each}
-			</tbody>
-		</table>
+			</Table.Row>
+		</Table.Header>
+		<Table.Body>
+			{#each tableState.getRows() as row}
+				<Table.Row>
+					{#each tableState.columns.visibleColumns() as col}
+						{#if col.cell}
+							<Table.Cell style={`width: ${col.width || ''}`}>
+								{@render col.cell({ row, column: col })}
+							</Table.Cell>
+						{:else if col.render}
+							<Table.Cell style={`width: ${col.width || ''}`}>
+								{col.render({ row, column: col })}
+							</Table.Cell>
+						{:else}
+							<Table.Cell style={`width: ${col.width || ''}`}>
+								{row[col.key]}
+							</Table.Cell>
+						{/if}
+					{/each}
+				</Table.Row>
+			{/each}
+		</Table.Body>
+	</Table.Root>
 
-		<!-- Sentinel element for intersection observer -->
-		<div bind:this={sentinelElement} class="h-4"></div>
+	<!--TableFooter-->
+	<div class="mt-auto grid w-full grid-cols-3 rounded bg-input p-2 text-sm shadow">
+		<div class="flex items-center justify-start">
+			Page {tableState.page.current} of {tableState.page.total}
+		</div>
+		<div class="flex items-center justify-center gap-1">
+			<Button class="h-8 w-8" variant="secondary" onclick={tableState.page.firstPage}>
+				<ChevronsLeft />
+			</Button>
+			<Button class="h-8 w-8" variant="secondary" onclick={tableState.page.previousPage}>
+				<ChevronLeft />
+			</Button>
 
-		<!-- Loading indicator -->
-		{#if isLoading}
-			<div class="flex items-center justify-center gap-2 py-4">
-				<LoaderCircle class="h-4 w-4 animate-spin" />
-				<span class="text-sm text-muted-foreground">Loading more...</span>
-			</div>
-		{/if}
+			{#each tableState.page.visiblePages() as page}
+				<Button
+					class="h-8 w-8 "
+					variant={tableState.page.current === page ? 'default' : 'ghost'}
+					onclick={() => (tableState.page.current = page)}>{page}</Button
+				>
+			{/each}
 
-		<!-- End of data indicator -->
-		{#if isDone && rows.length > 0}
-			<div class="flex items-center justify-center py-4">
-				<span class="text-sm text-muted-foreground">End of data</span>
-			</div>
-		{/if}
-
-		<!-- Empty state -->
-		{#if rows.length === 0 && !isLoading}
-			<div class="flex items-center justify-center py-12">
-				<span class="text-sm text-muted-foreground">No data found</span>
-			</div>
-		{/if}
+			<Button class="h-8 w-8" variant="secondary" onclick={tableState.page.nextPage}>
+				<ChevronRight />
+			</Button>
+			<Button class="h-8 w-8" variant="secondary" onclick={tableState.page.lastPage}>
+				<ChevronsRight />
+			</Button>
+		</div>
+		<div class="flex items-center justify-end">
+			<Select.Root
+				type="single"
+				value={String(tableState.page.size)}
+				onValueChange={(val) => tableState.page.setSize(parseInt(val))}
+			>
+				<Select.Trigger>{tableState.page.size}</Select.Trigger>
+				<Select.Content>
+					<Select.Item value="25">25</Select.Item>
+					<Select.Item value="50">50</Select.Item>
+					<Select.Item value="100">100</Select.Item>
+				</Select.Content>
+			</Select.Root>
+		</div>
 	</div>
 </div>

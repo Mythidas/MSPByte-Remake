@@ -82,7 +82,8 @@
 			name: companyToCreate.name,
 			psaCompanyId: companyToCreate.externalId,
 			psaParentCompanyId: companyToCreate?.externalParentId,
-			psaIntegrationId: integration.integration._id
+			psaIntegrationId: integration.integration._id,
+			psaIntegrationName: integration.integration.name
 		});
 
 		if (!newSite) {

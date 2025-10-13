@@ -2,17 +2,15 @@
 	import { api, type Doc } from '$lib/convex';
 	import DataTable from '$lib/components/table/DataTable.svelte';
 	import { getAppState } from '$lib/state/Application.svelte.js';
-	import { useInfiniteConvexTable } from '$lib/hooks/useInfiniteConvexTable.svelte.js';
 	import { type DataTableCell } from '$lib/components/table/types.js';
 	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
+	import { useQuery } from 'convex-svelte';
 
 	const appState = getAppState();
 
-	// Use the infinite scrolling hook
-	const table = useInfiniteConvexTable({
-		query: api.agents.crud.paginate,
-		baseArgs: {},
-		numItems: 50
+	const agentsQuery = useQuery(api.agents.crud.list, () => {
+		const siteId = appState.getSite()?._id;
+		return { filters: { siteId } };
 	});
 </script>
 
@@ -46,18 +44,12 @@
 	{/snippet}
 
 	<DataTable
-		rows={table.rows}
-		isLoading={table.isLoading}
-		isDone={table.isDone}
-		onLoadMore={table.loadMore}
-		onSearch={table.setSearch}
-		onSort={table.setSort}
-		rowHeight={48}
+		rows={agentsQuery.data || []}
+		isLoading={agentsQuery.isLoading}
 		columns={[
 			{
 				key: 'status',
 				title: '',
-				hideable: true,
 				sortable: true,
 				cell: statusSnip,
 				width: '48px'
@@ -71,21 +63,19 @@
 			{
 				key: 'version',
 				title: 'Version',
-				sortable: true,
-				searchable: true
+				searchable: true,
+				sortable: true
 			},
 			{
 				key: 'ipAddress',
 				title: 'IPv4',
 				searchable: true,
-				sortable: true,
 				hideable: true
 			},
 			{
 				key: 'extAddress',
 				title: 'WAN',
 				searchable: true,
-				sortable: true,
 				hideable: true
 			}
 		]}

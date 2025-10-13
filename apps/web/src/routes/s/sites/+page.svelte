@@ -4,16 +4,12 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { getAppState } from '$lib/state/Application.svelte.js';
 	import { prettyText } from '@workspace/shared/lib/utils.js';
-	import { useInfiniteConvexTable } from '$lib/hooks/useInfiniteConvexTable.svelte.js';
+	import { useQuery } from 'convex-svelte';
 
 	const appState = getAppState();
 
-	// Use the infinite scrolling hook
-	const table = useInfiniteConvexTable({
-		query: api.sites.crud.paginate,
-		baseArgs: {},
-		numItems: 50
-	});
+	// Use the URL-state-enabled table hook
+	const table = useQuery(api.sites.crud.list, {});
 </script>
 
 <div class="flex size-full flex-col gap-4 overflow-hidden">
@@ -31,13 +27,8 @@
 	{/snippet}
 
 	<DataTable
-		rows={table.rows}
+		rows={table.data || []}
 		isLoading={table.isLoading}
-		isDone={table.isDone}
-		onLoadMore={table.loadMore}
-		onSearch={table.setSearch}
-		onSort={table.setSort}
-		rowHeight={48}
 		columns={[
 			{
 				key: 'name',
@@ -49,8 +40,8 @@
 			{
 				key: 'psaIntegrationName',
 				title: 'PSA',
-				searchable: false,
-				sortable: false,
+				searchable: true,
+				sortable: true,
 				render: ({ row }) => prettyText(row.psaIntegrationName)
 			},
 			{

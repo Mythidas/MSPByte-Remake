@@ -74,6 +74,7 @@ export default defineSchema({
       v.literal("archived")
     ),
     psaIntegrationId: v.optional(v.id("integrations")),
+    psaIntegrationName: v.optional(v.string()), // Denormalized for sorting/filtering
     psaCompanyId: v.optional(v.string()),
     psaParentCompanyId: v.optional(v.string()),
     metadata: v.optional(v.any()),
