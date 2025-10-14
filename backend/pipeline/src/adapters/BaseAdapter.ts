@@ -64,7 +64,7 @@ export abstract class BaseAdapter {
     const rawData: DataFetchPayload[] = [];
 
     if (syncEvent.dataSourceID) {
-      const dataSource = await client.query(api.datasources.crud_s.get, {
+      const dataSource = await client.query(api.datasources.crud.get_s, {
         id: syncEvent.dataSourceID as any,
         secret: process.env.CONVEX_API_KEY!,
       });

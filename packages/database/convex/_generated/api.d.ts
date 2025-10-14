@@ -24,6 +24,7 @@ import type * as helpers_shortcuts from "../helpers/shortcuts.js";
 import type * as helpers_validators from "../helpers/validators.js";
 import type * as integrations_query from "../integrations/query.js";
 import type * as roles_crud from "../roles/crud.js";
+import type * as roles_query from "../roles/query.js";
 import type * as scheduledjobs_crud from "../scheduledjobs/crud.js";
 import type * as scheduledjobs_mutate from "../scheduledjobs/mutate.js";
 import type * as scheduledjobs_query from "../scheduledjobs/query.js";
@@ -55,6 +56,7 @@ declare const fullApi: ApiFromModules<{
   "helpers/validators": typeof helpers_validators;
   "integrations/query": typeof integrations_query;
   "roles/crud": typeof roles_crud;
+  "roles/query": typeof roles_query;
   "scheduledjobs/crud": typeof scheduledjobs_crud;
   "scheduledjobs/mutate": typeof scheduledjobs_mutate;
   "scheduledjobs/query": typeof scheduledjobs_query;

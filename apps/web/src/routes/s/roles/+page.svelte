@@ -5,14 +5,17 @@
 
 	// Use the infinite scrolling hook
 	const table = useQuery(api.roles.crud.list, {});
+	const global = useQuery(api.roles.query.getGlobal, {});
+
+	const data = $derived([...(table.data || []), ...(global.data || [])]);
 </script>
 
 <div class="flex size-full flex-col gap-4">
 	<h1 class="text-2xl">Roles</h1>
 
 	<DataTable
-		rows={table.data || []}
-		isLoading={table.isLoading}
+		rows={data}
+		isLoading={table.isLoading || global.isLoading}
 		columns={[
 			{
 				key: 'name',

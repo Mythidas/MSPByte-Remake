@@ -147,11 +147,15 @@ export abstract class BaseProcessor<T = any> {
     type: EntityType
   ): Promise<APIResponse<{ rows: Doc<"entities">[] }>> {
     try {
-      const entities = await client.query(api.entities.crud_s.list, {
-        integrationId: integrationID as any,
+      const entities = await client.query(api.entities.crud.list_s, {
         tenantId: tenantID as any,
-        entityType: type,
         secret: process.env.CONVEX_API_KEY!,
+        filter: {
+          by_integration_type: {
+            integrationId: integrationID as any,
+            entityType: type,
+          },
+        },
       });
       return { data: { rows: entities } };
     } catch (error) {
@@ -191,19 +195,20 @@ export abstract class BaseProcessor<T = any> {
 
       for (const row of normalized) {
         // Check if entity exists using the unique constraint fields
-        const existing = await client.query(api.entities.crud_s.get, {
+        const existing = await client.query(api.entities.crud.get_s, {
           tenantId: tenantID as any,
-          integrationId: integrationID as any,
-          dataSourceId: dataSourceID as any,
-          externalId: row.externalID,
-          entityType: entityType,
           secret: process.env.CONVEX_API_KEY!,
+          filters: {
+            by_external_id: {
+              externalId: row.externalID,
+            },
+          },
         });
 
         let entity: Doc<"entities">;
         if (existing) {
           // Update existing entity
-          entity = (await client.mutation(api.entities.crud_s.update, {
+          entity = (await client.mutation(api.entities.crud.update_s, {
             id: existing._id,
             updates: {
               dataHash: row.hash,
@@ -214,17 +219,19 @@ export abstract class BaseProcessor<T = any> {
           }))!;
         } else {
           // Create new entity
-          entity = (await client.mutation(api.entities.crud_s.create, {
-            tenantId: tenantID as any,
-            integrationId: integrationID as any,
-            dataSourceId: dataSourceID as any,
-            externalId: row.externalID,
-            siteId: row.siteID as any,
-            entityType: entityType,
-            dataHash: row.hash,
-            normalizedData: row.normalized as any,
-            rawData: row.raw,
+          entity = (await client.mutation(api.entities.crud.create_s, {
             secret: process.env.CONVEX_API_KEY!,
+            tenantId: tenantID as any,
+            data: {
+              integrationId: integrationID as any,
+              dataSourceId: dataSourceID as any,
+              externalId: row.externalID,
+              siteId: row.siteID as any,
+              entityType: entityType,
+              dataHash: row.hash,
+              normalizedData: row.normalized as any,
+              rawData: row.raw,
+            },
           }))!;
         }
 

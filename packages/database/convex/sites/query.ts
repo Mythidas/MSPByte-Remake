@@ -43,15 +43,13 @@ export const getSiteWithIntegrationsView = query({
     ];
 
     // Fetch all integrations in parallel
-    const integrations = await Promise.all(
-      uniqueIntegrationIds.map((id) => ctx.db.get(id))
-    );
+    const integrations = await ctx.db.query("integrations").collect();
 
     // Map to desired format, filtering out any null results
     const linkedIntegrations = integrations
       .filter(
         (integration): integration is NonNullable<typeof integration> =>
-          integration !== null
+          integration !== null && uniqueIntegrationIds.includes(integration._id)
       )
       .map((integration) => ({
         id: integration._id,

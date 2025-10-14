@@ -25,11 +25,17 @@
 
 	const sitesQuery = useQuery(api.sites.crud.list, {});
 	const dataSourcesQuery = useQuery(api.datasources.crud.list, {
-		integrationId: integration.integration._id
+		filter: {
+			by_integration: { integrationId: integration.integration._id }
+		}
 	});
 	const entitiesQuery = useQuery(api.entities.crud.list, {
-		integrationId: integration.integration._id,
-		entityType: 'companies'
+		filter: {
+			by_integration_type: {
+				integrationId: integration.integration._id,
+				entityType: 'companies'
+			}
+		}
 	});
 
 	const sites = $derived(sitesQuery.data);

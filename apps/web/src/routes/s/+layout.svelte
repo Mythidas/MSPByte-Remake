@@ -64,7 +64,7 @@
 									/>
 								{/if}
 
-								{#each appState.siteLinkedIntegrations || [] as { slug, name }, idx}
+								{#each appState.siteLinkedIntegrations || [] as { slug, name }}
 									<NavLink href={`/s/sites/${site.slug}/integrations/${slug}`} label={name} />
 								{/each}
 							</NavGroup>

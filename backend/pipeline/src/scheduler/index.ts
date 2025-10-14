@@ -40,9 +40,11 @@ export class Scheduler {
   private async pollJobs(): Promise<void> {
     try {
       // Query for due jobs that haven't exceeded retry count
-      const jobs = await client.query(api.scheduledjobs.crud_s.list, {
-        status: "pending",
+      const jobs = await client.query(api.scheduledjobs.crud.list_s, {
         secret: process.env.CONVEX_API_KEY!,
+        filter: {
+          by_status: { status: "pending" },
+        },
       });
 
       if (!jobs || jobs.length === 0) {
@@ -88,7 +90,7 @@ export class Scheduler {
         message: `Processing job ${job._id} for action ${job.action}`,
       });
 
-      await client.mutation(api.scheduledjobs.crud_s.update, {
+      await client.mutation(api.scheduledjobs.crud.update_s, {
         id: job._id,
         updates: {
           status: "running",
@@ -139,7 +141,7 @@ export class Scheduler {
     const attemptsMax = job.attemptsMax || 3;
     const invalid = attempts >= attemptsMax;
 
-    await client.mutation(api.scheduledjobs.crud_s.update, {
+    await client.mutation(api.scheduledjobs.crud.update_s, {
       id: job._id,
       updates: {
         status: invalid ? "failed" : "failed",
@@ -156,7 +158,7 @@ export class Scheduler {
     dataSource?: Doc<"data_sources">,
     action?: string
   ) {
-    await client.mutation(api.scheduledjobs.crud_s.update, {
+    await client.mutation(api.scheduledjobs.crud.update_s, {
       id: job._id,
       updates: {
         status: "completed",
@@ -165,7 +167,7 @@ export class Scheduler {
     });
 
     if (dataSource && action) {
-      await client.mutation(api.datasources.crud_s.update, {
+      await client.mutation(api.datasources.crud.update_s, {
         id: dataSource._id,
         updates: {
           metadata: {
