@@ -83,5 +83,7 @@ export const get = crud.get;
 export const list_s = crud.list_s;
 export const get_s = crud.get_s;
 export const create_s = crud.create_s;
+export const batchc_s = crud.batchc_s;
 export const update_s = crud.update_s;
+export const batchu_s = crud.batchu_s;
 export const remove_s = crud.delete_s;

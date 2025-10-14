@@ -5,7 +5,7 @@ import { isAuthenticated } from "../helpers/validators.js";
 export const createScheduledJob = mutation({
   args: {
     integrationId: v.id("integrations"),
-    dataSourceId: v.optional(v.id("data_sources")),
+    dataSourceId: v.id("data_sources"),
     action: v.string(),
     payload: v.any(),
     priority: v.optional(v.number()),
@@ -41,8 +41,7 @@ export const createScheduledJob = mutation({
 export const scheduleJobsByIntegration = mutation({
   args: {
     integrationId: v.id("integrations"),
-    supportedTypes: v.array(v.string()),
-    dataSourceId: v.optional(v.id("data_sources")),
+    dataSourceId: v.id("data_sources"),
   },
   handler: async (ctx, args) => {
     const identity = await isAuthenticated(ctx);
@@ -53,13 +52,15 @@ export const scheduleJobsByIntegration = mutation({
       throw new Error(`Integration not found: ${args.integrationId}`);
     }
 
-    for (const type of args.supportedTypes) {
+    for (const type of integration.supportedTypes) {
+      if (!type.isGlobal) continue;
+
       await ctx.db.insert("scheduled_jobs", {
         tenantId: identity.tenantId,
         integrationId: args.integrationId,
         integrationSlug: integration.slug,
         dataSourceId: args.dataSourceId,
-        action: `sync.${type}`,
+        action: `sync.${type.type}`,
         payload: {},
         priority: 10,
         status: "pending",
@@ -68,5 +69,7 @@ export const scheduleJobsByIntegration = mutation({
         updatedAt: new Date().getTime(),
       });
     }
+
+    return true;
   },
 });

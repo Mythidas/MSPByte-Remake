@@ -25,7 +25,7 @@
 	const syncStatusQuery = integration.dataSource
 		? useQuery(api.integrations.query.getStatusMatrix, {
 				dataSourceId: integration.dataSource._id,
-				supportedTypes: integration.integration.supportedTypes
+				supportedTypes: integration.integration.supportedTypes.map((st) => st.type)
 			})
 		: { isLoading: true, data: undefined };
 	const syncStatuses = $derived(syncStatusQuery?.data);
@@ -69,13 +69,13 @@
 	</div>
 {:else}
 	<div class="space-y-3">
-		{#each integration.integration.supportedTypes as type}
-			{@const syncStatus = syncStatuses?.find((ss) => ss.entityType === type)}
+		{#each integration.integration.supportedTypes as supported}
+			{@const syncStatus = syncStatuses?.find((ss) => ss.entityType === supported.type)}
 			<div class="rounded-lg border p-4">
 				<div class="flex items-start justify-between">
 					<div class="flex-1">
 						<div class="flex items-center gap-3">
-							<h3 class="font-semibold">{formatEntityType(type)}</h3>
+							<h3 class="font-semibold">{formatEntityType(supported.type)}</h3>
 							<Badge variant={getStatusBadge(syncStatus?.status).variant}>
 								{getStatusBadge(syncStatus?.status).text}
 							</Badge>
@@ -84,6 +84,9 @@
 									>{syncStatus?.failedJobs} Error{syncStatus.failedJobs > 1 ? 's' : ''}</Badge
 								>
 							{/if}
+							<Badge>
+								{supported.isGlobal ? 'Global' : 'Site'}
+							</Badge>
 						</div>
 
 						<div class="mt-2 grid grid-cols-2 gap-4 text-sm md:grid-cols-4">

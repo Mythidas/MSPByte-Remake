@@ -18,5 +18,5 @@ export const client = new Proxy({} as ConvexClient, {
       _client = new ConvexClient(CONVEX_URL);
     }
     return (_client as any)[prop];
-  }
+  },
 });

@@ -22,7 +22,7 @@ import {
 export type RawDataProps = {
   eventData: SyncEventPayload;
   tenantID: string;
-  dataSource?: Doc<"data_sources">;
+  dataSource: Doc<"data_sources">;
 };
 
 export abstract class BaseAdapter {
@@ -53,6 +53,10 @@ export abstract class BaseAdapter {
         message: `Adapter ${this.integrationType} does not support entity type ${entityType}`,
         code: "UNSUPPORTED_ENTITY",
       });
+      await Scheduler.failJob(
+        job,
+        `Adapter ${this.integrationType} does not support entity type ${entityType}`
+      );
       return;
     }
     Debug.log({
@@ -63,40 +67,26 @@ export abstract class BaseAdapter {
 
     const rawData: DataFetchPayload[] = [];
 
-    if (syncEvent.dataSourceID) {
-      const dataSource = await client.query(api.datasources.crud.get_s, {
-        id: syncEvent.dataSourceID as any,
-        secret: process.env.CONVEX_API_KEY!,
-      });
-      if (!dataSource) {
-        await Scheduler.failJob(job, "Data source not found");
-        return;
-      }
+    const dataSource = await client.query(api.datasources.crud.get_s, {
+      id: syncEvent.dataSourceID as any,
+      secret: process.env.CONVEX_API_KEY!,
+    });
+    if (!dataSource) {
+      await Scheduler.failJob(job, "Data source not found");
+      return;
+    }
 
-      const result = await this.getRawData({
-        eventData: syncEvent,
-        tenantID,
-        dataSource,
-      });
-      if (result.error) {
-        await Scheduler.failJob(job, result.error.message);
-        return;
-      } else {
-        rawData.push(...result.data);
-        await Scheduler.completeJob(job, dataSource, `sync.${entityType}`);
-      }
+    const result = await this.getRawData({
+      eventData: syncEvent,
+      tenantID,
+      dataSource,
+    });
+    if (result.error) {
+      await Scheduler.failJob(job, result.error.message);
+      return;
     } else {
-      const result = await this.getRawData({
-        eventData: syncEvent,
-        tenantID,
-      });
-      if (result.error) {
-        await Scheduler.failJob(job, result.error.message);
-        return;
-      } else {
-        rawData.push(...result.data);
-        await Scheduler.completeJob(job);
-      }
+      rawData.push(...result.data);
+      await Scheduler.completeJob(job, dataSource, `sync.${entityType}`);
     }
 
     // Determine the next stage in the pipeline

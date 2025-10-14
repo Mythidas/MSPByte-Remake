@@ -5,6 +5,7 @@ import {
 import Debug from "@workspace/shared/lib/Debug.js";
 import { AutoTaskCompany } from "@workspace/shared/types/integrations/autotask/company.js";
 import { HaloPSASite } from "@workspace/shared/types/integrations/halopsa/sites.js";
+import { SophosPartnerTenant } from "@workspace/shared/types/integrations/sophos-partner/tenants.js";
 import {
   DataFetchPayload,
   IntegrationType,
@@ -24,6 +25,8 @@ export class CompanyProcessor extends BaseProcessor {
         return this.fromAutoTask(data);
       case "halopsa":
         return this.fromHaloPSA(data);
+      case "sophos-partner":
+        return this.fromSophosPartner(data);
       default: {
         Debug.error({
           module: "CompanyProcessor",
@@ -78,6 +81,29 @@ export class CompanyProcessor extends BaseProcessor {
           name: rawData.name,
           parent_name: rawData.client_name,
           type: rawData.use,
+
+          created_at: "",
+        },
+      } as CompanyData;
+    });
+  }
+
+  private fromSophosPartner(data: DataFetchPayload[]) {
+    return data.map((row) => {
+      const { rawData, dataHash } = row as {
+        rawData: SophosPartnerTenant;
+        dataHash: string;
+      };
+
+      return {
+        externalID: String(rawData.id),
+        raw: rawData,
+        hash: dataHash,
+        normalized: {
+          external_id: String(rawData.id),
+
+          name: rawData.name,
+          type: "customer",
 
           created_at: "",
         },

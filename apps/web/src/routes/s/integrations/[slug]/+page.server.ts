@@ -113,8 +113,7 @@ export const actions = {
 
 		await locals.client.mutation(api.scheduledjobs.mutate.scheduleJobsByIntegration, {
 			integrationId: integration._id,
-			dataSourceId: data._id,
-			supportedTypes: integration.supportedTypes
+			dataSourceId: data._id
 		});
 
 		return { success: true, message: 'Configuration saved successfully!' };

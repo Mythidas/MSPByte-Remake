@@ -2,6 +2,17 @@ import { v } from "convex/values";
 import { query } from "../_generated/server.js";
 import { isValidSecret } from "../helpers/validators.js";
 
+export const get = query({
+  args: {
+    id: v.id("integrations"),
+    secret: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await isValidSecret(args.secret);
+    return await ctx.db.get(args.id);
+  },
+});
+
 export const getBySlug = query({
   args: {
     slug: v.string(),

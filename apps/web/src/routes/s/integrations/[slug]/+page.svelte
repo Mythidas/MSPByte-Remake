@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Tabs, TabsContent, TabsList, TabsTrigger } from '$lib/components/ui/tabs';
-	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+	import { Card, CardAction, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Separator } from '$lib/components/ui/separator';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -26,9 +26,9 @@
 	import { page } from '$app/state';
 	import Loader from '$lib/components/Loader.svelte';
 	import DatePicker from '$lib/components/DatePicker.svelte';
-	import { CalendarDate, getLocalTimeZone, type DateValue } from '@internationalized/date';
+	import { getAppState } from '$lib/state/Application.svelte.js';
 
-	// Get slug from URL params
+	const appState = getAppState();
 	const slug = $derived(page.params.slug);
 
 	// Fetch integration from Convex (client-side, reactive)
@@ -145,6 +145,24 @@
 			}
 		} else {
 			toast.error(result.data?.message || 'Failed to save configuration');
+		}
+	};
+
+	const handleSyncGlobal = async () => {
+		try {
+			const result = await appState.convex.mutation(
+				api.scheduledjobs.mutate.scheduleJobsByIntegration,
+				{
+					integrationId: integration.integration._id,
+					dataSourceId: integration.dataSource!._id
+				}
+			);
+
+			if (result) toast.info('Queued global sync jobs');
+			else throw 'Failed';
+		} catch (err) {
+			console.log(err);
+			toast.error('Failed to queue global jobs');
 		}
 	};
 
@@ -282,9 +300,14 @@
 						<CardDescription
 							>View detailed sync status for all entity types supported by this integration.</CardDescription
 						>
+						<CardAction>
+							<Button variant="ghost" onclick={handleSyncGlobal}>Sync Global</Button>
+						</CardAction>
 					</CardHeader>
 					<CardContent class="flex flex-1 flex-col overflow-auto">
-						<SyncStatus />
+						{#if integration.dataSource}
+							<SyncStatus />
+						{/if}
 					</CardContent>
 				</Card>
 			</TabsContent>

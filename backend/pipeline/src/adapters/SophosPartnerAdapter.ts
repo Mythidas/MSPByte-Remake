@@ -3,7 +3,6 @@ import {
   RawDataProps,
 } from "@workspace/pipeline/adapters/BaseAdapter.js";
 import { api } from "@workspace/database/convex/_generated/api.js";
-import type { Doc } from "@workspace/database/convex/_generated/dataModel.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import Encryption from "@workspace/shared/lib/Encryption.js";
 import { APIResponse } from "@workspace/shared/types/api.js";
@@ -17,7 +16,7 @@ import { client } from "@workspace/shared/lib/convex.js";
 
 export class SophosPartnerAdapter extends BaseAdapter {
   constructor() {
-    super("sophos-partner", ["endpoints"]);
+    super("sophos-partner", ["endpoints", "companies"]);
   }
 
   protected async getRawData({
@@ -25,24 +24,31 @@ export class SophosPartnerAdapter extends BaseAdapter {
     tenantID,
     dataSource,
   }: RawDataProps) {
-    if (!dataSource) {
-      return Debug.error({
-        module: "SophosPartnerAdapter",
-        context: "getRawData",
-        message: "SophosPartner does not support global syncs",
-        code: "INVALID_SYNC",
-      });
-    }
-
     Debug.log({
       module: "SophosPartnerAdapter",
       context: "getRawData",
       message: `Fetching data for tenant ${tenantID}, dataSource ${dataSource._id || "N/A"}`,
     });
 
+    if (dataSource.isPrimary) {
+      switch (eventData.entityType) {
+        case "companies": {
+          return await this.handleCompanySync({
+            eventData,
+            tenantID,
+            dataSource,
+          });
+        }
+      }
+    }
+
     switch (eventData.entityType) {
       case "endpoints": {
-        return await this.handleEndpointSync(dataSource);
+        return await this.handleEndpointSync({
+          eventData,
+          tenantID,
+          dataSource,
+        });
       }
     }
 
@@ -55,37 +61,19 @@ export class SophosPartnerAdapter extends BaseAdapter {
   }
 
   private async handleEndpointSync(
-    dataSource: Doc<"data_sources">
+    props: RawDataProps
   ): Promise<APIResponse<DataFetchPayload[]>> {
-    // Get the global Sophos Partner data source (tenant-level, no siteId)
-    const sophosIntegration = await client.query(
-      api.integrations.query_s.getBySlug,
-      {
-        secret: process.env.CONVEX_API_KEY!,
-        slug: "sophos-partner",
-      }
-    );
-
-    if (!sophosIntegration) {
-      return Debug.error({
-        module: "SophosPartnerAdapter",
-        context: "handleEndpointSync",
-        message: `Sophos Partner integration not found`,
-        code: "DB_FAILURE",
-      });
-    }
-
-    const sophosDataSources = await client.query(api.datasources.crud.list_s, {
+    const sophosSource = await client.query(api.datasources.crud.get_s, {
       secret: process.env.CONVEX_API_KEY!,
-      filter: {
-        by_integration: {
-          integrationId: sophosIntegration._id,
+      filters: {
+        by_integration_primary: {
+          integrationId: props.eventData.integrationID,
+          isPrimary: true,
         },
       },
     });
 
     // Find the global data source (no siteId)
-    const sophosSource = sophosDataSources.find((ds) => !ds.siteId);
     if (!sophosSource) {
       return Debug.error({
         module: "SophosPartnerAdapter",
@@ -106,13 +94,13 @@ export class SophosPartnerAdapter extends BaseAdapter {
       return Debug.error({
         module: "SophosPartnerAdapter",
         context: "handleEndpointSync",
-        message: `Connector failed health check: ${dataSource._id}`,
+        message: `Connector failed health check: ${props.dataSource._id}`,
         code: "CONNECTOR_FAILURE",
       });
     }
 
     const { data: endpoints, error } = await connector.getEndpoints(
-      dataSource.config as SophosTenantConfig
+      props.dataSource.config as SophosTenantConfig
     );
     if (error) {
       return { error };
@@ -131,7 +119,49 @@ export class SophosPartnerAdapter extends BaseAdapter {
 
           dataHash,
           rawData,
-          siteID: dataSource.siteId || undefined,
+          siteID: props.dataSource.siteId,
+        };
+      }),
+    };
+  }
+
+  private async handleCompanySync(
+    props: RawDataProps
+  ): Promise<APIResponse<DataFetchPayload[]>> {
+    const partnerConfig = props.dataSource.config;
+
+    const connector = new SophosPartnerConnector(
+      partnerConfig,
+      process.env.SECRET_KEY!
+    );
+    const health = await connector.checkHealth();
+    if (!health) {
+      return Debug.error({
+        module: "SophosPartnerAdapter",
+        context: "handleEndpointSync",
+        message: `Connector failed health check: ${props.dataSource._id}`,
+        code: "CONNECTOR_FAILURE",
+      });
+    }
+
+    const { data: tenants, error } = await connector.getTenants();
+    if (error) {
+      return { error };
+    }
+
+    return {
+      data: tenants.map((rawData) => {
+        const dataHash = Encryption.sha256(
+          JSON.stringify({
+            ...rawData,
+            lastSeenAt: undefined,
+          })
+        );
+        return {
+          externalID: rawData.id,
+
+          dataHash,
+          rawData,
         };
       }),
     };

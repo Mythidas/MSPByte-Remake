@@ -1,6 +1,9 @@
 import { natsClient } from "@workspace/pipeline/helpers/nats.js";
 import { api } from "@workspace/database/convex/_generated/api.js";
-import type { Doc } from "@workspace/database/convex/_generated/dataModel.js";
+import type {
+  Doc,
+  Id,
+} from "@workspace/database/convex/_generated/dataModel.js";
 import type {
   Company,
   Endpoint,
@@ -189,40 +192,70 @@ export abstract class BaseProcessor<T = any> {
     integrationID: string,
     entityType: EntityType,
     normalized: ProcessedEntityData<T>[]
-  ): Promise<APIResponse<Doc<"entities">[]>> {
+  ): Promise<
+    APIResponse<{
+      ids: Id<"entities">[];
+      created: number;
+      updated: number;
+    }>
+  > {
     try {
-      const storedEntities: Doc<"entities">[] = [];
+      const updates: {
+        id: Id<"entities">;
+        updates: {
+          entityType?:
+            | "companies"
+            | "endpoints"
+            | "identities"
+            | "groups"
+            | "licenseAssignments"
+            | null
+            | undefined;
+          dataHash?: string | null | undefined;
+          rawData?: any;
+          normalizedData?: any;
+        };
+      }[] = [];
+      const creates: {
+        siteId?: Id<"sites"> | undefined;
+        integrationId: Id<"integrations">;
+        externalId: string;
+        dataSourceId: Id<"data_sources">;
+        entityType:
+          | "companies"
+          | "endpoints"
+          | "identities"
+          | "groups"
+          | "licenseAssignments";
+        dataHash: string;
+        rawData: any;
+        normalizedData: any;
+      }[] = [];
 
-      for (const row of normalized) {
-        // Check if entity exists using the unique constraint fields
-        const existing = await client.query(api.entities.crud.get_s, {
-          tenantId: tenantID as any,
-          secret: process.env.CONVEX_API_KEY!,
-          filters: {
-            by_external_id: {
-              externalId: row.externalID,
-            },
-          },
-        });
-
-        let entity: Doc<"entities">;
-        if (existing) {
-          // Update existing entity
-          entity = (await client.mutation(api.entities.crud.update_s, {
-            id: existing._id,
-            updates: {
-              dataHash: row.hash,
-              normalizedData: row.normalized as any,
-              rawData: row.raw,
-            },
-            secret: process.env.CONVEX_API_KEY!,
-          }))!;
-        } else {
-          // Create new entity
-          entity = (await client.mutation(api.entities.crud.create_s, {
-            secret: process.env.CONVEX_API_KEY!,
+      await Promise.all(
+        normalized.map(async (row) => {
+          // Check if entity exists using the unique constraint fields
+          const existing = await client.query(api.entities.crud.get_s, {
             tenantId: tenantID as any,
-            data: {
+            secret: process.env.CONVEX_API_KEY!,
+            filters: {
+              by_external_id: {
+                externalId: row.externalID,
+              },
+            },
+          });
+
+          if (existing) {
+            updates.push({
+              id: existing._id,
+              updates: {
+                dataHash: row.hash,
+                normalizedData: row.normalized as any,
+                rawData: row.raw,
+              },
+            });
+          } else {
+            creates.push({
               integrationId: integrationID as any,
               dataSourceId: dataSourceID as any,
               externalId: row.externalID,
@@ -231,21 +264,38 @@ export abstract class BaseProcessor<T = any> {
               dataHash: row.hash,
               normalizedData: row.normalized as any,
               rawData: row.raw,
-            },
-          }))!;
-        }
+            });
+          }
+        })
+      );
 
-        storedEntities.push(entity);
-      }
+      const [updateResult, createResult] = await Promise.all([
+        client.mutation(api.entities.crud.batchu_s, {
+          data: updates,
+          tenantId: tenantID as any,
+          secret: process.env.CONVEX_API_KEY!,
+        }),
+        client.mutation(api.entities.crud.batchc_s, {
+          tenantId: tenantID as any,
+          secret: process.env.CONVEX_API_KEY!,
+          data: creates,
+        }),
+      ]);
 
-      return { data: storedEntities };
+      return {
+        data: {
+          ids: [...updateResult, ...createResult],
+          created: createResult.length,
+          updated: updateResult.length,
+        },
+      };
     } catch (error) {
       return {
         error: {
           module: "BaseProcessor",
           context: "getExistingData",
           code: "DB_FAILURE",
-          message: error instanceof Error ? error.message : "Unknown error",
+          message: "Failed to create or update entities",
           time: new Date().toISOString(),
         },
       };
@@ -254,7 +304,11 @@ export abstract class BaseProcessor<T = any> {
 
   private async publishProcessedEvent(
     originalEvent: FetchedEventPayload,
-    storedEntities: Doc<"entities">[],
+    storedEntities: {
+      ids: Id<"entities">[];
+      created: number;
+      updated: number;
+    },
     totalProcessed: number
   ): Promise<void> {
     const processedEvent: ProcessedEventPayload = {
@@ -268,13 +322,9 @@ export abstract class BaseProcessor<T = any> {
       createdAt: Date.now(),
       parentEventID: originalEvent.eventID,
 
-      entityIDs: storedEntities.map((e) => e._id),
-      entitiesCreated: storedEntities.filter(
-        (e) => e._creationTime === e.updatedAt
-      ).length,
-      entitiesUpdated: storedEntities.filter(
-        (e) => e._creationTime !== e.updatedAt
-      ).length,
+      entityIDs: storedEntities.ids,
+      entitiesCreated: storedEntities.created,
+      entitiesUpdated: storedEntities.updated,
       entitiesSkipped: originalEvent.total - totalProcessed,
     };
 
@@ -285,7 +335,7 @@ export abstract class BaseProcessor<T = any> {
       Debug.log({
         module: "BaseProcessor",
         context: "publishProcessedEvent",
-        message: `Published ${eventName} event with ${storedEntities.length} entities`,
+        message: `Published ${eventName} event with ${storedEntities.ids.length} entities`,
       });
     } catch (err) {
       Debug.error({

@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server.js";
 import { isAuthenticated } from "../helpers/validators.js";
+import { entityTypeValidator } from "../schema.js";
 
 export const get = query({
   args: {
@@ -28,7 +29,7 @@ export const getBySlug = query({
 export const getStatusMatrix = query({
   args: {
     dataSourceId: v.id("data_sources"),
-    supportedTypes: v.array(v.string()),
+    supportedTypes: v.array(entityTypeValidator),
   },
   handler: async (ctx, args) => {
     const identity = await isAuthenticated(ctx);

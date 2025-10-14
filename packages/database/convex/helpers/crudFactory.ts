@@ -290,6 +290,30 @@ export function createCrudOperations<
     },
   });
 
+  const batchc = mutation({
+    args: {
+      data: v.array(createValidator),
+    },
+    handler: async (ctx, args) => {
+      const identity = await isAuthenticated(ctx);
+      const now = Date.now();
+      const ids: Id<TableName>[] = [];
+
+      await Promise.all(
+        args.data.map(async (data) => {
+          const id = await ctx.db.insert(tableName, {
+            ...data,
+            tenantId: identity.tenantId,
+            updatedAt: now,
+          } as any);
+          ids.push(id);
+        })
+      );
+
+      return ids;
+    },
+  });
+
   const create_s = mutation({
     args: {
       data: createValidator,
@@ -307,6 +331,32 @@ export function createCrudOperations<
       } as any);
 
       return await ctx.db.get(id);
+    },
+  });
+
+  const batchc_s = mutation({
+    args: {
+      data: v.array(createValidator),
+      tenantId: v.id("tenants"),
+      secret: v.string(),
+    },
+    handler: async (ctx, args) => {
+      await isValidSecret(args.secret);
+      const now = Date.now();
+      const ids: Id<TableName>[] = [];
+
+      await Promise.all(
+        args.data.map(async (data) => {
+          const id = await ctx.db.insert(tableName, {
+            ...data,
+            tenantId: args.tenantId,
+            updatedAt: now,
+          } as any);
+          ids.push(id);
+        })
+      );
+
+      return ids;
     },
   });
 
@@ -340,6 +390,44 @@ export function createCrudOperations<
     },
   });
 
+  const batchu = mutation({
+    args: {
+      data: v.array(
+        v.object({
+          id: v.id(tableName),
+          updates: updateValidator,
+        })
+      ),
+    },
+    handler: async (ctx, args) => {
+      const identity = await isAuthenticated(ctx);
+      const now = Date.now();
+      const ids: Id<TableName>[] = [];
+
+      await Promise.all(
+        args.data.map(async (row) => {
+          const record = await ctx.db.get(row.id);
+
+          if (!record) {
+            throw new Error(`${String(tableName)} not found`);
+          }
+
+          if ((record as any).tenantId !== identity.tenantId) {
+            throw new Error("Access denied");
+          }
+
+          await ctx.db.patch(row.id, {
+            ...cleanUpdates(row.updates || {}),
+            updatedAt: now,
+          } as any);
+          ids.push(row.id);
+        })
+      );
+
+      return ids;
+    },
+  });
+
   const update_s = mutation({
     args: {
       id: v.id(tableName),
@@ -360,6 +448,46 @@ export function createCrudOperations<
       } as any);
 
       return await ctx.db.get(args.id);
+    },
+  });
+
+  const batchu_s = mutation({
+    args: {
+      data: v.array(
+        v.object({
+          id: v.id(tableName),
+          updates: updateValidator,
+        })
+      ),
+      tenantId: v.id("tenants"),
+      secret: v.string(),
+    },
+    handler: async (ctx, args) => {
+      await isValidSecret(args.secret);
+      const now = Date.now();
+      const ids: Id<TableName>[] = [];
+
+      await Promise.all(
+        args.data.map(async (row) => {
+          const record = await ctx.db.get(row.id);
+
+          if (!record) {
+            throw new Error(`${String(tableName)} not found`);
+          }
+
+          if ((record as any).tenantId !== args.tenantId) {
+            throw new Error("Access denied");
+          }
+
+          await ctx.db.patch(row.id, {
+            ...cleanUpdates(row.updates || {}),
+            updatedAt: now,
+          } as any);
+          ids.push(row.id);
+        })
+      );
+
+      return ids;
     },
   });
 
@@ -429,14 +557,18 @@ export function createCrudOperations<
     list,
     get,
     create,
+    batchc,
     update,
+    batchu,
     delete: deleteRecord,
 
     // _s operations
     list_s,
     get_s,
     create_s,
+    batchc_s,
     update_s,
+    batchu_s,
     delete_s,
   };
 }

@@ -16,7 +16,7 @@ const statusSchema = v.union(
 const createValidator = v.object({
   integrationId: v.id("integrations"),
   integrationSlug: v.string(), // Slug for event routing (e.g., "autotask", "sophos-partner")
-  dataSourceId: v.optional(v.id("data_sources")),
+  dataSourceId: v.id("data_sources"),
   action: v.string(), // e.g., "sync.sites", "sync.devices"
   payload: v.any(),
   priority: v.optional(v.number()),

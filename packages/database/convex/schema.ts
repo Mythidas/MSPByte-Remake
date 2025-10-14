@@ -89,7 +89,12 @@ export default defineSchema({
     slug: v.string(),
     description: v.string(),
     category: v.string(), // e.g., "psa", "rmm", "security"
-    supportedTypes: v.array(v.string()), // e.g., ["sites", "devices", "tickets"]
+    supportedTypes: v.array(
+      v.object({
+        type: entityTypeValidator,
+        isGlobal: v.boolean(),
+      })
+    ), // e.g., ["sites", "devices", "tickets"]
     iconUrl: v.optional(v.string()),
     color: v.optional(v.string()),
     level: v.optional(v.string()), // tier/level of integration
@@ -163,7 +168,7 @@ export default defineSchema({
     tenantId: v.id("tenants"),
     integrationId: v.id("integrations"),
     integrationSlug: v.string(), // Slug for event routing (e.g., "autotask", "sophos-partner")
-    dataSourceId: v.optional(v.id("data_sources")),
+    dataSourceId: v.id("data_sources"),
     action: v.string(), // e.g., "sync.sites", "sync.devices"
     payload: v.any(),
     priority: v.optional(v.number()),
@@ -289,7 +294,7 @@ export default defineSchema({
     .index("by_type", ["entityType", "tenantId"])
     .index("by_data_source", ["dataSourceId", "tenantId"])
     .index("by_site", ["siteId", "tenantId"])
-    .index("by_external_id", ["integrationId", "externalId", "tenantId"])
+    .index("by_external_id", ["externalId", "tenantId"])
     .index("by_integration_type", ["integrationId", "entityType", "tenantId"]),
 
   global_entities: defineTable({
