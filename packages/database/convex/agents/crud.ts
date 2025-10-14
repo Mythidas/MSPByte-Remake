@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { createCrudOperations } from "../helpers/crudFactory.js";
+import { nullable } from "../helpers/shortcuts.js";
 
 // ============================================================================
 // VALIDATORS
@@ -19,17 +20,17 @@ const createValidator = v.object({
 });
 
 const updateValidator = v.object({
-  siteId: v.optional(v.id("sites")),
-  guid: v.optional(v.string()),
-  hostname: v.optional(v.string()),
-  platform: v.optional(v.string()),
-  version: v.optional(v.string()),
-  ipAddress: v.optional(v.string()),
-  macAddress: v.optional(v.string()),
-  extAddress: v.optional(v.string()),
-  status: v.optional(v.union(v.literal("online"), v.literal("offline"))),
-  statusChangedAt: v.optional(v.number()),
-  registeredAt: v.optional(v.number()),
+  siteId: nullable(v.id("sites")),
+  guid: nullable(v.string()),
+  hostname: nullable(v.string()),
+  platform: nullable(v.string()),
+  version: nullable(v.string()),
+  ipAddress: nullable(v.string()),
+  macAddress: nullable(v.string()),
+  extAddress: nullable(v.string()),
+  status: nullable(v.union(v.literal("online"), v.literal("offline"))),
+  statusChangedAt: nullable(v.number()),
+  registeredAt: nullable(v.number()),
 });
 
 const getFiltersValidator = v.object({

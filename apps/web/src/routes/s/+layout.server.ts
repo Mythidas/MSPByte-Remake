@@ -15,8 +15,12 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	});
 	if (mspAgent) {
 		const dataSource = await locals.client.query(api.datasources.crud.get, {
-			integrationId: mspAgent._id,
-			isPrimary: true
+			filters: {
+				by_integration_primary: {
+					integrationId: mspAgent._id,
+					isPrimary: true
+				}
+			}
 		});
 
 		return {

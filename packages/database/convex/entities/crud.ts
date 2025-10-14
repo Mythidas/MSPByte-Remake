@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { createCrudOperations } from "../helpers/crudFactory.js";
 import { entityTypeValidator } from "../schema.js";
+import { nullable } from "../helpers/shortcuts.js";
 
 // ============================================================================
 // VALIDATORS
@@ -18,10 +19,10 @@ const createValidator = v.object({
 });
 
 const updateValidator = v.object({
-  entityType: v.optional(entityTypeValidator),
-  dataHash: v.optional(v.string()),
-  rawData: v.optional(v.any()),
-  normalizedData: v.optional(v.any()),
+  entityType: nullable(entityTypeValidator),
+  dataHash: nullable(v.string()),
+  rawData: nullable(v.any()),
+  normalizedData: nullable(v.any()),
 });
 
 const getFiltersValidator = v.object({

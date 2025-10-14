@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { createCrudOperations } from "../helpers/crudFactory.js";
+import { nullable } from "../helpers/shortcuts.js";
 
 // ============================================================================
 // VALIDATORS
@@ -17,15 +18,15 @@ const createValidator = v.object({
 });
 
 const updateValidator = v.object({
-  name: v.string(),
-  status: v.optional(
+  name: nullable(v.string()),
+  status: nullable(
     v.union(v.literal("active"), v.literal("inactive"), v.literal("archived"))
   ),
-  psaIntegrationId: v.optional(v.id("integrations")),
-  psaIntegrationName: v.optional(v.string()), // Denormalized for sorting/filtering
-  psaCompanyId: v.optional(v.string()),
-  psaParentCompanyId: v.optional(v.string()),
-  metadata: v.optional(v.any()),
+  psaIntegrationId: nullable(v.id("integrations")),
+  psaIntegrationName: nullable(v.string()),
+  psaCompanyId: nullable(v.string()),
+  psaParentCompanyId: nullable(v.string()),
+  metadata: nullable(v.any()),
 });
 
 const getFiltersValidator = v.object({});

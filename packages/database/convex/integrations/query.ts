@@ -2,6 +2,29 @@ import { v } from "convex/values";
 import { query } from "../_generated/server.js";
 import { isAuthenticated } from "../helpers/validators.js";
 
+export const get = query({
+  args: {
+    id: v.id("integrations"),
+  },
+  handler: async (ctx, args) => {
+    await isAuthenticated(ctx);
+    return await ctx.db.get(args.id);
+  },
+});
+
+export const getBySlug = query({
+  args: {
+    slug: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await isAuthenticated(ctx);
+    return await ctx.db
+      .query("integrations")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .unique();
+  },
+});
+
 export const getStatusMatrix = query({
   args: {
     dataSourceId: v.id("data_sources"),

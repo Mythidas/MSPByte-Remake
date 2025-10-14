@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { createCrudOperations } from "../helpers/crudFactory.js";
+import { nullable } from "../helpers/shortcuts.js";
 
 // ============================================================================
 // VALIDATORS
@@ -30,20 +31,16 @@ const createValidator = v.object({
 });
 
 const updateValidator = v.object({
-  integrationId: v.id("integrations"),
-  integrationSlug: v.string(), // Slug for event routing (e.g., "autotask", "sophos-partner")
-  dataSourceId: v.optional(v.id("data_sources")),
-  action: v.string(), // e.g., "sync.sites", "sync.devices"
-  payload: v.any(),
-  priority: v.optional(v.number()),
-  status: statusSchema,
-  attempts: v.optional(v.number()),
-  attemptsMax: v.optional(v.number()),
-  nextRetryAt: v.optional(v.number()),
-  scheduledAt: v.number(),
-  startedAt: v.optional(v.number()),
-  error: v.optional(v.string()),
-  createdBy: v.string(),
+  action: nullable(v.string()),
+  payload: nullable(v.any()),
+  priority: nullable(v.number()),
+  status: nullable(statusSchema),
+  attempts: nullable(v.number()),
+  attemptsMax: nullable(v.number()),
+  nextRetryAt: nullable(v.number()),
+  scheduledAt: nullable(v.number()),
+  startedAt: nullable(v.number()),
+  error: nullable(v.string()),
 });
 
 const getFiltersValidator = v.object({});

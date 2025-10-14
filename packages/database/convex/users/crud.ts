@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { createCrudOperations } from "../helpers/crudFactory.js";
+import { nullable } from "../helpers/shortcuts.js";
 
 // ============================================================================
 // VALIDATORS
@@ -17,12 +18,12 @@ const createValidator = v.object({
 });
 
 const updateValidator = v.object({
-  roleId: v.optional(v.id("roles")),
-  name: v.optional(v.string()),
-  status: v.optional(v.union(v.literal("active"), v.literal("inactive"))),
-  metadata: v.optional(
+  roleId: nullable(v.id("roles")),
+  name: nullable(v.string()),
+  status: nullable(v.union(v.literal("active"), v.literal("inactive"))),
+  metadata: nullable(
     v.object({
-      currentSite: v.optional(v.id("sites")),
+      currentSite: nullable(v.id("sites")),
     })
   ),
 });

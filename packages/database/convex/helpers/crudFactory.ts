@@ -2,6 +2,7 @@ import { v, type Validator } from "convex/values";
 import { query, mutation, QueryCtx } from "../_generated/server.js";
 import { isAuthenticated, isValidSecret } from "./validators.js";
 import type { DataModel, Doc, Id } from "../_generated/dataModel.js";
+import { cleanUpdates } from "./shortcuts.js";
 
 /**
  * Factory for creating standard CRUD operations with minimal boilerplate.
@@ -122,6 +123,7 @@ export function createCrudOperations<
   const list_s = query({
     args: {
       filter: v.optional(filtersValidator),
+      tenantId: v.optional(v.id("tenants")),
       secret: v.string(),
     },
     handler: async (ctx, args): Promise<Doc<typeof tableName>[]> => {
@@ -142,6 +144,8 @@ export function createCrudOperations<
               filtered = filtered.eq(field as any, val as any);
             }
 
+            if (args.tenantId)
+              filtered = filtered.eq("tenantId", args.tenantId);
             return filtered;
           });
         }
@@ -328,7 +332,7 @@ export function createCrudOperations<
       }
 
       await ctx.db.patch(args.id, {
-        ...args.updates,
+        ...cleanUpdates(args.updates || {}),
         updatedAt: Date.now(),
       } as any);
 
@@ -351,7 +355,7 @@ export function createCrudOperations<
       }
 
       await ctx.db.patch(args.id, {
-        ...args.updates,
+        ...cleanUpdates(args.updates || {}),
         updatedAt: Date.now(),
       } as any);
 

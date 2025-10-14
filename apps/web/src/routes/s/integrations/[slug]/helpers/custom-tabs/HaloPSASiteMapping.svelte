@@ -12,6 +12,7 @@
 	import { useQuery } from 'convex-svelte';
 	import { api } from '$lib/convex';
 	import { getAppState } from '$lib/state/Application.svelte.js';
+	import { genSUUID } from '$lib/utils.js';
 
 	const integration = getIntegration();
 	const appState = getAppState();
@@ -46,19 +47,16 @@
 		// Check if another site is already linked to this company
 		const alreadyLinkedSite = sites?.find((s) => s.psaCompanyId === companyExternalId);
 		if (alreadyLinkedSite && alreadyLinkedSite._id !== siteId) {
-			// Unlink the old site
-
-			await appState.convex.mutation(api.sites.mutate.updatePSAConfig, {
-				id: alreadyLinkedSite._id
-			});
+			toast.error(`Company already linked to ${alreadyLinkedSite.name}`);
 		}
 
-		const query = await appState.convex.mutation(api.sites.mutate.updatePSAConfig, {
+		const query = await appState.convex.mutation(api.sites.crud.update, {
 			id: siteId as any,
-			config: {
+			updates: {
 				psaCompanyId: company.externalId,
 				psaIntegrationId: integration.integration._id,
-				psaParentCompanyId: company.externalParentId
+				psaParentCompanyId: company.externalParentId,
+				psaIntegrationName: integration.integration.name
 			}
 		});
 
@@ -78,12 +76,16 @@
 	async function confirmCreateSite() {
 		if (!companyToCreate) return;
 
-		const newSite = await appState.convex.mutation(api.sites.mutate.create, {
-			name: companyToCreate.name,
-			psaCompanyId: companyToCreate.externalId,
-			psaParentCompanyId: companyToCreate?.externalParentId,
-			psaIntegrationId: integration.integration._id,
-			psaIntegrationName: integration.integration.name
+		const newSite = await appState.convex.mutation(api.sites.crud.create, {
+			data: {
+				name: companyToCreate.name,
+				psaCompanyId: companyToCreate.externalId,
+				psaParentCompanyId: companyToCreate?.externalParentId,
+				psaIntegrationId: integration.integration._id,
+				psaIntegrationName: integration.integration.name,
+				status: 'active',
+				slug: genSUUID()
+			}
 		});
 
 		if (!newSite) {
@@ -114,8 +116,14 @@
 			return;
 		}
 
-		const query = await appState.convex.mutation(api.sites.mutate.updatePSAConfig, {
-			id: linkedSite._id
+		const query = await appState.convex.mutation(api.sites.crud.update, {
+			id: linkedSite._id,
+			updates: {
+				psaCompanyId: null,
+				psaIntegrationId: null,
+				psaIntegrationName: null,
+				psaParentCompanyId: null
+			}
 		});
 
 		if (!query) {
