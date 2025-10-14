@@ -1,7 +1,7 @@
 import { v, type Validator } from "convex/values";
-import { query, mutation } from "../_generated/server.js";
+import { query, mutation, QueryCtx } from "../_generated/server.js";
 import { isAuthenticated, isValidSecret } from "./validators.js";
-import type { DataModel, Doc } from "../_generated/dataModel.js";
+import type { DataModel, Doc, Id } from "../_generated/dataModel.js";
 
 /**
  * Factory for creating standard CRUD operations with minimal boilerplate.
@@ -9,7 +9,7 @@ import type { DataModel, Doc } from "../_generated/dataModel.js";
  *
  * Features:
  * - Automatic tenant scoping
- * - Timestamp management (createdAt, updatedAt)
+ * - Timestamp management (_creationTime, updatedAt)
  * - Soft delete support (deletedAt)
  * - Efficient index selection based on filters
  * - Type-safe validators
@@ -46,21 +46,22 @@ export function createCrudOperations<
   CreateFields extends Record<string, any>,
   UpdateFields extends Record<string, any>,
   FilterFields extends Record<string, any>,
+  GetFields extends Record<string, any>,
 >(config: {
   tableName: TableName;
   createValidator: Validator<CreateFields, any, any>;
   updateValidator: Validator<UpdateFields, any, any>;
   filtersValidator: Validator<FilterFields, any, any>;
+  getFiltersValidator: Validator<GetFields, any, any>;
   softDelete?: boolean;
-  indexMap?: Record<string, string>;
 }) {
   const {
     tableName,
     createValidator,
     updateValidator,
     filtersValidator,
+    getFiltersValidator,
     softDelete = true,
-    indexMap = {},
   } = config;
 
   // ============================================================================
@@ -73,41 +74,40 @@ export function createCrudOperations<
    * Client-side filtering handles complex queries.
    */
   const list = query({
-    args: {
-      filters: v.optional(filtersValidator),
-    },
-    handler: async (ctx, args): Promise<Doc<TableName>[]> => {
+    args: v.object({
+      filter: v.optional(filtersValidator),
+    }),
+    handler: async (ctx, args): Promise<Doc<typeof tableName>[]> => {
       const identity = await isAuthenticated(ctx);
-
       let query: any;
 
-      // Check if we have ONE filter that maps to an index
-      if (args.filters) {
-        for (const [filterKey, filterValue] of Object.entries(args.filters)) {
-          if (indexMap[filterKey] && filterValue !== undefined) {
-            // Use the mapped index
-            query = ctx.db
-              .query(tableName)
-              .withIndex(indexMap[filterKey], (q: any) =>
-                q.eq(filterKey, filterValue)
-              )
-              .order("desc");
-            break;
-          }
+      if (args.filter) {
+        for (const [filterKey, filterValue] of Object.entries(args.filter)) {
+          if (!filterValue) continue;
+          const entries = Object.entries(filterValue);
+
+          if (!entries.length) continue;
+
+          query = ctx.db.query(tableName).withIndex(filterKey, (q) => {
+            let filtered = q as any;
+            for (const [field, val] of entries) {
+              filtered = filtered.eq(field as any, val as any);
+            }
+
+            filtered = filtered.eq("tenantId", identity.tenantId);
+            return filtered;
+          });
         }
       }
 
-      // Fallback: return ALL tenant records
       if (!query) {
         query = ctx.db
           .query(tableName)
-          .withIndex("by_tenant_ordered", (q: any) =>
+          .withIndex("by_tenant", (q: any) =>
             q.eq("tenantId", identity.tenantId)
-          )
-          .order("desc");
+          );
       }
 
-      // Filter soft-deleted
       if (softDelete) {
         query = query.filter((q: any) => q.eq(q.field("deletedAt"), undefined));
       }
@@ -121,25 +121,29 @@ export function createCrudOperations<
    */
   const list_s = query({
     args: {
-      filters: v.optional(filtersValidator),
+      filter: v.optional(filtersValidator),
       secret: v.string(),
     },
-    handler: async (ctx, args) => {
+    handler: async (ctx, args): Promise<Doc<typeof tableName>[]> => {
       await isValidSecret(args.secret);
       let query: any;
 
       // Check if we have ONE filter that maps to an index
-      if (args.filters) {
-        for (const [filterKey, filterValue] of Object.entries(args.filters)) {
-          if (indexMap[filterKey] && filterValue !== undefined) {
-            query = ctx.db
-              .query(tableName)
-              .withIndex(indexMap[filterKey], (q: any) =>
-                q.eq(filterKey, filterValue)
-              )
-              .order("desc");
-            break;
-          }
+      if (args.filter) {
+        for (const [filterKey, filterValue] of Object.entries(args.filter)) {
+          if (!filterValue) continue;
+          const entries = Object.entries(filterValue);
+
+          if (!entries.length) continue;
+
+          query = ctx.db.query(tableName).withIndex(filterKey, (q) => {
+            let filtered = q as any;
+            for (const [field, val] of entries) {
+              filtered = filtered.eq(field as any, val as any);
+            }
+
+            return filtered;
+          });
         }
       }
 
@@ -161,16 +165,63 @@ export function createCrudOperations<
   // GET OPERATIONS
   // ============================================================================
 
+  const getRecord = async (
+    ctx: QueryCtx,
+    args: {
+      id?: Id<TableName> | undefined;
+      tenantId?: Id<"tenants">;
+      filters?: Exclude<GetFields, undefined> | undefined;
+    }
+  ): Promise<Doc<typeof tableName> | null> => {
+    if (args.id) {
+      return await ctx.db.get(args.id);
+    }
+
+    let query: any;
+
+    // Check if we have ONE filter that maps to an index
+    if (args.filters) {
+      for (const [filterKey, filterValue] of Object.entries(args.filters)) {
+        if (!filterValue) continue;
+        const entries = Object.entries(filterValue);
+
+        if (!entries.length) continue;
+
+        query = ctx.db.query(tableName).withIndex(filterKey, (q) => {
+          let filtered = q as any;
+          for (const [field, val] of entries) {
+            filtered = filtered.eq(field as any, val as any);
+          }
+
+          if (args.tenantId) filtered = filtered.eq("tenantId", args.tenantId);
+          return filtered;
+        });
+      }
+    }
+
+    // Fallback: return ALL tenant records
+    if (!query) {
+      return null;
+    }
+
+    return await query.unique();
+  };
+
   /**
    * Get a single record by ID only.
    */
   const get = query({
     args: {
-      id: v.id(tableName),
+      id: v.optional(v.id(tableName)),
+      filters: v.optional(getFiltersValidator),
     },
     handler: async (ctx, args) => {
       const identity = await isAuthenticated(ctx);
-      const record = await ctx.db.get(args.id);
+
+      const record = await getRecord(ctx, {
+        ...args,
+        tenantId: identity.tenantId,
+      });
 
       if (!record) return null;
 
@@ -193,14 +244,18 @@ export function createCrudOperations<
    */
   const get_s = query({
     args: {
-      id: v.id(tableName),
+      id: v.optional(v.id(tableName)),
+      tenantId: v.optional(v.id("tenants")),
+      filters: v.optional(getFiltersValidator),
       secret: v.string(),
     },
     handler: async (ctx, args) => {
       await isValidSecret(args.secret);
-      const record = await ctx.db.get(args.id);
+      const record = await getRecord(ctx, args);
+
       if (!record) return null;
 
+      // Check if soft-deleted
       if (softDelete && (record as any).deletedAt) {
         return null;
       }
@@ -224,7 +279,6 @@ export function createCrudOperations<
       const id = await ctx.db.insert(tableName, {
         ...args.data,
         tenantId: identity.tenantId,
-        createdAt: now,
         updatedAt: now,
       } as any);
 
@@ -235,6 +289,7 @@ export function createCrudOperations<
   const create_s = mutation({
     args: {
       data: createValidator,
+      tenantId: v.id("tenants"),
       secret: v.string(),
     },
     handler: async (ctx, args) => {
@@ -243,7 +298,7 @@ export function createCrudOperations<
 
       const id = await ctx.db.insert(tableName, {
         ...args.data,
-        createdAt: now,
+        tenantId: args.tenantId,
         updatedAt: now,
       } as any);
 
@@ -284,7 +339,6 @@ export function createCrudOperations<
   const update_s = mutation({
     args: {
       id: v.id(tableName),
-      tenantId: v.optional(v.id("tenants")),
       updates: updateValidator,
       secret: v.string(),
     },
@@ -294,10 +348,6 @@ export function createCrudOperations<
 
       if (!record) {
         throw new Error(`${String(tableName)} not found`);
-      }
-
-      if (args.tenantId && (record as any).tenantId !== args.tenantId) {
-        throw new Error("Access denied");
       }
 
       await ctx.db.patch(args.id, {
@@ -346,7 +396,6 @@ export function createCrudOperations<
   const delete_s = mutation({
     args: {
       id: v.id(tableName),
-      tenantId: v.optional(v.id("tenants")),
       hard: v.optional(v.boolean()),
       secret: v.string(),
     },
@@ -356,10 +405,6 @@ export function createCrudOperations<
 
       if (!record) {
         throw new Error(`${String(tableName)} not found`);
-      }
-
-      if (args.tenantId && (record as any).tenantId !== args.tenantId) {
-        throw new Error("Access denied");
       }
 
       if (args.hard || !softDelete) {

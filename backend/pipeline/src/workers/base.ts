@@ -59,7 +59,6 @@ export abstract class BaseWorker {
         message: `Failed for entity ${entityId}`,
         code: "WORKER_FAILED",
       });
-      await this.logError("worker", entityId, error, tenantId);
     }
   }
 
@@ -71,25 +70,6 @@ export abstract class BaseWorker {
     relationshipCount: number
   ): Promise<void>;
 
-  // Helper method to log events for tracking and alerting
-  protected async logEvent(
-    entityId: string,
-    tenantId: string,
-    eventType: string,
-    payload: any,
-    status: "pending" | "completed" | "failed" = "completed"
-  ): Promise<void> {
-    await client.mutation(api.events_log.crud_s.create, {
-      entityId: entityId as any,
-      tenantId: tenantId as any,
-      eventType,
-      payload,
-      processedAt: Date.now(),
-      status,
-      secret: process.env.CONVEX_API_KEY!,
-    });
-  }
-
   private async markEntityComplete(entityId: string): Promise<void> {
     // Add a processing status field to the entity to track completion
     // This assumes you might want to add a status field to entities table
@@ -99,26 +79,6 @@ export abstract class BaseWorker {
         // Uncomment if you add a processing_status field to entities table
         // processingStatus: 'completed'
       },
-      secret: process.env.CONVEX_API_KEY!,
-    });
-  }
-
-  private async logError(
-    stage: string,
-    entityId: string,
-    error: any,
-    tenantId: string
-  ): Promise<void> {
-    await client.mutation(api.events_log.crud_s.create, {
-      entityId: entityId as any,
-      tenantId: tenantId as any,
-      eventType: "pipeline_error",
-      payload: {
-        stage,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      processedAt: Date.now(),
-      status: "failed",
       secret: process.env.CONVEX_API_KEY!,
     });
   }

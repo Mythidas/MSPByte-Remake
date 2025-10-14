@@ -8,7 +8,7 @@ export const isAuthenticated = async (ctx: QueryCtx) => {
   }
   const user = await ctx.db
     .query("users")
-    .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.id))
+    .withIndex("by_clerk", (q) => q.eq("clerkId", identity.id))
     .unique();
   if (!user) {
     throw new Error("Unauthorized: User does not exist");

@@ -10,7 +10,7 @@
 
 	const agentsQuery = useQuery(api.agents.crud.list, () => {
 		const siteId = appState.getSite()?._id;
-		return { filters: { siteId } };
+		return { filter: { by_site: { siteId: siteId! } } };
 	});
 </script>
 

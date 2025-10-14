@@ -20,7 +20,7 @@ export default defineSchema({
     ),
 
     metadata: v.optional(v.any()),
-    createdAt: v.number(),
+
     updatedAt: v.number(),
     deletedAt: v.optional(v.number()),
   }).index("by_status", ["status"]),
@@ -41,28 +41,24 @@ export default defineSchema({
       currentSite: v.optional(v.id("sites")),
     }),
     lastActivityAt: v.optional(v.number()),
-    createdAt: v.number(),
+
     updatedAt: v.number(),
     deletedAt: v.optional(v.number()),
   })
-    .index("by_clerk_id", ["clerkId"])
     .index("by_tenant", ["tenantId"])
-    .index("by_email", ["email"])
-    .index("by_status", ["status"])
-    // Optimized index for pagination with time-based ordering
-    .index("by_tenant_ordered", ["tenantId", "createdAt"]),
+    .index("by_role", ["roleId", "tenantId"])
+    .index("by_email", ["email", "tenantId"])
+    .index("by_clerk", ["clerkId", "tenantId"]),
 
   roles: defineTable({
     tenantId: v.optional(v.id("tenants")), // null = global role
     name: v.string(),
     description: v.string(),
-    rights: v.any(), // JSON object of permissions
-    createdAt: v.number(),
+    rights: v.any(), // JSON object of permissions // TODO: Define structure for rights
+
     updatedAt: v.number(),
     deletedAt: v.optional(v.number()),
-  })
-    .index("by_tenant", ["tenantId"])
-    .index("by_name", ["name"]),
+  }).index("by_tenant", ["tenantId"]),
 
   sites: defineTable({
     tenantId: v.id("tenants"),
@@ -78,18 +74,14 @@ export default defineSchema({
     psaCompanyId: v.optional(v.string()),
     psaParentCompanyId: v.optional(v.string()),
     metadata: v.optional(v.any()),
-    createdAt: v.number(),
+
     updatedAt: v.number(),
     deletedAt: v.optional(v.number()),
   })
-    .index("by_psa_id", ["psaCompanyId"])
     .index("by_tenant", ["tenantId"])
-    .index("by_slug", ["slug"])
-    .index("by_status", ["status"])
-    .index("by_tenant_and_status", ["tenantId", "status"])
-    // Optimized indexes for pagination with time-based ordering
-    .index("by_tenant_ordered", ["tenantId", "createdAt"])
-    .index("by_tenant_status_ordered", ["tenantId", "status", "createdAt"]),
+    .index("by_status", ["status", "tenantId"])
+    .index("by_psa_company", ["psaCompanyId", "tenantId"])
+    .index("by_integration", ["psaIntegrationId", "tenantId"]),
 
   integrations: defineTable({
     // Uses slug as the document ID (like "halopsa", "sophos")
@@ -104,7 +96,7 @@ export default defineSchema({
     productUrl: v.optional(v.string()),
     configSchema: v.optional(v.any()), // JSON schema for configuration
     isActive: v.optional(v.boolean()),
-    createdAt: v.number(),
+
     updatedAt: v.number(),
   })
     .index("by_slug", ["slug"])
@@ -126,18 +118,20 @@ export default defineSchema({
     metadata: v.optional(v.any()), // Storing sync states and cursors
     credentialExpirationAt: v.number(), // When credentials expire
     lastSyncAt: v.optional(v.number()),
-    createdAt: v.number(),
+
     updatedAt: v.number(),
     deletedAt: v.optional(v.number()),
   })
+    .index("by_tenant", ["tenantId"])
     .index("by_integration", ["integrationId", "tenantId"])
-    .index("by_integration_primary", ["integrationId", "isPrimary", "tenantId"])
+    .index("by_primary", ["isPrimary", "tenantId"])
     .index("by_site", ["siteId", "tenantId"])
-    .index("by_status", ["status", "tenantId"])
     .index("by_external_id", ["externalId", "tenantId"])
-    // Optimized indexes for pagination with time-based ordering
-    .index("by_integration_ordered", ["integrationId", "tenantId", "createdAt"])
-    .index("by_site_ordered", ["siteId", "tenantId", "createdAt"]),
+    .index("by_integration_primary", [
+      "integrationId",
+      "isPrimary",
+      "tenantId",
+    ]),
 
   agents: defineTable({
     tenantId: v.id("tenants"),
@@ -154,18 +148,16 @@ export default defineSchema({
     ),
     statusChangedAt: v.optional(v.number()),
     registeredAt: v.optional(v.number()),
-    createdAt: v.number(),
+
     updatedAt: v.number(),
     deletedAt: v.optional(v.number()),
   })
     .index("by_tenant", ["tenantId"])
-    .index("by_site", ["siteId"])
-    .index("by_guid", ["guid"])
-    .index("by_last_status_change", ["statusChangedAt"])
-    .index("by_status_tenant", ["status", "tenantId"])
-    // Optimized indexes for pagination with time-based ordering
-    .index("by_tenant_ordered", ["tenantId", "createdAt"])
-    .index("by_site_ordered", ["siteId", "createdAt"]),
+    .index("by_site", ["siteId", "tenantId"])
+    .index("by_status", ["status", "tenantId"])
+    .index("by_platform", ["platform", "tenantId"])
+    .index("by_guid", ["guid", "tenantId"])
+    .index("by_version", ["version", "tenantId"]),
 
   scheduled_jobs: defineTable({
     tenantId: v.id("tenants"),
@@ -188,23 +180,16 @@ export default defineSchema({
     startedAt: v.optional(v.number()),
     error: v.optional(v.string()),
     createdBy: v.string(),
-    createdAt: v.number(),
+
     updatedAt: v.number(),
   })
-    .index("by_data_source", ["dataSourceId", "tenantId"])
-    .index("by_data_source_status", [
-      "dataSourceId",
-      "status",
-      "tenantId",
-      "createdAt",
-    ])
-    .index("by_status", ["status"])
-    .index("by_scheduled_at", ["scheduledAt"])
     .index("by_tenant", ["tenantId"])
-    .index("by_integration", ["integrationId"])
-    .index("by_next_retry", ["nextRetryAt"])
-    // Optimized index for scheduler polling (pending jobs that are due and under retry limit)
-    .index("by_pending_due", ["status", "scheduledAt"]),
+    .index("by_integration", ["integrationId", "tenantId"])
+    .index("by_pending_due", ["status", "scheduledAt", "tenantId"])
+    .index("by_data_source", ["dataSourceId", "tenantId"])
+    .index("by_data_source_status", ["dataSourceId", "status", "tenantId"])
+    .index("by_status", ["status", "tenantId"])
+    .index("by_scheduled_at", ["scheduledAt", "tenantId"]),
 
   // ============================================================================
   // LOGGING & MONITORING
@@ -224,13 +209,12 @@ export default defineSchema({
     resMetadata: v.any(),
     timeElapsedMs: v.optional(v.number()),
     errorMessage: v.optional(v.string()),
-    createdAt: v.number(),
+
     updatedAt: v.optional(v.number()),
   })
     .index("by_tenant", ["tenantId"])
     .index("by_site", ["siteId"])
-    .index("by_agent", ["agentId"])
-    .index("by_created_at", ["createdAt"]),
+    .index("by_agent", ["agentId"]),
 
   api_logs: defineTable({
     url: v.string(),
@@ -243,10 +227,7 @@ export default defineSchema({
     responseHeaders: v.optional(v.any()),
     errorCode: v.optional(v.string()),
     expiresAt: v.number(), // Auto-cleanup old logs
-    createdAt: v.number(),
-  })
-    .index("by_created_at", ["createdAt"])
-    .index("by_expires_at", ["expiresAt"]),
+  }).index("by_expires_at", ["expiresAt"]),
 
   audit_log: defineTable({
     tenantId: v.id("tenants"),
@@ -259,12 +240,10 @@ export default defineSchema({
       v.literal("delete")
     ),
     changes: v.any(), // JSON diff of changes
-    createdAt: v.number(),
   })
     .index("by_tenant", ["tenantId"])
     .index("by_user", ["userId"])
-    .index("by_table", ["tableName"])
-    .index("by_created_at", ["createdAt"]),
+    .index("by_table", ["tableName"]),
 
   health_checks: defineTable({
     tenantId: v.id("tenants"),
@@ -281,7 +260,7 @@ export default defineSchema({
     lastFailureAt: v.optional(v.number()),
     errorMessage: v.optional(v.string()),
     metadata: v.optional(v.any()),
-    createdAt: v.number(),
+
     updatedAt: v.number(),
   })
     .index("by_tenant", ["tenantId"])
@@ -302,25 +281,16 @@ export default defineSchema({
     dataHash: v.string(), // Hash for change detection
     rawData: v.any(), // Original data from integration
     normalizedData: v.any(), // Normalized/mapped data
-    createdAt: v.number(),
+
     updatedAt: v.number(),
   })
     .index("by_tenant", ["tenantId"])
     .index("by_integration", ["integrationId", "tenantId"])
-    .index("by_integration_type", ["integrationId", "entityType", "tenantId"])
+    .index("by_type", ["entityType", "tenantId"])
     .index("by_data_source", ["dataSourceId", "tenantId"])
     .index("by_site", ["siteId", "tenantId"])
-    .index("by_type", ["entityType", "tenantId"])
     .index("by_external_id", ["integrationId", "externalId", "tenantId"])
-    // Optimized indexes for pagination with time-based ordering
-    .index("by_tenant_ordered", ["tenantId", "createdAt"])
-    .index("by_integration_ordered", ["integrationId", "tenantId", "createdAt"])
-    .index("by_integration_type_ordered", [
-      "integrationId",
-      "entityType",
-      "tenantId",
-      "createdAt",
-    ]),
+    .index("by_integration_type", ["integrationId", "entityType", "tenantId"]),
 
   global_entities: defineTable({
     integrationId: v.id("integrations"),
@@ -329,7 +299,7 @@ export default defineSchema({
     dataHash: v.string(),
     rawData: v.any(),
     normalizedData: v.any(),
-    createdAt: v.number(),
+
     updatedAt: v.number(),
   })
     .index("by_integration", ["integrationId"])
@@ -342,38 +312,13 @@ export default defineSchema({
     childEntityId: v.id("entities"),
     relationshipType: v.string(), // "parent", "child", "related", etc.
     metadata: v.optional(v.any()),
-    createdAt: v.number(),
+
     updatedAt: v.number(),
   })
     .index("by_tenant", ["tenantId"])
     .index("by_parent", ["parentEntityId"])
     .index("by_child", ["childEntityId"])
     .index("by_type", ["relationshipType"]),
-
-  // ============================================================================
-  // EVENTS & PROCESSING
-  // ============================================================================
-
-  events_log: defineTable({
-    tenantId: v.id("tenants"),
-    entityId: v.id("entities"),
-    eventType: v.string(), // "created", "updated", "deleted", etc.
-    status: v.union(
-      v.literal("pending"),
-      v.literal("processing"),
-      v.literal("completed"),
-      v.literal("failed")
-    ),
-    payload: v.any(),
-    processedAt: v.number(),
-    retryCount: v.optional(v.number()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_tenant", ["tenantId"])
-    .index("by_entity", ["entityId"])
-    .index("by_status", ["status"])
-    .index("by_type", ["eventType"]),
 
   // ============================================================================
   // RELATIONSHIPS & MAPPING
@@ -383,86 +328,10 @@ export default defineSchema({
     tenantId: v.optional(v.id("tenants")),
     dataSourceId: v.id("data_sources"),
     siteId: v.id("sites"),
-    createdAt: v.number(),
+
     deletedAt: v.optional(v.number()),
   })
     .index("by_data_source", ["dataSourceId"])
     .index("by_site", ["siteId"])
     .index("by_tenant", ["tenantId"]),
-
-  // ============================================================================
-  // BILLING & PRICING
-  // ============================================================================
-
-  integration_pricing_tiers: defineTable({
-    tenantId: v.id("tenants"),
-    integrationId: v.id("integrations"),
-    name: v.string(),
-    description: v.string(),
-    unitCost: v.number(),
-    effectiveFrom: v.number(),
-    effectiveUntil: v.optional(v.number()),
-    createdAt: v.optional(v.number()),
-    updatedAt: v.optional(v.number()),
-  })
-    .index("by_tenant", ["tenantId"])
-    .index("by_integration", ["integrationId"])
-    .index("by_effective", ["effectiveFrom", "effectiveUntil"]),
-
-  tenant_bills: defineTable({
-    tenantId: v.id("tenants"),
-    periodStart: v.number(),
-    periodEnd: v.number(),
-    status: v.union(
-      v.literal("draft"),
-      v.literal("finalized"),
-      v.literal("paid"),
-      v.literal("cancelled")
-    ),
-    total: v.number(),
-    notes: v.optional(v.string()),
-    finalizedAt: v.optional(v.number()),
-    paidAt: v.optional(v.number()),
-    createdAt: v.optional(v.number()),
-    updatedAt: v.optional(v.number()),
-  })
-    .index("by_tenant", ["tenantId"])
-    .index("by_period", ["periodStart", "periodEnd"])
-    .index("by_status", ["status"]),
-
-  tenant_bill_line_items: defineTable({
-    tenantId: v.id("tenants"),
-    billId: v.id("tenant_bills"),
-    integrationId: v.id("integrations"),
-    pricingTierId: v.id("integration_pricing_tiers"),
-    description: v.string(),
-    units: v.number(),
-    unitCost: v.number(), // Note: typo in original "unti_cost"
-    total: v.number(),
-    metadata: v.optional(v.any()),
-    createdAt: v.optional(v.number()),
-  })
-    .index("by_tenant", ["tenantId"])
-    .index("by_bill", ["billId"])
-    .index("by_integration", ["integrationId"]),
-
-  tenant_billing_adjustments: defineTable({
-    tenantId: v.id("tenants"),
-    integrationId: v.optional(v.id("integrations")),
-    type: v.union(
-      v.literal("credit"),
-      v.literal("debit"),
-      v.literal("discount")
-    ),
-    amount: v.number(),
-    reason: v.string(),
-    effectiveFrom: v.number(),
-    effectiveTo: v.number(),
-    createdBy: v.optional(v.id("users")),
-    createdAt: v.optional(v.number()),
-    updatedAt: v.optional(v.number()),
-  })
-    .index("by_tenant", ["tenantId"])
-    .index("by_integration", ["integrationId"])
-    .index("by_effective", ["effectiveFrom", "effectiveTo"]),
 });

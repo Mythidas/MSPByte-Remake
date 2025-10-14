@@ -76,7 +76,7 @@
 				<div class="flex gap-2">
 					{#if mostRecentJob}
 						<span class="text-sm font-medium text-muted-foreground">
-							{formatLastSynced(mostRecentJob.updatedAt || mostRecentJob.createdAt)}
+							{formatLastSynced(mostRecentJob.updatedAt || mostRecentJob._creationTime)}
 						</span>
 					{/if}
 					<Badge variant={getStatusBadge(mostRecentJob).variant}>

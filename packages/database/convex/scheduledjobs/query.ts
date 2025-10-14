@@ -22,7 +22,3 @@ export const getFailedCountByDataSource = query({
     return jobs.length;
   },
 });
-
-// Replaced by scheduledjobs/crud.ts::get with filters
-// Note: Original used .unique(), CRUD uses .first() - similar but slightly different behavior
-// export const getRecentByDataSource = ...

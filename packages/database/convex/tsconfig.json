@@ -18,11 +18,8 @@
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "isolatedModules": true,
-    "noEmit": true,
-    "paths": {
-      "@workspace/shared/*": ["../../packages/shared/src/*"]
-    }
+    "noEmit": true
   },
-  "include": ["./**/*", "../../shared/src/lib/convex.ts"],
+  "include": ["./**/*"],
   "exclude": ["./_generated"]
 }

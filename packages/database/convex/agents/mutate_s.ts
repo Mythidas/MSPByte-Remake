@@ -28,7 +28,6 @@ export const createApiLog = mutation({
 
     await ctx.db.insert("agent_api_logs", {
       ...args,
-      createdAt: new Date().getTime(),
       updatedAt: new Date().getTime(),
     });
   },

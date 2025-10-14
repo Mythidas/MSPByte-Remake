@@ -262,10 +262,12 @@ export abstract class BaseProcessor<T = any> {
       parentEventID: originalEvent.eventID,
 
       entityIDs: storedEntities.map((e) => e._id),
-      entitiesCreated: storedEntities.filter((e) => e.createdAt === e.updatedAt)
-        .length,
-      entitiesUpdated: storedEntities.filter((e) => e.createdAt !== e.updatedAt)
-        .length,
+      entitiesCreated: storedEntities.filter(
+        (e) => e._creationTime === e.updatedAt
+      ).length,
+      entitiesUpdated: storedEntities.filter(
+        (e) => e._creationTime !== e.updatedAt
+      ).length,
       entitiesSkipped: originalEvent.total - totalProcessed,
     };
 

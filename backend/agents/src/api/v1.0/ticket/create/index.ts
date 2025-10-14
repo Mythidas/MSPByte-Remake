@@ -44,6 +44,7 @@ export default async function (fastify: FastifyInstance) {
         );
       }
 
+      // TODO: Implement Convex function to simplify API fetching
       // Fetch agent, site, and data source from database
       const [agent, site, dataSource] = await perf.trackSpan(
         "db_fetch_records",
@@ -53,7 +54,7 @@ export default async function (fastify: FastifyInstance) {
               id: deviceID as any,
               secret: CONVEX_API_KEY,
             }),
-            client.query(api.sites.crud_s.get, {
+            client.query(api.sites.crud.get_s, {
               id: siteID as any,
               secret: CONVEX_API_KEY,
             }),
@@ -65,10 +66,12 @@ export default async function (fastify: FastifyInstance) {
 
           // Get PSA data source from agent integration config
           const agentIntegration = await client.query(
-            api.integrations.crud_s.get,
+            api.integrations.crud.get_s,
             {
-              slug: "msp-agent",
               secret: CONVEX_API_KEY,
+              filters: {
+                by_slug: { slug: "msp-agent" },
+              },
             }
           );
 
@@ -76,11 +79,15 @@ export default async function (fastify: FastifyInstance) {
             throw new Error("MSP Agent integration not found");
           }
 
-          const agentSource = await client.query(api.datasources.crud_s.get, {
-            integrationId: agentIntegration._id,
-            isPrimary: true,
+          const agentSource = await client.query(api.datasources.crud.get_s, {
             tenantId: siteRes.tenantId,
             secret: CONVEX_API_KEY,
+            filters: {
+              by_integration_primary: {
+                integrationId: agentIntegration._id,
+                isPrimary: true,
+              },
+            },
           });
 
           if (!agentSource) {
@@ -92,11 +99,15 @@ export default async function (fastify: FastifyInstance) {
             return [agentRes, siteRes, null];
           }
 
-          const dataSourceRes = await client.query(api.datasources.crud_s.get, {
-            integrationId: psaIntegrationId as any,
-            isPrimary: true,
+          const dataSourceRes = await client.query(api.datasources.crud.get_s, {
             tenantId: siteRes.tenantId,
             secret: CONVEX_API_KEY,
+            filters: {
+              by_integration_primary: {
+                integrationId: psaIntegrationId as any,
+                isPrimary: true,
+              },
+            },
           });
 
           return [agentRes, siteRes, dataSourceRes];

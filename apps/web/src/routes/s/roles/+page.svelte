@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { api } from '$lib/convex';
 	import DataTable from '$lib/components/table/DataTable.svelte';
-	import { getAppState } from '$lib/state/Application.svelte.js';
 	import { useQuery } from 'convex-svelte';
 
 	// Use the infinite scrolling hook

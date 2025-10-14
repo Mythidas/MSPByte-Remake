@@ -1,4 +1,3 @@
-import { v } from "convex/values";
 import { query } from "../_generated/server.js";
 import { isAuthenticated } from "../helpers/validators.js";
 

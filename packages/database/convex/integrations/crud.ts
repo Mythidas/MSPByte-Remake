@@ -5,44 +5,47 @@ import { createCrudOperations } from "../helpers/crudFactory.js";
 // VALIDATORS
 // ============================================================================
 
-const createValidator = v.object({
-  name: v.string(),
-  description: v.string(),
-  rights: v.any(),
+const createValidator = v.object({});
+const updateValidator = v.object({});
+
+const getFiltersValidator = v.object({
+  by_slug: v.optional(
+    v.object({
+      slug: v.string(),
+    })
+  ),
 });
 
-const updateValidator = v.object({
-  name: v.optional(v.string()),
-  description: v.optional(v.string()),
-  rights: v.optional(v.any()),
+const filtersValidator = v.object({
+  by_category: v.optional(
+    v.object({
+      category: v.string(),
+    })
+  ),
+  by_is_active: v.optional(
+    v.object({
+      isActive: v.boolean(),
+    })
+  ),
 });
-
-const getFiltersValidator = v.object({});
-const filtersValidator = v.object({});
 
 // ============================================================================
 // GENERATED CRUD OPERATIONS
 // ============================================================================
 
 const crud = createCrudOperations({
-  tableName: "roles",
+  tableName: "integrations",
   createValidator,
   updateValidator,
   filtersValidator,
   getFiltersValidator,
-  softDelete: true,
+  softDelete: false,
 });
 
 // Export all generated CRUD operations
 export const list = crud.list;
 export const get = crud.get;
-export const create = crud.create;
-export const update = crud.update;
-export const remove = crud.delete;
 
 // Export internal functions for server-side use
 export const list_s = crud.list_s;
 export const get_s = crud.get_s;
-export const create_s = crud.create_s;
-export const update_s = crud.update_s;
-export const remove_s = crud.delete_s;

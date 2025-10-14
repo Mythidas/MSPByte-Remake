@@ -72,10 +72,13 @@ export class SophosPartnerAdapter extends BaseAdapter {
       });
     }
 
-    const sophosDataSources = await client.query(api.datasources.crud_s.list, {
-      integrationId: sophosIntegration._id,
-      tenantId: dataSource.tenantId,
+    const sophosDataSources = await client.query(api.datasources.crud.list_s, {
       secret: process.env.CONVEX_API_KEY!,
+      filter: {
+        by_integration: {
+          integrationId: sophosIntegration._id,
+        },
+      },
     });
 
     // Find the global data source (no siteId)

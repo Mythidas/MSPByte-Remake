@@ -1,8 +1,6 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server.js";
 import { isAuthenticated } from "../helpers/validators.js";
-import { Query, QueryInitializer } from "convex/server";
-import { DataModel } from "../_generated/dataModel.js";
 
 export const getCompaniesWithSite = query({
   args: {
@@ -23,7 +21,9 @@ export const getCompaniesWithSite = query({
       entities.map(async (e) => {
         const site = await ctx.db
           .query("sites")
-          .withIndex("by_psa_id", (q) => q.eq("psaCompanyId", e.externalId))
+          .withIndex("by_psa_company", (q) =>
+            q.eq("psaCompanyId", e.externalId).eq("tenantId", identity.tenantId)
+          )
           .unique();
 
         return {

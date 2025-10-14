@@ -60,7 +60,6 @@ export const createPrimaryForIntegration = mutation({
       config: {},
       credentialExpirationAt: Number.MAX_SAFE_INTEGER,
       isPrimary: true,
-      createdAt: new Date().getTime(),
       updatedAt: new Date().getTime(),
     });
 
@@ -110,7 +109,6 @@ export const createSiteMapping = mutation({
         config: args.config,
         credentialExpirationAt: Number.MAX_SAFE_INTEGER,
         isPrimary: false,
-        createdAt: new Date().getTime(),
         updatedAt: new Date().getTime(),
       });
 

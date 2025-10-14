@@ -33,7 +33,6 @@ export const createScheduledJob = mutation({
       integrationSlug: integration.slug,
       createdBy: identity.email,
       scheduledAt: new Date().getTime(),
-      createdAt: new Date().getTime(),
       updatedAt: new Date().getTime(),
     });
   },
@@ -66,7 +65,6 @@ export const scheduleJobsByIntegration = mutation({
         status: "pending",
         createdBy: identity.email,
         scheduledAt: new Date().getTime(),
-        createdAt: new Date().getTime(),
         updatedAt: new Date().getTime(),
       });
     }

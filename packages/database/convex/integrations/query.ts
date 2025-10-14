@@ -2,29 +2,6 @@ import { v } from "convex/values";
 import { query } from "../_generated/server.js";
 import { isAuthenticated } from "../helpers/validators.js";
 
-export const get = query({
-  args: {
-    id: v.id("integrations"),
-  },
-  handler: async (ctx, args) => {
-    await isAuthenticated(ctx);
-    return await ctx.db.get(args.id);
-  },
-});
-
-export const getBySlug = query({
-  args: {
-    slug: v.string(),
-  },
-  handler: async (ctx, args) => {
-    await isAuthenticated(ctx);
-    return await ctx.db
-      .query("integrations")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .unique();
-  },
-});
-
 export const getStatusMatrix = query({
   args: {
     dataSourceId: v.id("data_sources"),
@@ -43,8 +20,10 @@ export const getStatusMatrix = query({
       )
       .collect();
 
-    // Sort jobs by createdAt descending (most recent first)
-    const sortedJobs = allJobs.sort((a, b) => b.createdAt - a.createdAt);
+    // Sort jobs by _creationTime descending (most recent first)
+    const sortedJobs = allJobs.sort(
+      (a, b) => b._creationTime - a._creationTime
+    );
 
     // Group jobs by entity type
     const jobsByType = new Map<string, typeof sortedJobs>();
@@ -65,7 +44,8 @@ export const getStatusMatrix = query({
 
       return {
         entityType: type,
-        lastSync: mostRecentJob?.updatedAt || mostRecentJob?.createdAt || null,
+        lastSync:
+          mostRecentJob?.updatedAt || mostRecentJob?._creationTime || null,
         status: mostRecentJob?.status || "none",
         error: mostRecentJob?.error || null,
         totalJobs: jobs.length,
@@ -90,21 +70,21 @@ export const listActiveWithDataSource = query({
 
     return Promise.all(
       integrations.map(async (integration) => {
-        const dataSource = await ctx.db
+        const dataSources = await ctx.db
           .query("data_sources")
-          .withIndex("by_integration_primary", (q) =>
-            q
-              .eq("integrationId", integration._id)
-              .eq("isPrimary", true)
-              .eq("tenantId", identity.tenantId)
+          .withIndex("by_primary", (q) =>
+            q.eq("isPrimary", true).eq("tenantId", identity.tenantId)
           )
-          .unique();
+          .collect();
+        const target = dataSources.find(
+          (ds) => ds.integrationId === integration._id
+        );
 
         return {
           ...integration,
-          isEnabled: (dataSource && !dataSource.deletedAt) || false,
-          dataSourceId: dataSource?._id,
-          dataSourceStatus: dataSource?.status,
+          isEnabled: (target && !target.deletedAt) || false,
+          dataSourceId: target?._id,
+          dataSourceStatus: target?.status,
         };
       })
     );

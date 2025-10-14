@@ -2,9 +2,6 @@ import { v } from "convex/values";
 import { query } from "../_generated/server.js";
 import { isAuthenticated, isValidTenant } from "../helpers/validators.js";
 
-// Replaced by sites/crud.ts::list
-// export const getSites = ...
-
 export const getSiteWithIntegrationsView = query({
   args: {
     id: v.id("sites"),
