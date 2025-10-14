@@ -7,7 +7,7 @@
 
 	const integration = getIntegration();
 
-	const formatLastSynced = (dateRaw: number | null) => {
+	const formatLastSynced = (dateRaw?: number | null) => {
 		if (!dateRaw) return 'Never';
 		const date = new Date(dateRaw);
 		const now = new Date();
@@ -27,10 +27,10 @@
 				dataSourceId: integration.dataSource._id,
 				supportedTypes: integration.integration.supportedTypes
 			})
-		: undefined;
+		: { isLoading: true, data: undefined };
 	const syncStatuses = $derived(syncStatusQuery?.data);
 
-	const getStatusBadge = (status: string) => {
+	const getStatusBadge = (status?: string) => {
 		switch (status) {
 			case 'running':
 				return { variant: 'default' as const, text: 'Syncing' };
@@ -69,18 +69,19 @@
 	</div>
 {:else}
 	<div class="space-y-3">
-		{#each syncStatuses || [] as syncStatus}
+		{#each integration.integration.supportedTypes as type}
+			{@const syncStatus = syncStatuses?.find((ss) => ss.entityType === type)}
 			<div class="rounded-lg border p-4">
 				<div class="flex items-start justify-between">
 					<div class="flex-1">
 						<div class="flex items-center gap-3">
-							<h3 class="font-semibold">{formatEntityType(syncStatus.entityType)}</h3>
-							<Badge variant={getStatusBadge(syncStatus.status).variant}>
-								{getStatusBadge(syncStatus.status).text}
+							<h3 class="font-semibold">{formatEntityType(type)}</h3>
+							<Badge variant={getStatusBadge(syncStatus?.status).variant}>
+								{getStatusBadge(syncStatus?.status).text}
 							</Badge>
-							{#if syncStatus.failedJobs > 0}
+							{#if syncStatus && syncStatus.failedJobs > 0}
 								<Badge variant="destructive"
-									>{syncStatus.failedJobs} Error{syncStatus.failedJobs > 1 ? 's' : ''}</Badge
+									>{syncStatus?.failedJobs} Error{syncStatus.failedJobs > 1 ? 's' : ''}</Badge
 								>
 							{/if}
 						</div>
@@ -88,23 +89,23 @@
 						<div class="mt-2 grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
 							<div>
 								<span class="text-muted-foreground">Last Sync:</span>
-								<span class="ml-1 font-medium">{formatLastSynced(syncStatus.lastSync)}</span>
+								<span class="ml-1 font-medium">{formatLastSynced(syncStatus?.lastSync)}</span>
 							</div>
 							<div>
 								<span class="text-muted-foreground">Total Jobs:</span>
-								<span class="ml-1 font-medium">{syncStatus.totalJobs}</span>
+								<span class="ml-1 font-medium">{syncStatus?.totalJobs || 0}</span>
 							</div>
 							<div>
 								<span class="text-muted-foreground">Running:</span>
-								<span class="ml-1 font-medium">{syncStatus.runningJobs}</span>
+								<span class="ml-1 font-medium">{syncStatus?.runningJobs || 0}</span>
 							</div>
 							<div>
 								<span class="text-muted-foreground">Pending:</span>
-								<span class="ml-1 font-medium">{syncStatus.pendingJobs}</span>
+								<span class="ml-1 font-medium">{syncStatus?.pendingJobs || 0}</span>
 							</div>
 						</div>
 
-						{#if syncStatus.error}
+						{#if syncStatus?.error}
 							<div class="mt-3 rounded-md bg-destructive/10 p-3">
 								<p class="text-sm font-medium text-destructive">Latest Error:</p>
 								<p class="mt-1 text-sm text-destructive/80">{syncStatus.error}</p>

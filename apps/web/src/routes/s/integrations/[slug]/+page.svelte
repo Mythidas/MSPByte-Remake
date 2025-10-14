@@ -25,6 +25,8 @@
 	import { api } from '$lib/convex';
 	import { page } from '$app/state';
 	import Loader from '$lib/components/Loader.svelte';
+	import DatePicker from '$lib/components/DatePicker.svelte';
+	import { CalendarDate, getLocalTimeZone, type DateValue } from '@internationalized/date';
 
 	// Get slug from URL params
 	const slug = $derived(page.params.slug);
@@ -75,10 +77,12 @@
 	});
 
 	// Configuration form state
-	let configFormData = $state<Record<string, string>>({});
+	let configFormData = $state<Record<string, string | number | undefined>>({});
+	let credentialExpiration = $state<number | undefined>(undefined);
 	const isValidConfig = $derived(
 		integration.isValidConfig(configFormData) &&
-			integration.isConfigChanged(configFormData) &&
+			(integration.isConfigChanged(configFormData) ||
+				credentialExpiration !== dataSourceData?.credentialExpirationAt) &&
 			Object.values(configFormData).every((val) => !!val)
 	);
 
@@ -103,6 +107,7 @@
 			initialData[key] = dataSourceConfig?.[key] || '';
 		});
 
+		credentialExpiration = dataSourceData?.credentialExpirationAt;
 		configFormData = initialData;
 	});
 
@@ -110,7 +115,19 @@
 		const formData = new FormData();
 		formData.append('dataSourceId', integration.dataSource?._id || '');
 		formData.append('integrationId', integration.integration._id);
+
+		for (const [key, val] of Object.entries(configFormData)) {
+			if (val === dataSourceData?.config[key]) {
+				configFormData[key] = undefined;
+			}
+		}
+
+		if (credentialExpiration) {
+			configFormData['expiration'] = credentialExpiration;
+		}
+
 		formData.append('config', JSON.stringify(configFormData));
+		formData.append('originalConfig', JSON.stringify(dataSourceData?.config));
 
 		const response = await fetch(window.location.pathname + '?/saveConfig', {
 			method: 'POST',
@@ -126,14 +143,6 @@
 			if (integration.dataSource) {
 				integration.dataSource.config = configFormData;
 			}
-
-			// Re-initialize form with saved values
-			const schema = integration.integration?.configSchema || {};
-			const newData: Record<string, string> = {};
-			Object.keys(schema).forEach((key) => {
-				newData[key] = configFormData[key] || '';
-			});
-			configFormData = newData;
 		} else {
 			toast.error(result.data?.message || 'Failed to save configuration');
 		}
@@ -158,13 +167,6 @@
 		dataSourceId: integration.dataSource?._id || ('' as any)
 	}));
 	const totalFailedJobs = $derived(totalFailedJobsQuery.data);
-
-	// // Fetch failed jobs count on mount and poll every 30 seconds
-	// $effect(() => {
-	// 	fetchFailedJobsCount();
-	// 	const interval = setInterval(fetchFailedJobsCount, 30000);
-	// 	return () => clearInterval(interval);
-	// });
 </script>
 
 <div class="flex size-full max-h-full flex-col gap-4 overflow-hidden">
@@ -370,6 +372,16 @@
 										/>
 									</Label>
 								{/each}
+
+								{#if !config.noExpiration}
+									<Label for="expiration" class="flex flex-col items-start gap-2">
+										<span>Expiration</span>
+										<DatePicker
+											bind:value={credentialExpiration}
+											defaultValue={dataSourceData?.credentialExpirationAt}
+										/>
+									</Label>
+								{/if}
 
 								<div class="flex justify-end gap-2">
 									<Button type="submit" disabled={!isValidConfig}>Save Configuration</Button>

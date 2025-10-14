@@ -54,6 +54,7 @@ export const actions = {
 		const dataSourceId = formData.get('dataSourceId') as string;
 		const integrationId = formData.get('integrationId') as string;
 		const configJson = formData.get('config') as string;
+		const originalConfigJson = formData.get('originalConfig') as string;
 
 		if (!dataSourceId || !integrationId || !configJson) {
 			return fail(400, { success: false, message: 'Missing required fields' });
@@ -69,8 +70,10 @@ export const actions = {
 
 		// Parse the config
 		let config: Record<string, any>;
+		let originalConfig: Record<string, any>;
 		try {
 			config = JSON.parse(configJson);
+			originalConfig = JSON.parse(originalConfigJson);
 		} catch {
 			return fail(400, { success: false, message: 'Invalid config format' });
 		}
@@ -78,8 +81,11 @@ export const actions = {
 		// Encrypt sensitive fields based on config_schema
 		const configSchema = integration.configSchema as Record<string, { sensitive?: boolean }>;
 		const processedConfig: Record<string, any> = {};
+		const expiration = config['expiration'] as number | undefined;
 
 		for (const [key, value] of Object.entries(config)) {
+			if (!configSchema[key]) continue;
+
 			if (configSchema[key]?.sensitive && value) {
 				// Only encrypt if value is not empty (user provided new value)
 				processedConfig[key] = await Encryption.encrypt(value, ENCRYPTION_KEY);
@@ -88,10 +94,16 @@ export const actions = {
 			}
 		}
 
+		for (const [key, value] of Object.entries(originalConfig)) {
+			if (processedConfig[key]) continue;
+			processedConfig[key] = value;
+		}
+
 		const data = await locals.client.mutation(api.datasources.crud.update, {
 			id: dataSourceId as any,
 			updates: {
-				config: processedConfig
+				config: processedConfig,
+				credentialExpirationAt: expiration
 			}
 		});
 

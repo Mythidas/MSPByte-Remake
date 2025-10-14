@@ -39,6 +39,7 @@ export interface IntegrationConfig {
 	getBillingData?: (integration: IntegrationState) => Promise<IntegrationBillingData>;
 
 	hasSyncStats?: boolean;
+	noExpiration?: boolean;
 }
 
 export const integrationConfigs: Record<string, IntegrationConfig> = {
