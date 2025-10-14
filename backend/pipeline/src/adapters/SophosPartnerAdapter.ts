@@ -58,10 +58,13 @@ export class SophosPartnerAdapter extends BaseAdapter {
     dataSource: Doc<"data_sources">
   ): Promise<APIResponse<DataFetchPayload[]>> {
     // Get the global Sophos Partner data source (tenant-level, no siteId)
-    const sophosIntegration = await client.query(api.integrations.crud_s.get, {
-      slug: "sophos-partner",
-      secret: process.env.CONVEX_API_KEY!,
-    });
+    const sophosIntegration = await client.query(
+      api.integrations.query_s.getBySlug,
+      {
+        secret: process.env.CONVEX_API_KEY!,
+        slug: "sophos-partner",
+      }
+    );
 
     if (!sophosIntegration) {
       return Debug.error({

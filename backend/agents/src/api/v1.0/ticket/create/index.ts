@@ -66,12 +66,10 @@ export default async function (fastify: FastifyInstance) {
 
           // Get PSA data source from agent integration config
           const agentIntegration = await client.query(
-            api.integrations.crud.get_s,
+            api.integrations.query_s.getBySlug,
             {
               secret: CONVEX_API_KEY,
-              filters: {
-                by_slug: { slug: "msp-agent" },
-              },
+              slug: "msp-agent",
             }
           );
 

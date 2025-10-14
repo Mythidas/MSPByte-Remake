@@ -23,6 +23,7 @@ import type * as helpers_crudFactory from "../helpers/crudFactory.js";
 import type * as helpers_shortcuts from "../helpers/shortcuts.js";
 import type * as helpers_validators from "../helpers/validators.js";
 import type * as integrations_query from "../integrations/query.js";
+import type * as integrations_query_s from "../integrations/query_s.js";
 import type * as roles_crud from "../roles/crud.js";
 import type * as roles_query from "../roles/query.js";
 import type * as scheduledjobs_crud from "../scheduledjobs/crud.js";
@@ -55,6 +56,7 @@ declare const fullApi: ApiFromModules<{
   "helpers/shortcuts": typeof helpers_shortcuts;
   "helpers/validators": typeof helpers_validators;
   "integrations/query": typeof integrations_query;
+  "integrations/query_s": typeof integrations_query_s;
   "roles/crud": typeof roles_crud;
   "roles/query": typeof roles_query;
   "scheduledjobs/crud": typeof scheduledjobs_crud;
