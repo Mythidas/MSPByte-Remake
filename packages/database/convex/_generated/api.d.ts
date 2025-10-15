@@ -17,6 +17,7 @@ import type * as agents_crud from "../agents/crud.js";
 import type * as agents_mutate_s from "../agents/mutate_s.js";
 import type * as datasources_crud from "../datasources/crud.js";
 import type * as datasources_mutate from "../datasources/mutate.js";
+import type * as datasources_to_sites_crud from "../datasources/to_sites/crud.js";
 import type * as entities_crud from "../entities/crud.js";
 import type * as entities_query from "../entities/query.js";
 import type * as helpers_crudFactory from "../helpers/crudFactory.js";
@@ -50,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   "agents/mutate_s": typeof agents_mutate_s;
   "datasources/crud": typeof datasources_crud;
   "datasources/mutate": typeof datasources_mutate;
+  "datasources/to_sites/crud": typeof datasources_to_sites_crud;
   "entities/crud": typeof entities_crud;
   "entities/query": typeof entities_query;
   "helpers/crudFactory": typeof helpers_crudFactory;

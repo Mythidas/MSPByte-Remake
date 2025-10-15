@@ -24,9 +24,8 @@
 {/if}
 
 <ModeWatcher />
-
 <ClerkProvider>
-	<div class="flex h-screen w-screen flex-col">
+	<div class="flex h-screen w-screen flex-col overflow-hidden">
 		{@render children?.()}
 	</div>
 </ClerkProvider>

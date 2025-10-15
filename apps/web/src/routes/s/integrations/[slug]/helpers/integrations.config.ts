@@ -3,6 +3,7 @@ import SophosSiteMapping from './custom-tabs/SophosSiteMapping.svelte';
 import MSPAgentConfig from './custom-tabs/MSPAgentConfig.svelte';
 import HaloPSASiteMapping from './custom-tabs/HaloPSASiteMapping.svelte';
 import type { IntegrationState } from './integration/types.js';
+import M365Configuration from './custom-tabs/M365Configuration.svelte';
 
 export type IntegrationBillingData = {
 	lastMonth: number;
@@ -152,5 +153,18 @@ export const integrationConfigs: Record<string, IntegrationConfig> = {
 		},
 		configuration: MSPAgentConfig,
 		hasSyncStats: false
+	},
+	'microsoft-365': {
+		overview: {
+			description: '',
+			features: []
+		},
+		setup: {
+			requirements: [],
+			steps: []
+		},
+		configuration: M365Configuration,
+		hasSyncStats: true,
+		noExpiration: true
 	}
 };

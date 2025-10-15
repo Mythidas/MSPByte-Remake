@@ -1,10 +1,15 @@
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import type { Actions } from './$types.js';
 import { getConnector } from '@workspace/shared/lib/connectors/index.js';
 import { ENCRYPTION_KEY } from '$env/static/private';
 import type { IntegrationType } from '@workspace/shared/types/pipeline/core.js';
 import Encryption from '@workspace/shared/lib/Encryption.js';
 import { api } from '$lib/convex';
+import { superValidate } from 'sveltekit-superforms';
+import { zod4 } from 'sveltekit-superforms/adapters';
+import { m365ConnectionSchema } from './helpers/integration/schemas.js';
+import type { M365ConsentCallback } from '$lib/types/callbacks.js';
+import { PUBLIC_MICROSOFT_CLIENT_ID, PUBLIC_ORIGIN } from '$env/static/public';
 
 // Load function removed - data is now fetched client-side via Convex for reactivity
 

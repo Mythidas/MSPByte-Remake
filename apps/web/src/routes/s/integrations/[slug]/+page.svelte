@@ -314,7 +314,7 @@
 
 			<!-- Overview Tab -->
 			<TabsContent value="overview" class="space-y-4">
-				<Card>
+				<Card class="size-full overflow-hidden">
 					<CardHeader>
 						<CardTitle>About {integration.integration?.name}</CardTitle>
 						<CardDescription>{config.overview.description}</CardDescription>
@@ -332,7 +332,7 @@
 
 			<!-- Setup Tab -->
 			<TabsContent value="setup" class="space-y-4">
-				<Card>
+				<Card class="size-full overflow-hidden">
 					<CardHeader>
 						<CardTitle>Setup Instructions</CardTitle>
 					</CardHeader>
@@ -363,7 +363,7 @@
 
 			<!-- Configuration Tab -->
 			<TabsContent value="configuration" class="space-y-4">
-				<Card>
+				<Card class="size-full overflow-hidden">
 					<CardHeader>
 						<CardTitle>Configuration Settings</CardTitle>
 						<CardDescription
@@ -417,7 +417,7 @@
 
 			<!-- Billing Tab -->
 			<TabsContent value="billing" class="space-y-4">
-				<Card>
+				<Card class="size-full overflow-hidden">
 					<CardHeader>
 						<CardTitle>Billing Breakdown</CardTitle>
 					</CardHeader>
@@ -477,7 +477,7 @@
 
 			<!-- Troubleshooting Tab -->
 			<TabsContent value="troubleshooting" class="space-y-4">
-				<Card>
+				<Card class="size-full overflow-hidden">
 					<CardHeader>
 						<CardTitle>Troubleshooting & FAQ</CardTitle>
 					</CardHeader>

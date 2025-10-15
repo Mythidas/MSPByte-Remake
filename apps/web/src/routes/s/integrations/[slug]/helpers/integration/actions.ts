@@ -111,8 +111,7 @@ export function createIntegrationActions(state: IntegrationState) {
 				if (state.isValidConfig()) {
 					await appState.convex.mutation(api.scheduledjobs.mutate.scheduleJobsByIntegration, {
 						integrationId: state.integration._id,
-						dataSourceId: state.dataSource?._id,
-						supportedTypes: state.integration.supportedTypes
+						dataSourceId: state.dataSource!._id
 					});
 				}
 				toast.info(result.data?.message || 'Configuration saved successfully!');

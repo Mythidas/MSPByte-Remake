@@ -330,13 +330,13 @@ export default defineSchema({
   // ============================================================================
 
   data_source_to_site: defineTable({
-    tenantId: v.optional(v.id("tenants")),
+    tenantId: v.id("tenants"),
     dataSourceId: v.id("data_sources"),
     siteId: v.id("sites"),
 
     deletedAt: v.optional(v.number()),
   })
-    .index("by_data_source", ["dataSourceId"])
-    .index("by_site", ["siteId"])
-    .index("by_tenant", ["tenantId"]),
+    .index("by_tenant", ["tenantId"])
+    .index("by_data_source", ["dataSourceId", "tenantId"])
+    .index("by_site", ["siteId", "tenantId"]),
 });

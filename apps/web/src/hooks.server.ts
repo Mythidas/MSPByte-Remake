@@ -7,15 +7,19 @@ import { withClerkHandler } from 'svelte-clerk/server';
 const clerkHandle = withClerkHandler();
 
 const convexHandle: Handle = async ({ event, resolve }) => {
-	const auth = event.locals.auth();
-	const token = await auth.getToken({ template: 'convex' });
+	try {
+		const auth = event.locals.auth();
+		const token = await auth.getToken({ template: 'convex' });
 
-	event.locals.token = token || undefined;
-	event.locals.client = new ConvexHttpClient(PUBLIC_CONVEX_URL, {
-		auth: token || undefined
-	});
-
-	return resolve(event);
+		event.locals.token = token || undefined;
+		event.locals.client = new ConvexHttpClient(PUBLIC_CONVEX_URL, {
+			auth: token || undefined
+		});
+	} catch {
+		event.locals.client = new ConvexHttpClient(PUBLIC_CONVEX_URL);
+	} finally {
+		return resolve(event);
+	}
 };
 
 const authGuard: Handle = async ({ event, resolve }) => {
