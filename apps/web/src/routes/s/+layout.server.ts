@@ -1,43 +1,40 @@
 import { api } from '$lib/convex';
-import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types.js';
+import { authKit } from '@workos/authkit-sveltekit';
 
-export const load: LayoutServerLoad = async ({ locals }) => {
-	try {
-		const user = await locals.client.query(api.users.query.getCurrentUser, {});
-		const metadata = user.metadata;
-		const site = metadata.currentSite
-			? await locals.client.query(api.sites.query.getSiteWithIntegrationsView, {
-					id: metadata.currentSite
-				})
-			: undefined;
+export const load: LayoutServerLoad = authKit.withAuth(async ({ locals }) => {
+	// Fetch current user — fail fast if this errors
+	const user = await locals.client.query(api.users.query.getCurrentUser, {});
 
-		const mspAgent = await locals.client.query(api.integrations.query.getBySlug, {
-			slug: 'msp-agent'
-		});
-		if (mspAgent) {
-			const dataSource = await locals.client.query(api.datasources.crud.get, {
+	const metadata = user.metadata;
+
+	// Optional queries
+	const sitePromise = metadata.currentSite
+		? locals.client.query(api.sites.query.getSiteWithIntegrationsView, {
+				id: metadata.currentSite
+			})
+		: Promise.resolve(undefined);
+
+	const mspAgent = await locals.client.query(api.integrations.query.getBySlug, {
+		slug: 'msp-agent'
+	});
+
+	const dataSourcePromise = mspAgent
+		? locals.client.query(api.datasources.crud.get, {
 				filters: {
 					by_integration_primary: {
 						integrationId: mspAgent._id,
 						isPrimary: true
 					}
 				}
-			});
+			})
+		: Promise.resolve(undefined);
 
-			return {
-				user,
-				site,
-				mspagent: dataSource
-			};
-		}
+	const [site, mspagent] = await Promise.all([sitePromise, dataSourcePromise]);
 
-		return {
-			user,
-			site
-		};
-	} catch (err) {
-		console.log(err);
-		return redirect(301, '/');
-	}
-};
+	return {
+		user,
+		site,
+		mspagent
+	};
+});

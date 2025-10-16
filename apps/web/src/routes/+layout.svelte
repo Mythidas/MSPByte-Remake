@@ -5,7 +5,6 @@
 	import { browser } from '$app/environment';
 	import { setupConvex, useConvexClient } from 'convex-svelte';
 	import { PUBLIC_CONVEX_URL } from '$env/static/public';
-	import { ClerkProvider } from 'svelte-clerk';
 	import '../app.css';
 
 	let { data, children } = $props();
@@ -24,8 +23,6 @@
 {/if}
 
 <ModeWatcher />
-<ClerkProvider>
-	<div class="flex h-screen w-screen flex-col overflow-hidden">
-		{@render children?.()}
-	</div>
-</ClerkProvider>
+<div class="flex h-screen w-screen flex-col overflow-hidden">
+	{@render children?.()}
+</div>

@@ -3,21 +3,10 @@ import type { Doc } from "../_generated/dataModel";
 import { paginationOptsValidator } from "convex/server";
 
 export type UserJWT = {
-  id: string;
+  sid: string;
   issuer: string;
   tokenIdentifier: string;
   subject: string;
-
-  name: string;
-  email: string;
-  pictureUrl: string;
-  emailVerified: boolean;
-
-  org_id: string;
-  org_name: string;
-  org_role: string;
-
-  updatedAt: string;
 };
 
 export type PaginationState = {

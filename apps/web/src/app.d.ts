@@ -1,4 +1,4 @@
-/// <reference types="svelte-clerk/env" />
+/// <reference types="@sveltejs/kit" />
 
 import type { SupabaseClient, Session, User } from '@supabase/supabase-js';
 import type { Database } from '@workspace/shared/types/database/import';
@@ -10,7 +10,7 @@ declare global {
 		// interface Error {}
 		interface Locals {
 			client: ConvexHttpClient;
-			token?: string;
+			auth: import('@workos/authkit-sveltekit').AuthKitAuth;
 		}
 		// interface PageData {};
 		// interface PageState {}
