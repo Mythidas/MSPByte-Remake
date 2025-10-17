@@ -3,8 +3,19 @@
 	import DataTable from '$lib/components/table/DataTable.svelte';
 	import { useQuery } from 'convex-svelte';
 
-	// Use the infinite scrolling hook
-	const table = useQuery(api.users.crud.list, {});
+	// Track filters from table
+	let dynamicFilters = $state<any>(undefined);
+
+	// Query with dynamic filters from table
+	const table = useQuery(api.helpers.dynamicCrud.dynamicList, () => ({
+		tableName: 'users',
+		filters: dynamicFilters
+	}));
+	const rolesQuery = useQuery(api.helpers.dynamicCrud.dynamicList, () => ({
+		tableName: 'roles'
+	}));
+	const globalQuery = useQuery(api.roles.query.getGlobal, {});
+	const roles = $derived([...(rolesQuery.data || []), ...(globalQuery.data || [])]);
 </script>
 
 <div class="flex size-full flex-col gap-4">
@@ -13,6 +24,7 @@
 	<DataTable
 		rows={table.data || []}
 		isLoading={table.isLoading}
+		bind:filters={dynamicFilters}
 		columns={[
 			{
 				key: 'name',
@@ -27,7 +39,8 @@
 			{
 				key: 'roleName',
 				title: 'Role',
-				searchable: true
+				searchable: true,
+				render: ({ row }) => roles.find((r) => r._id === row.roleId)?.name
 			},
 			{
 				key: 'status',

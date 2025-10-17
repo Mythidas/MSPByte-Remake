@@ -1,4 +1,12 @@
-import { DataTableURLStateSchema, type DataTableColumn } from '$lib/components/table/types.js';
+import {
+	DataTableURLStateSchema,
+	type DataTableColumn,
+	type TableFilter,
+	type TableView,
+	deserializeFilters,
+	serializeFilters,
+	convertToDynamicCrudFilters
+} from '$lib/components/table/types.js';
 import { useSearchParams } from 'runed/kit';
 import { getContext, setContext } from 'svelte';
 
@@ -27,7 +35,7 @@ export type TableColumnState = {
 	sortColumn: (key: string) => void;
 };
 
-interface TableState {
+export interface TableState {
 	data: any[];
 
 	page: TablePageState;
@@ -41,6 +49,25 @@ interface TableState {
 	globalSearch: string;
 	setGlobalSearch: (val: string) => void;
 	getGlobalSearchFields: () => string[];
+
+	// Filter system
+	filters: TableFilter[];
+	addFilter: (filter: TableFilter) => void;
+	removeFilter: (index: number) => void;
+	clearFilters: () => void;
+	updateFilter: (index: number, filter: TableFilter) => void;
+
+	// Views system
+	views: TableView[];
+	activeView?: TableView;
+	applyView: (viewName: string) => void;
+	clearView: () => void;
+
+	clearAll: () => void;
+
+	// Combined filters for dynamicList
+	getCombinedFilters: () => any;
+	getDynamicCrudFilters: () => any;
 }
 
 class TableStateClass implements TableState {
@@ -59,6 +86,19 @@ class TableStateClass implements TableState {
 
 			const sort = this.params.sort ? this.params.sort.split(':') : undefined;
 			this.columns.sortedColumn = sort ? [sort[0], sort[1] as any] : undefined;
+
+			// Sync filters from URL with column type information
+			this.filters = deserializeFilters(this.params.filters, this.columns.configs);
+
+			// Sync active view from URL
+			if (this.params.view) {
+				const view = this.views.find((v) => v.name === this.params.view);
+				if (view) {
+					this.activeView = view;
+				}
+			} else {
+				this.activeView = undefined;
+			}
 		});
 	}
 
@@ -217,6 +257,67 @@ class TableStateClass implements TableState {
 	getGlobalSearchFields() {
 		return this.columns.configs.filter((col) => col.searchable).map((col) => col.title);
 	}
+
+	// ============================================================================
+	// FILTER SYSTEM
+	// ============================================================================
+
+	filters: TableFilter[] = $state([]);
+	views: TableView[] = $state([]);
+	activeView?: TableView = $state(undefined);
+
+	addFilter = (filter: TableFilter) => {
+		const currentFilters = deserializeFilters(this.params.filters, this.columns.configs);
+		const newFilters = [...currentFilters, filter];
+		this.params.update({ filters: serializeFilters(newFilters), page: '2' });
+	};
+
+	removeFilter = (index: number) => {
+		const currentFilters = deserializeFilters(this.params.filters, this.columns.configs);
+		const newFilters = currentFilters.filter((_, i) => i !== index);
+		this.params.update({ filters: serializeFilters(newFilters), page: '1' });
+	};
+
+	clearFilters = () => {
+		this.params.update({ filters: undefined, page: '1' });
+	};
+
+	updateFilter = (index: number, filter: TableFilter) => {
+		const currentFilters = deserializeFilters(this.params.filters, this.columns.configs);
+		const newFilters = currentFilters.map((f, i) => (i === index ? filter : f));
+		this.params.update({ filters: serializeFilters(newFilters), page: '1' });
+	};
+
+	applyView = (viewName: string) => {
+		const view = this.views.find((v) => v.name === viewName);
+		if (view) {
+			this.params.update({ view: viewName, page: '1' });
+		}
+	};
+
+	clearView = () => {
+		this.params.update({ view: undefined, page: '1' });
+	};
+
+	clearAll = () => {
+		this.params.update({ filters: undefined, view: undefined, page: '1' });
+	};
+
+	/**
+	 * Get combined filters from both active view and dynamic filters
+	 */
+	getCombinedFilters = (): TableFilter[] => {
+		const viewFilters = this.activeView?.filters || [];
+		return [...viewFilters, ...this.filters];
+	};
+
+	/**
+	 * Convert table filters to dynamicCrud format for Convex queries
+	 */
+	getDynamicCrudFilters = () => {
+		const combined = this.getCombinedFilters();
+		return convertToDynamicCrudFilters(combined);
+	};
 }
 
 const DEFAULT_KEY = Symbol('$table_state');

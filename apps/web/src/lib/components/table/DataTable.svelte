@@ -1,91 +1,43 @@
 <script lang="ts">
-	import SearchBar from '$lib/components/SearchBar.svelte';
 	import { setTableState } from '$lib/state/DataTable.svelte.js';
-	import { DataTableURLStateSchema, type DataTableColumn } from '$lib/components/table/types.js';
+	import type { DataTableColumn, TableView } from '$lib/components/table/types.js';
+	import TableToolbar from './TableToolbar.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
-	import {
-		ChevronLeft,
-		ChevronsLeft,
-		ChevronsRight,
-		ChevronsUpDown,
-		Eye,
-		Search
-	} from 'lucide-svelte';
+	import { ChevronLeft, ChevronsLeft, ChevronsRight, ChevronsUpDown } from 'lucide-svelte';
 	import { cn } from '$lib/utils.js';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import ChevronUp from '@lucide/svelte/icons/chevron-up';
+	import Loader from '$lib/components/Loader.svelte';
 
 	type Props = {
 		rows: any[];
 		isLoading: boolean;
 		columns: DataTableColumn<any>[];
+		views?: TableView[];
+		filters?: any;
 	};
 
-	const { rows, columns }: Props = $props();
+	let { rows, columns, views = [], filters = $bindable(), isLoading }: Props = $props();
 	const tableState = setTableState();
 	tableState.columns.configs = columns;
+	tableState.views = views;
 
 	$effect(() => {
 		tableState.data = rows;
 	});
 
-	// $effect(() => {
-	// 	const url = new URL(window.location.href);
-	// 	const urlState = tableState.getURLState();
-
-	// 	url.searchParams.set('page', urlState.page.toString());
-	// 	url.searchParams.set('size', urlState.size.toString());
-
-	// 	if (urlState.globalSearch) {
-	// 		url.searchParams.set('search', urlState.globalSearch);
-	// 	} else url.searchParams.delete('search');
-
-	// 	if (url.toString() === window.location.href) return;
-	// 	goto(url, { replaceState: true, noScroll: true, keepFocus: true });
-	// });
+	// Two-way binding: sync filters with parent
+	$effect(() => {
+		filters = tableState.getDynamicCrudFilters();
+	});
 </script>
 
 <div class="flex size-full flex-col gap-2 overflow-hidden">
-	<!--Header-->
-	<div class="grid grid-cols-2">
-		<SearchBar
-			icon={Search}
-			class="w-1/2"
-			onSearch={tableState.setGlobalSearch}
-			bind:value={tableState.globalSearch}
-			placeholder={`Search ${tableState.getGlobalSearchFields().join(', ')}`}
-		/>
-
-		<div class="flex justify-end gap-2">
-			{#if tableState.columns.hideableColumns().length}
-				<DropdownMenu.Root>
-					<DropdownMenu.Trigger>
-						{#snippet child({ props })}
-							<Button {...props} variant="outline">
-								<Eye class="w-4" />
-							</Button>
-						{/snippet}
-					</DropdownMenu.Trigger>
-					<DropdownMenu.Content>
-						{#each tableState.columns.hideableColumns() as column}
-							<DropdownMenu.CheckboxItem
-								checked={!tableState.columns.hiddenColumns[column.key]}
-								onCheckedChange={() => {
-									tableState.columns.toggleColumn(column.key);
-								}}
-							>
-								{column.title}
-							</DropdownMenu.CheckboxItem>
-						{/each}
-					</DropdownMenu.Content>
-				</DropdownMenu.Root>
-			{/if}
-		</div>
-	</div>
+	<!--Toolbar-->
+	<TableToolbar />
 
 	<!--Table-->
 	<Table.Root>
@@ -121,6 +73,13 @@
 			</Table.Row>
 		</Table.Header>
 		<Table.Body>
+			{#if isLoading && !tableState.getRows().length}
+				<Table.Row>
+					<Table.Cell colspan={tableState.columns.visibleColumns().length}>
+						<Loader />
+					</Table.Cell>
+				</Table.Row>
+			{/if}
 			{#each tableState.getRows() as row}
 				<Table.Row>
 					{#each tableState.columns.visibleColumns() as col}
