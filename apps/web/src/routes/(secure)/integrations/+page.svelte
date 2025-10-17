@@ -121,7 +121,7 @@
 								<Badge variant="secondary">{integ.category}</Badge>
 							</div>
 
-							<Button class="size-fit !p-2" variant="ghost" href={`/s/integrations/${integ.slug}`}>
+							<Button class="size-fit !p-2" variant="ghost" href={`/integrations/${integ.slug}`}>
 								<Settings class="w-4" />
 							</Button>
 						</div>

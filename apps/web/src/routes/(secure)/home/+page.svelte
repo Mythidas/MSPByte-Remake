@@ -1,4 +1,4 @@
 <script lang="ts">
 </script>
 
-<h1>Public</h1>
+<h1>Secure</h1>

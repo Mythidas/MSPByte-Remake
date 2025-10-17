@@ -16,7 +16,7 @@ type TenantInfo = {
 
 export const GET: RequestHandler = async ({ locals, url }) => {
 	const { searchParams } = url;
-	const redUrl = '/s/integrations/microsoft-365';
+	const redUrl = '/integrations/microsoft-365';
 
 	const adminConsent = searchParams.get('admin_consent');
 	const tenantId = searchParams.get('tenant');

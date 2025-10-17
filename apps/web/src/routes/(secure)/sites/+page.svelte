@@ -17,7 +17,7 @@
 
 	{#snippet cellSnip({ row }: { row: any })}
 		<Button
-			href={`/s/sites/${row.slug}`}
+			href={`/sites/${row.slug}`}
 			variant="link"
 			class="p-0 text-primary-foreground hover:text-primary hover:no-underline"
 			onclick={() => appState.setSite(row)}

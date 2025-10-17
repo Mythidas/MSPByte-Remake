@@ -5,16 +5,16 @@ import {
 	WORKOS_COOKIE_PASSWORD
 } from '$env/static/private';
 import { PUBLIC_CONVEX_URL } from '$env/static/public';
-import { type Handle } from '@sveltejs/kit';
+import { redirect, type Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { authKitHandle, configureAuthKit } from '@workos/authkit-sveltekit';
 import { ConvexHttpClient } from 'convex/browser';
 
 configureAuthKit({
-	clientId: WORKOS_CLIENT_ID || '',
-	apiKey: WORKOS_API_KEY || '',
-	redirectUri: WORKOS_REDIRECT_URI || '',
-	cookiePassword: WORKOS_COOKIE_PASSWORD || ''
+	clientId: WORKOS_CLIENT_ID,
+	apiKey: WORKOS_API_KEY,
+	redirectUri: WORKOS_REDIRECT_URI,
+	cookiePassword: WORKOS_COOKIE_PASSWORD
 });
 
 const convexHandle: Handle = async ({ event, resolve }) => {
@@ -23,7 +23,7 @@ const convexHandle: Handle = async ({ event, resolve }) => {
 		auth: token || undefined
 	});
 
-	return resolve(event); // finally return the response
+	return resolve(event);
 };
 
 export const handle = sequence(authKitHandle(), convexHandle);
