@@ -480,7 +480,7 @@ Function CreateSiteConfig
     FileWrite $8 '{$\r$\n'
     FileWrite $8 '  "site_id": "$SiteSecret",$\r$\n'
     FileWrite $8 '  "api_host": "$ApiHost",$\r$\n'
-    FileWrite $8 '  "show_taskbar": false$\r$\n'
+    FileWrite $8 '  "show_tray": false$\r$\n'
     FileWrite $8 '  "installed_at": "$InstallTimestamp"$\r$\n'
     FileWrite $8 '}'
     FileClose $8
