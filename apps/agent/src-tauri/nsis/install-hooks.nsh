@@ -4,7 +4,7 @@
 !define APP_NAME "MSPAgent"
 !define APP_COMPANY "MSPByte"
 !define CONFIG_DIR_NAME "MSPAgent"  ; Folder name in ProgramData
-!define APP_VERSION "0.1.10"
+!define APP_VERSION "0.1.12"
 !define API_HOST "https://agent.mspbyte.pro"
 
 ; =============================================================================
@@ -480,6 +480,7 @@ Function CreateSiteConfig
     FileWrite $8 '{$\r$\n'
     FileWrite $8 '  "site_id": "$SiteSecret",$\r$\n'
     FileWrite $8 '  "api_host": "$ApiHost",$\r$\n'
+    FileWrite $8 '  "show_taskbar": false$\r$\n'
     FileWrite $8 '  "installed_at": "$InstallTimestamp"$\r$\n'
     FileWrite $8 '}'
     FileClose $8

@@ -16,6 +16,7 @@ pub struct Settings {
     pub hostname: Option<String>,
     pub installed_at: String,
     pub registered_at: Option<String>,
+    pub show_tray: Option<bool>, // Show system tray icon - defaults to false if not set
 }
 
 pub fn get_config_dir() -> PathBuf {

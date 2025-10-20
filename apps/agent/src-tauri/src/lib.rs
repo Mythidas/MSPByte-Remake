@@ -83,44 +83,38 @@ pub fn run() {
                 start_heartbeat_task(heartbeat_flag.clone());
             });
 
-            // Create the tray application
-            // let request_support_sc_i = MenuItem::with_id(
-            //     app,
-            //     "request_support_sc",
-            //     "Take Screenshot and Request Support",
-            //     true,
-            //     None::<&str>,
-            // )?;
-            // let request_support_i = MenuItem::with_id(
-            //     app,
-            //     "request_support",
-            //     "Request Support",
-            //     true,
-            //     None::<&str>,
-            // )?;
-            // let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-
-            // // Create menu with items
-            // let menu =
-            //     Menu::with_items(app, &[&request_support_sc_i, &request_support_i, &quit_i])?;
-
-            // // Build tray icon with menu
-            // let _tray = TrayIconBuilder::new()
-            //     .icon(app.default_window_icon().unwrap().clone())
-            //     .menu(&menu)
-            //     .on_menu_event(|app, event| match event.id.as_ref() {
-            //         "request_support_sc" => {
-            //             handle_support_window(app, true);
-            //         }
-            //         "request_support" => {
-            //             handle_support_window(app, false);
-            //         }
-            //         "quit" => {
-            //             app.exit(0);
-            //         }
-            //         _ => {}
-            //     })
-            //     .build(app)?;
+            // Conditionally create system tray based on settings
+            let app_handle = app.app_handle().clone();
+            tauri::async_runtime::spawn(async move {
+                match get_settings().await {
+                    Ok(settings) => {
+                        // Only create tray if show_tray is explicitly set to true
+                        if settings.show_tray.unwrap_or(false) {
+                            log_to_file(
+                                String::from("INFO"),
+                                String::from("show_tray is enabled, creating tray icon"),
+                            );
+                            if let Err(e) = create_tray_icon(&app_handle) {
+                                log_to_file(
+                                    String::from("ERROR"),
+                                    format!("Failed to create tray icon: {}", e),
+                                );
+                            }
+                        } else {
+                            log_to_file(
+                                String::from("INFO"),
+                                String::from("show_tray is disabled or not set, skipping tray creation"),
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        log_to_file(
+                            String::from("WARN"),
+                            format!("Could not load settings for tray creation: {}", e),
+                        );
+                    }
+                }
+            });
 
             Ok(())
         })
@@ -146,6 +140,50 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+fn create_tray_icon(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    log_to_file(String::from("INFO"), String::from("Creating system tray icon"));
+
+    let request_support_sc_i = MenuItem::with_id(
+        app,
+        "request_support_sc",
+        "Take Screenshot and Request Support",
+        true,
+        None::<&str>,
+    )?;
+    let request_support_i = MenuItem::with_id(
+        app,
+        "request_support",
+        "Request Support",
+        true,
+        None::<&str>,
+    )?;
+    let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+
+    // Create menu with items
+    let menu = Menu::with_items(app, &[&request_support_sc_i, &request_support_i, &quit_i])?;
+
+    // Build tray icon with menu
+    let _tray = TrayIconBuilder::new()
+        .icon(app.default_window_icon().unwrap().clone())
+        .menu(&menu)
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "request_support_sc" => {
+                handle_support_window(app, true);
+            }
+            "request_support" => {
+                handle_support_window(app, false);
+            }
+            "quit" => {
+                app.exit(0);
+            }
+            _ => {}
+        })
+        .build(app)?;
+
+    log_to_file(String::from("INFO"), String::from("System tray icon created successfully"));
+    Ok(())
 }
 
 fn create_support_window(app: &AppHandle) {
