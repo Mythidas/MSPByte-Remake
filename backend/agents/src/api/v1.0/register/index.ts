@@ -1,5 +1,6 @@
 import { generateAgentGuid } from "@/lib/utils.js";
 import { api } from "@workspace/database/convex/_generated/api.js";
+import { Doc } from "@workspace/database/convex/_generated/dataModel.js";
 import { client } from "@workspace/shared/lib/convex.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import { FastifyInstance } from "fastify";
@@ -31,10 +32,11 @@ export default async function (fastify: FastifyInstance) {
       );
     }
 
-    const site = await client.query(api.sites.crud.get_s, {
+    const site = (await client.query(api.helpers.orm.get_s, {
+      tableName: "sites",
       id: site_id as any,
       secret: process.env.CONVEX_API_KEY!,
-    });
+    })) as Doc<"sites">;
 
     if (!site) {
       return Debug.response(
@@ -52,15 +54,18 @@ export default async function (fastify: FastifyInstance) {
 
     // Generate GUID using the new utility function
     const calculatedGuid = generateAgentGuid(guid, mac, hostname, site._id);
-    const agent = await client.query(api.agents.crud.get_s, {
+    const agent = await client.query(api.helpers.orm.get_s, {
+      tableName: "agents",
       secret: process.env.CONVEX_API_KEY!,
-      filters: {
-        by_guid: { guid: calculatedGuid },
+      index: {
+        name: "by_guid",
+        params: { guid: calculatedGuid },
       },
     });
 
     const result = !agent
-      ? await client.mutation(api.agents.crud.create_s, {
+      ? await client.mutation(api.helpers.orm.insert_s, {
+          tableName: "agents",
           data: {
             siteId: site._id,
             guid: calculatedGuid,
@@ -71,18 +76,23 @@ export default async function (fastify: FastifyInstance) {
           tenantId: site.tenantId,
           secret: process.env.CONVEX_API_KEY!,
         })
-      : await client.mutation(api.agents.crud.update_s, {
-          id: agent._id,
-          updates: {
-            siteId: site._id,
-            guid: calculatedGuid,
-            hostname,
-            version,
-          },
+      : await client.mutation(api.helpers.orm.update_s, {
+          tableName: "agents",
+          data: [
+            {
+              id: agent._id,
+              updates: {
+                siteId: site._id,
+                guid: calculatedGuid,
+                hostname,
+                version,
+              },
+            },
+          ],
           secret: process.env.CONVEX_API_KEY!,
         });
 
-    if (!result) {
+    if (!result || !result.length) {
       return Debug.response(
         {
           error: {
@@ -99,8 +109,8 @@ export default async function (fastify: FastifyInstance) {
     return Debug.response(
       {
         data: {
-          device_id: result._id,
-          guid: result.guid,
+          device_id: result[0],
+          guid: calculatedGuid,
         },
       },
       200

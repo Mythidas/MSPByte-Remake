@@ -3,7 +3,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import Loader from '$lib/components/Loader.svelte';
 	import { useQuery } from 'convex-svelte';
-	import { api } from '$lib/convex';
+	import { api, type Id } from '$lib/convex';
 
 	const integration = getIntegration();
 
@@ -22,12 +22,20 @@
 		return `${diffDays}d ago`;
 	};
 
-	const syncStatusQuery = integration.dataSource
-		? useQuery(api.integrations.query.getStatusMatrix, {
-				dataSourceId: integration.dataSource._id,
-				supportedTypes: integration.integration.supportedTypes.map((st) => st.type)
-			})
-		: { isLoading: true, data: undefined };
+	const dataSource = $derived(integration.dataSource);
+	const supportedTypes = $derived(integration.integration.supportedTypes.map((st) => st.type));
+
+	// Args function: Return null if invalid to skip query
+	const queryArgs = $derived(() => {
+		const dsId = dataSource?._id;
+		if (!dsId || !supportedTypes.length) return 'skip'; // Skip if missing
+		return {
+			dataSourceId: dsId as Id<'data_sources'>, // Replace "dataSources" with your table name
+			supportedTypes
+		};
+	});
+
+	const syncStatusQuery = useQuery(api.integrations.query.getStatusMatrix, () => queryArgs as any);
 	const syncStatuses = $derived(syncStatusQuery?.data);
 
 	const getStatusBadge = (status?: string) => {

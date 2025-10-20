@@ -150,16 +150,18 @@ export abstract class BaseProcessor<T = any> {
     type: EntityType
   ): Promise<APIResponse<{ rows: Doc<"entities">[] }>> {
     try {
-      const entities = await client.query(api.entities.crud.list_s, {
+      const entities = (await client.query(api.helpers.orm.list_s, {
+        tableName: "entities",
         tenantId: tenantID as any,
         secret: process.env.CONVEX_API_KEY!,
-        filter: {
-          by_integration_type: {
+        index: {
+          name: "by_integration_type",
+          params: {
             integrationId: integrationID as any,
             entityType: type,
           },
         },
-      });
+      })) as Doc<"entities">[];
       return { data: { rows: entities } };
     } catch (error) {
       return {
@@ -235,7 +237,8 @@ export abstract class BaseProcessor<T = any> {
       await Promise.all(
         normalized.map(async (row) => {
           // Check if entity exists using the unique constraint fields
-          const existing = await client.query(api.entities.crud.get_s, {
+          const existing = (await client.query(api.helpers.orm.get_s, {
+            tableName: "entities",
             tenantId: tenantID as any,
             secret: process.env.CONVEX_API_KEY!,
             filters: {
@@ -243,7 +246,7 @@ export abstract class BaseProcessor<T = any> {
                 externalId: row.externalID,
               },
             },
-          });
+          })) as Doc<"entities">;
 
           if (existing) {
             updates.push({
@@ -270,12 +273,13 @@ export abstract class BaseProcessor<T = any> {
       );
 
       const [updateResult, createResult] = await Promise.all([
-        client.mutation(api.entities.crud.batchu_s, {
+        client.mutation(api.helpers.orm.update_s, {
+          tableName: "entities",
           data: updates,
-          tenantId: tenantID as any,
           secret: process.env.CONVEX_API_KEY!,
         }),
-        client.mutation(api.entities.crud.batchc_s, {
+        client.mutation(api.helpers.orm.insert_s, {
+          tableName: "entities",
           tenantId: tenantID as any,
           secret: process.env.CONVEX_API_KEY!,
           data: creates,
@@ -284,7 +288,10 @@ export abstract class BaseProcessor<T = any> {
 
       return {
         data: {
-          ids: [...updateResult, ...createResult],
+          ids: [
+            ...(updateResult as Id<"entities">[]),
+            ...(createResult as Id<"entities">[]),
+          ],
           created: createResult.length,
           updated: updateResult.length,
         },

@@ -1,7 +1,10 @@
 import Redis from "ioredis";
 import Debug from "@workspace/shared/lib/Debug.js";
 import { api } from "@workspace/database/convex/_generated/api.js";
-import type { Id } from "@workspace/database/convex/_generated/dataModel.js";
+import type {
+  Doc,
+  Id,
+} from "@workspace/database/convex/_generated/dataModel.js";
 import { client } from "@workspace/shared/lib/convex.js";
 
 type AgentStatus = "online" | "offline" | "unknown";
@@ -301,10 +304,11 @@ export class HeartbeatManager {
     });
 
     try {
-      const agent = await client.query(api.agents.crud.get_s, {
+      const agent = (await client.query(api.helpers.orm.get_s, {
+        tableName: "agents",
         id: agentId,
         secret: process.env.CONVEX_API_KEY!,
-      });
+      })) as Doc<"agents">;
 
       if (!agent) {
         Debug.log({
@@ -375,9 +379,10 @@ export class HeartbeatManager {
         message: "Seeding Redis with agent states from Convex",
       });
 
-      const agents = await client.query(api.agents.crud.list_s, {
+      const agents = (await client.query(api.helpers.orm.list_s, {
+        tableName: "agents",
         secret: process.env.CONVEX_API_KEY!,
-      });
+      })) as Doc<"agents">[];
 
       if (!agents || agents.length === 0) {
         Debug.log({

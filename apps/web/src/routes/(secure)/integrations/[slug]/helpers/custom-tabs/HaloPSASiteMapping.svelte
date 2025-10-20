@@ -24,7 +24,9 @@
 	let companyToUnlink = $state<{ id: string; name: string } | null>(null);
 	let companyToCreate = $state<any | null>(null);
 
-	const sitesQuery = useQuery(api.sites.crud.list, {});
+	const sitesQuery = useQuery(api.helpers.orm.list, () => ({
+		tableName: 'sites'
+	}));
 	const psaCompaniesQuery = useQuery(api.entities.query.getCompaniesWithSite, {
 		integrationId: integration.integration._id
 	});
@@ -50,13 +52,16 @@
 			toast.error(`Company already linked to ${alreadyLinkedSite.name}`);
 		}
 
-		const query = await appState.convex.mutation(api.sites.crud.update, {
-			id: siteId as any,
-			updates: {
-				psaCompanyId: company.externalId,
-				psaIntegrationId: integration.integration._id,
-				psaParentCompanyId: company.externalParentId,
-				psaIntegrationName: integration.integration.name
+		const query = await appState.convex.mutation(api.helpers.orm.update, {
+			tableName: 'sites',
+			data: {
+				id: siteId as any,
+				updates: {
+					psaCompanyId: company.externalId,
+					psaIntegrationId: integration.integration._id,
+					psaParentCompanyId: company.externalParentId,
+					psaIntegrationName: integration.integration.name
+				}
 			}
 		});
 
@@ -76,7 +81,8 @@
 	async function confirmCreateSite() {
 		if (!companyToCreate) return;
 
-		const newSite = await appState.convex.mutation(api.sites.crud.create, {
+		const newSite = await appState.convex.mutation(api.helpers.orm.insert, {
+			tableName: 'sites',
 			data: {
 				name: companyToCreate.name,
 				psaCompanyId: companyToCreate.externalId,
@@ -116,13 +122,16 @@
 			return;
 		}
 
-		const query = await appState.convex.mutation(api.sites.crud.update, {
-			id: linkedSite._id,
-			updates: {
-				psaCompanyId: null,
-				psaIntegrationId: null,
-				psaIntegrationName: null,
-				psaParentCompanyId: null
+		const query = await appState.convex.mutation(api.helpers.orm.update, {
+			tableName: 'sites',
+			data: {
+				id: linkedSite._id,
+				updates: {
+					psaCompanyId: null,
+					psaIntegrationId: null,
+					psaIntegrationName: null,
+					psaParentCompanyId: null
+				}
 			}
 		});
 

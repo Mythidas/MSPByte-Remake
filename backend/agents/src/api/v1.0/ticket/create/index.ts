@@ -7,6 +7,7 @@ import { logAgentApiCall } from "@/lib/agentLogger.js";
 import { HaloPSAAsset } from "@workspace/shared/types/integrations/halopsa/assets.js";
 import { api } from "@workspace/database/convex/_generated/api.js";
 import { client } from "@workspace/shared/lib/convex.js";
+import { Doc } from "@workspace/database/convex/_generated/dataModel.js";
 
 export default async function (fastify: FastifyInstance) {
   const CONVEX_API_KEY = process.env.CONVEX_API_KEY!;
@@ -49,44 +50,48 @@ export default async function (fastify: FastifyInstance) {
       const [agent, site, dataSource] = await perf.trackSpan(
         "db_fetch_records",
         async () => {
-          const [agentRes, siteRes] = await Promise.all([
-            client.query(api.agents.crud.get_s, {
+          const [agentRes, siteRes] = (await Promise.all([
+            client.query(api.helpers.orm.get_s, {
+              tableName: "agents",
               id: deviceID as any,
               secret: CONVEX_API_KEY,
             }),
-            client.query(api.sites.crud.get_s, {
+            client.query(api.helpers.orm.get_s, {
+              tableName: "sites",
               id: siteID as any,
               secret: CONVEX_API_KEY,
             }),
-          ]);
+          ])) as [Doc<"agents">, Doc<"sites">];
 
           if (!siteRes || !agentRes) {
             throw new Error("Resources not found");
           }
 
           // Get PSA data source from agent integration config
-          const agentIntegration = await client.query(
+          const agentIntegration = (await client.query(
             api.integrations.query_s.getBySlug,
             {
               secret: CONVEX_API_KEY,
               slug: "msp-agent",
             }
-          );
+          )) as Doc<"integrations">;
 
           if (!agentIntegration) {
             throw new Error("MSP Agent integration not found");
           }
 
-          const agentSource = await client.query(api.datasources.crud.get_s, {
+          const agentSource = (await client.query(api.helpers.orm.get_s, {
+            tableName: "data_sources",
             tenantId: siteRes.tenantId,
             secret: CONVEX_API_KEY,
-            filters: {
-              by_integration_primary: {
+            index: {
+              name: "by_integration_primary",
+              params: {
                 integrationId: agentIntegration._id,
                 isPrimary: true,
               },
             },
-          });
+          })) as Doc<"data_sources">;
 
           if (!agentSource) {
             throw new Error("Agent data source not found");
@@ -97,16 +102,18 @@ export default async function (fastify: FastifyInstance) {
             return [agentRes, siteRes, null];
           }
 
-          const dataSourceRes = await client.query(api.datasources.crud.get_s, {
+          const dataSourceRes = (await client.query(api.helpers.orm.get_s, {
+            tableName: "data_sources",
             tenantId: siteRes.tenantId,
             secret: CONVEX_API_KEY,
-            filters: {
-              by_integration_primary: {
+            index: {
+              name: "by_integration_primary",
+              params: {
                 integrationId: psaIntegrationId as any,
                 isPrimary: true,
               },
             },
-          });
+          })) as Doc<"data_sources">;
 
           return [agentRes, siteRes, dataSourceRes];
         }
@@ -394,10 +401,11 @@ export default async function (fastify: FastifyInstance) {
       if (siteID && deviceID) {
         // Get tenant_id for logging (best effort)
         try {
-          const agent = await client.query(api.agents.crud.get_s, {
+          const agent = (await client.query(api.helpers.orm.get_s, {
+            tableName: "agents",
             id: deviceID as any,
             secret: CONVEX_API_KEY,
-          });
+          })) as Doc<"agents">;
 
           if (agent) {
             await logAgentApiCall(

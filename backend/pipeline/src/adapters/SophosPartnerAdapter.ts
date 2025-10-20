@@ -13,6 +13,7 @@ import {
   SophosTenantConfig,
 } from "@workspace/shared/types/integrations/sophos-partner/index.js";
 import { client } from "@workspace/shared/lib/convex.js";
+import { Doc } from "@workspace/database/convex/_generated/dataModel.js";
 
 export class SophosPartnerAdapter extends BaseAdapter {
   constructor() {
@@ -63,7 +64,8 @@ export class SophosPartnerAdapter extends BaseAdapter {
   private async handleEndpointSync(
     props: RawDataProps
   ): Promise<APIResponse<DataFetchPayload[]>> {
-    const sophosSource = await client.query(api.datasources.crud.get_s, {
+    const sophosSource = (await client.query(api.helpers.orm.get_s, {
+      tableName: "data_sources",
       secret: process.env.CONVEX_API_KEY!,
       filters: {
         by_integration_primary: {
@@ -71,7 +73,7 @@ export class SophosPartnerAdapter extends BaseAdapter {
           isPrimary: true,
         },
       },
-    });
+    })) as Doc<"data_sources">;
 
     // Find the global data source (no siteId)
     if (!sophosSource) {

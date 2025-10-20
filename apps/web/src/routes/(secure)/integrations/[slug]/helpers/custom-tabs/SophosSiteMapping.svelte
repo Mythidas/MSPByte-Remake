@@ -23,20 +23,26 @@
 	let unlinkDialogOpen = $state(false);
 	let siteToUnlink = $state<{ id: string; name: string } | null>(null);
 
-	const sitesQuery = useQuery(api.sites.crud.list, {});
-	const dataSourcesQuery = useQuery(api.datasources.crud.list, {
-		filter: {
-			by_integration: { integrationId: integration.integration._id }
+	const sitesQuery = useQuery(api.helpers.orm.list, () => ({
+		tableName: 'sites'
+	}));
+	const dataSourcesQuery = useQuery(api.helpers.orm.list, () => ({
+		tableName: 'data_sources',
+		index: {
+			name: 'by_integration',
+			params: { integrationId: integration.integration._id }
 		}
-	});
-	const entitiesQuery = useQuery(api.entities.crud.list, {
-		filter: {
-			by_integration_type: {
+	}));
+	const entitiesQuery = useQuery(api.helpers.orm.list, () => ({
+		tableName: 'entities',
+		index: {
+			name: 'by_integration_type',
+			params: {
 				integrationId: integration.integration._id,
 				entityType: 'companies'
 			}
 		}
-	});
+	}));
 
 	const sites = $derived(sitesQuery.data);
 	const dataSources = $derived(dataSourcesQuery.data);

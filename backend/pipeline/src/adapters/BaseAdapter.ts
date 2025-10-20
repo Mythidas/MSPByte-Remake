@@ -67,10 +67,11 @@ export abstract class BaseAdapter {
 
     const rawData: DataFetchPayload[] = [];
 
-    const dataSource = await client.query(api.datasources.crud.get_s, {
+    const dataSource = (await client.query(api.helpers.orm.get_s, {
       id: syncEvent.dataSourceID as any,
+      tableName: "data_sources",
       secret: process.env.CONVEX_API_KEY!,
-    });
+    })) as Doc<"data_sources">;
     if (!dataSource) {
       await Scheduler.failJob(job, "Data source not found");
       return;

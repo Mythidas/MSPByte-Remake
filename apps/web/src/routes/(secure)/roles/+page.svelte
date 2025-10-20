@@ -7,7 +7,7 @@
 	let dynamicFilters = $state<any>(undefined);
 
 	// Query with dynamic filters from table
-	const table = useQuery(api.helpers.dynamicCrud.dynamicList, () => ({
+	const table = useQuery(api.helpers.orm.list, () => ({
 		tableName: 'roles',
 		filters: dynamicFilters
 	}));

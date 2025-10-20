@@ -20,9 +20,11 @@ export const load: LayoutServerLoad = authKit.withAuth(async ({ locals }) => {
 	});
 
 	const dataSourcePromise = mspAgent
-		? locals.client.query(api.datasources.crud.get, {
-				filters: {
-					by_integration_primary: {
+		? locals.client.query(api.helpers.orm.get, {
+				tableName: 'data_sources',
+				index: {
+					name: 'by_integration_primary',
+					params: {
 						integrationId: mspAgent._id,
 						isPrimary: true
 					}

@@ -28,7 +28,7 @@
 	let dynamicFilters = $state<any>(undefined);
 
 	// Query with dynamic filters from table
-	const agentsQuery = useQuery(api.helpers.dynamicCrud.dynamicList, () => {
+	const agentsQuery = useQuery(api.helpers.orm.list, () => {
 		const siteId = appState.getSite()?._id;
 		return {
 			tableName: 'agents',

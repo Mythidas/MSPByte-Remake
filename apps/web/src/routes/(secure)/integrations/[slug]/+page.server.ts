@@ -23,7 +23,8 @@ export const actions = {
 			return fail(400, { success: false, message: 'dataSourceId and integrationId are required' });
 		}
 
-		const dataSource = await locals.client.query(api.datasources.crud.get, {
+		const dataSource = await locals.client.query(api.helpers.orm.get, {
+			tableName: 'data_sources',
 			id: dataSourceId as any
 		});
 
@@ -104,11 +105,14 @@ export const actions = {
 			processedConfig[key] = value;
 		}
 
-		const data = await locals.client.mutation(api.datasources.crud.update, {
-			id: dataSourceId as any,
-			updates: {
-				config: processedConfig,
-				credentialExpirationAt: expiration
+		const data = await locals.client.mutation(api.helpers.orm.update, {
+			tableName: 'data_sources',
+			data: {
+				id: dataSourceId as any,
+				updates: {
+					config: processedConfig,
+					credentialExpirationAt: expiration
+				}
 			}
 		});
 

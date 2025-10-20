@@ -40,12 +40,14 @@ export class Scheduler {
   private async pollJobs(): Promise<void> {
     try {
       // Query for due jobs that haven't exceeded retry count
-      const jobs = await client.query(api.scheduledjobs.crud.list_s, {
+      const jobs = (await client.query(api.helpers.orm.list_s, {
+        tableName: "scheduled_jobs",
         secret: process.env.CONVEX_API_KEY!,
-        filter: {
-          by_status: { status: "pending" },
+        index: {
+          name: "by_status",
+          params: { status: "pending" },
         },
-      });
+      })) as Doc<"scheduled_jobs">[];
 
       if (!jobs || jobs.length === 0) {
         return;
@@ -90,12 +92,17 @@ export class Scheduler {
         message: `Processing job ${job._id} for action ${job.action}`,
       });
 
-      await client.mutation(api.scheduledjobs.crud.update_s, {
-        id: job._id,
-        updates: {
-          status: "running",
-          startedAt: Date.now(),
-        },
+      await client.mutation(api.helpers.orm.update_s, {
+        tableName: "scheduled_jobs",
+        data: [
+          {
+            id: job._id,
+            updates: {
+              status: "running",
+              startedAt: Date.now(),
+            },
+          },
+        ],
         secret: process.env.CONVEX_API_KEY!,
       });
 
@@ -141,14 +148,19 @@ export class Scheduler {
     const attemptsMax = job.attemptsMax || 3;
     const invalid = attempts >= attemptsMax;
 
-    await client.mutation(api.scheduledjobs.crud.update_s, {
-      id: job._id,
-      updates: {
-        status: invalid ? "failed" : "failed",
-        error,
-        attempts: attempts + 1,
-        nextRetryAt: Date.now() + 60000,
-      },
+    await client.mutation(api.helpers.orm.update_s, {
+      tableName: "scheduled_jobs",
+      data: [
+        {
+          id: job._id,
+          updates: {
+            status: invalid ? "failed" : "failed",
+            error,
+            attempts: attempts + 1,
+            nextRetryAt: Date.now() + 60000,
+          },
+        },
+      ],
       secret: process.env.CONVEX_API_KEY!,
     });
   }
@@ -158,23 +170,33 @@ export class Scheduler {
     dataSource?: Doc<"data_sources">,
     action?: string
   ) {
-    await client.mutation(api.scheduledjobs.crud.update_s, {
-      id: job._id,
-      updates: {
-        status: "completed",
-      },
+    await client.mutation(api.helpers.orm.update_s, {
+      tableName: "scheduled_jobs",
+      data: [
+        {
+          id: job._id,
+          updates: {
+            status: "completed",
+          },
+        },
+      ],
       secret: process.env.CONVEX_API_KEY!,
     });
 
     if (dataSource && action) {
-      await client.mutation(api.datasources.crud.update_s, {
-        id: dataSource._id,
-        updates: {
-          metadata: {
-            ...(dataSource.metadata as any),
-            [action]: Date.now(),
+      await client.mutation(api.helpers.orm.update_s, {
+        tableName: "scheduled_jobs",
+        data: [
+          {
+            id: dataSource._id,
+            updates: {
+              metadata: {
+                ...(dataSource.metadata as any),
+                [action]: Date.now(),
+              },
+            },
           },
-        },
+        ],
         secret: process.env.CONVEX_API_KEY!,
       });
     }

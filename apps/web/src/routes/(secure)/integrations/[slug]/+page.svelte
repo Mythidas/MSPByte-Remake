@@ -39,9 +39,11 @@
 
 	// Fetch dataSource from Convex (client-side, reactive)
 	// Pass empty string as integrationId when not available (query will return null)
-	const dataSourceQuery = useQuery(api.datasources.crud.get, () => ({
-		filters: {
-			by_integration_primary: {
+	const dataSourceQuery = useQuery(api.helpers.orm.get, () => ({
+		tableName: 'data_sources',
+		index: {
+			name: 'by_integration_primary',
+			params: {
 				integrationId: integrationData?._id || ('' as any),
 				isPrimary: true
 			}
