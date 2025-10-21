@@ -11,6 +11,8 @@
     "start": "turbo start",
     "build": "turbo build",
     "dev": "turbo dev",
+    "dev:web": "turbo dev --filter=web-svelte --filter=@workspace/services --filter=@workspace/events",
+    "dev:agent": "turbo dev --filter=mspagent --filter=@workspace/agents",
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "gendb:schema": "bunx supabase gen types typescript --project-id lrgaygjiyukdhhdbszjk --schema public,views > ./packages/shared/src/types/database/import.ts"
