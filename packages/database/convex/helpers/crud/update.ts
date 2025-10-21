@@ -27,7 +27,7 @@ export const update = mutation({
     data: v.array(
       v.object({
         id: v.string(),
-        updates: v.object({}), // Any object shape for updates
+        updates: v.any(), // Any object shape for updates
       })
     ),
   },
@@ -51,9 +51,7 @@ export const update = mutation({
             const record = await ctx.db.get(item.id);
 
             if (!record) {
-              throw new Error(
-                `Record not found with id "${item.id}"`
-              );
+              throw new Error(`Record not found with id "${item.id}"`);
             }
 
             if ((record as any).tenantId !== identity.tenantId) {
@@ -106,7 +104,7 @@ export const update_s = mutation({
     data: v.array(
       v.object({
         id: v.string(),
-        updates: v.object({}),
+        updates: v.any(),
       })
     ),
     secret: v.string(),
@@ -131,9 +129,7 @@ export const update_s = mutation({
             const record = await ctx.db.get(item.id);
 
             if (!record) {
-              throw new Error(
-                `Record not found with id "${item.id}"`
-              );
+              throw new Error(`Record not found with id "${item.id}"`);
             }
 
             const patchData = {

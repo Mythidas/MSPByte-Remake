@@ -35,10 +35,10 @@ export const get = query({
     index: v.optional(
       v.object({
         name: v.string(),
-        params: v.object({}), // Any object shape for index params
+        params: v.any(), // Any object shape for index params
       })
     ),
-    filters: v.optional(v.object({})), // Any object shape for filters
+    filters: v.optional(v.any()), // Any object shape for filters
     includeSoftDeleted: v.optional(v.boolean()),
   },
   handler: async <T extends keyof DataModel>(
@@ -56,12 +56,7 @@ export const get = query({
     }
 
     // Query-based lookup
-    const {
-      tableName,
-      index,
-      filters,
-      includeSoftDeleted = false,
-    } = args;
+    const { tableName, index, filters, includeSoftDeleted = false } = args;
 
     let queryBuilder: any;
 
@@ -116,10 +111,10 @@ export const get_s = query({
     index: v.optional(
       v.object({
         name: v.string(),
-        params: v.object({}),
+        params: v.any(),
       })
     ),
-    filters: v.optional(v.object({})),
+    filters: v.optional(v.any()),
     includeSoftDeleted: v.optional(v.boolean()),
   },
   handler: async <T extends keyof DataModel>(
@@ -159,9 +154,7 @@ export const get_s = query({
     } else if (tenantId) {
       queryBuilder = ctx.db
         .query(tableName)
-        .withIndex("by_tenant" as any, (q: any) =>
-          q.eq("tenantId", tenantId)
-        );
+        .withIndex("by_tenant" as any, (q: any) => q.eq("tenantId", tenantId));
     } else {
       queryBuilder = ctx.db.query(tableName);
     }

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { api } from '$lib/convex';
+	import { api, type Doc } from '$lib/convex';
 	import DataTable from '$lib/components/table/DataTable.svelte';
 	import { useQuery } from 'convex-svelte';
 
@@ -15,7 +15,10 @@
 		tableName: 'roles'
 	}));
 	const globalQuery = useQuery(api.roles.query.getGlobal, {});
-	const roles = $derived([...(rolesQuery.data || []), ...(globalQuery.data || [])]);
+	const roles = $derived([
+		...((rolesQuery.data as Doc<'roles'>[]) || []),
+		...((globalQuery.data as Doc<'roles'>[]) || [])
+	]);
 </script>
 
 <div class="flex size-full flex-col gap-4">
@@ -40,7 +43,7 @@
 				key: 'roleName',
 				title: 'Role',
 				searchable: true,
-				render: ({ row }) => roles.find((r) => r._id === row.roleId)?.name
+				render: ({ row }) => roles.find((r) => r._id === row.roleId)?.name || 'Unknown'
 			},
 			{
 				key: 'status',

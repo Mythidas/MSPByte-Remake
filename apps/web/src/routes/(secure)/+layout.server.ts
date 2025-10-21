@@ -1,4 +1,4 @@
-import { api } from '$lib/convex';
+import { api, type Doc } from '$lib/convex';
 import type { LayoutServerLoad } from './$types.js';
 import { authKit } from '@workos/authkit-sveltekit';
 import { redirect } from '@sveltejs/kit';
@@ -34,12 +34,12 @@ export const load: LayoutServerLoad = authKit.withAuth(async ({ locals }) => {
 				})
 			: Promise.resolve(undefined);
 
-		const [site, mspagent] = await Promise.all([sitePromise, dataSourcePromise]);
+		const [site, dataSourceAgents] = await Promise.all([sitePromise, dataSourcePromise]);
 
 		return {
 			user,
 			site,
-			mspagent
+			mspagent: dataSourceAgents as Doc<'data_sources'>
 		};
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';

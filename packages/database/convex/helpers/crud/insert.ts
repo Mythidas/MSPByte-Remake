@@ -20,7 +20,7 @@ import { InsertResult, InsertArgs, TableName } from "./types.js";
 export const insert = mutation({
   args: {
     tableName: TableName,
-    data: v.array(v.object({})), // Any object shape, but enforces structure
+    data: v.array(v.any()), // Any object shape, but enforces structure
   },
   handler: async <T extends keyof DataModel>(
     ctx: any,
@@ -84,7 +84,7 @@ export const insert = mutation({
 export const insert_s = mutation({
   args: {
     tableName: TableName,
-    data: v.array(v.object({})),
+    data: v.array(v.any()),
     tenantId: v.id("tenants"),
     secret: v.string(),
   },

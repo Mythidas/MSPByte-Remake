@@ -24,6 +24,33 @@ export type ColumnFilterConfig = {
 	placeholder?: string;
 };
 
+/**
+ * Standalone filter field definition (decoupled from columns)
+ * Allows filtering on fields that aren't displayed as columns,
+ * or multiple filters per column
+ *
+ * @example
+ * const filterFields: FilterField[] = [
+ *   {
+ *     key: 'rawData.packages.protection.status',
+ *     label: 'Upgradeable',
+ *     config: {
+ *       component: 'select',
+ *       operators: ['eq'],
+ *       options: [
+ *         { label: 'Upgradeable', value: 'upgradable' },
+ *         { label: 'Up to date', value: 'upToDate' }
+ *       ]
+ *     }
+ *   }
+ * ];
+ */
+export type FilterField = {
+	key: string; // Field path (supports dot notation)
+	label: string; // Display name in filter builder
+	config: ColumnFilterConfig; // Filter component configuration
+};
+
 export type DataTableColumn<T> = {
 	key: string;
 	title: string;

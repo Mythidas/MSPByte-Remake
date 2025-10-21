@@ -32,10 +32,10 @@ export const list = query({
     index: v.optional(
       v.object({
         name: v.string(),
-        params: v.object({}), // Any object shape for index params
+        params: v.any(), // Any object shape for index params
       })
     ),
-    filters: v.optional(v.object({})), // Any object shape for filters
+    filters: v.optional(v.any()), // Any object shape for filters
     includeSoftDeleted: v.optional(v.boolean()),
   },
   handler: async <T extends keyof DataModel>(
@@ -43,12 +43,7 @@ export const list = query({
     args: ListArgs<T>
   ): Promise<ListResult<T>> => {
     const identity = await isAuthenticated(ctx);
-    const {
-      tableName,
-      index,
-      filters,
-      includeSoftDeleted = false,
-    } = args;
+    const { tableName, index, filters, includeSoftDeleted = false } = args;
 
     // Step 1: Start with index query
     let queryBuilder: any;
@@ -111,10 +106,10 @@ export const list_s = query({
     index: v.optional(
       v.object({
         name: v.string(),
-        params: v.object({}),
+        params: v.any(),
       })
     ),
-    filters: v.optional(v.object({})),
+    filters: v.optional(v.any()),
     includeSoftDeleted: v.optional(v.boolean()),
   },
   handler: async <T extends keyof DataModel>(
@@ -154,9 +149,7 @@ export const list_s = query({
       // Default to by_tenant index
       queryBuilder = ctx.db
         .query(tableName)
-        .withIndex("by_tenant" as any, (q: any) =>
-          q.eq("tenantId", tenantId)
-        );
+        .withIndex("by_tenant" as any, (q: any) => q.eq("tenantId", tenantId));
     } else {
       queryBuilder = ctx.db.query(tableName);
     }

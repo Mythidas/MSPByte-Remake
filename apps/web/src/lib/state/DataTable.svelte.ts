@@ -3,12 +3,46 @@ import {
 	type DataTableColumn,
 	type TableFilter,
 	type TableView,
+	type FilterField,
 	deserializeFilters,
 	serializeFilters,
 	convertToDynamicCrudFilters
 } from '$lib/components/table/types.js';
 import { useSearchParams } from 'runed/kit';
 import { getContext, setContext } from 'svelte';
+
+/**
+ * Gets a nested value from an object using dot notation
+ * @param obj - The object to traverse
+ * @param path - The path to the value (e.g., 'normalizedData.status' or 'user.profile.name')
+ * @returns The value at the path, or undefined if not found
+ *
+ * @example
+ * const entity = { normalizedData: { status: 'active', name: 'Test' } };
+ * getNestedValue(entity, 'normalizedData.status') // 'active'
+ * getNestedValue(entity, 'normalizedData.missing') // undefined
+ */
+function getNestedValue(obj: any, path: string): any {
+	if (!obj || !path) return undefined;
+
+	// Handle simple (non-nested) paths quickly
+	if (!path.includes('.')) {
+		return obj[path];
+	}
+
+	// Handle nested paths
+	const keys = path.split('.');
+	let current = obj;
+
+	for (const key of keys) {
+		if (current === null || current === undefined) {
+			return undefined;
+		}
+		current = current[key];
+	}
+
+	return current;
+}
 
 export type TablePageState = {
 	size: number;
@@ -52,6 +86,7 @@ export interface TableState {
 
 	// Filter system
 	filters: TableFilter[];
+	filterFields?: FilterField[]; // Optional standalone filter definitions
 	addFilter: (filter: TableFilter) => void;
 	removeFilter: (index: number) => void;
 	clearFilters: () => void;
@@ -197,14 +232,12 @@ class TableStateClass implements TableState {
 		return rows.filter((row) => {
 			if (this.globalSearch) {
 				const lowerSearch = this.globalSearch.toLowerCase();
-				const globalFields = this.columns.configs
-					.filter((col) => col.searchable)
-					.map((col) => col.key);
+				const searchableColumns = this.columns.configs.filter((col) => col.searchable);
 
-				return Object.entries(row).some(([key, val]) => {
-					if (!globalFields.includes(key)) return false;
+				// Check each searchable column (supports nested keys via dot notation)
+				return searchableColumns.some((col) => {
+					const val = getNestedValue(row, col.key);
 					if (typeof val !== 'string') return false;
-
 					return val.toLowerCase().includes(lowerSearch);
 				});
 			}
@@ -224,10 +257,10 @@ class TableStateClass implements TableState {
 			return rows.sort((a, b) => sortFn(a, b, direction));
 		}
 
-		// Generic fallback sort
+		// Generic fallback sort (supports nested keys via dot notation)
 		return rows.sort((a, b) => {
-			const valA = a[sortedKey];
-			const valB = b[sortedKey];
+			const valA = getNestedValue(a, sortedKey);
+			const valB = getNestedValue(b, sortedKey);
 
 			// Handle undefined/null
 			if (valA == null && valB == null) return 0;
@@ -263,6 +296,7 @@ class TableStateClass implements TableState {
 	// ============================================================================
 
 	filters: TableFilter[] = $state([]);
+	filterFields?: FilterField[] = $state(undefined);
 	views: TableView[] = $state([]);
 	activeView?: TableView = $state(undefined);
 

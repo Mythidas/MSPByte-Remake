@@ -41,7 +41,11 @@
 
 		<div class="flex items-center gap-2">
 			<!-- Add Filter Button -->
-			<FilterBuilder columns={tableState.columns.configs} onAdd={tableState.addFilter} />
+			<FilterBuilder
+				columns={tableState.columns.configs}
+				filterFields={tableState.filterFields}
+				onAdd={tableState.addFilter}
+			/>
 
 			<!-- Clear All Filters -->
 			{#if hasActiveFilters}

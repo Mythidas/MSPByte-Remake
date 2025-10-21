@@ -3,7 +3,8 @@
 		DataTableColumn,
 		TableFilter,
 		FilterOperator,
-		ColumnFilterConfig
+		ColumnFilterConfig,
+		FilterField
 	} from './types.js';
 	import { getOperatorLabel } from './types.js';
 	import * as Popover from '$lib/components/ui/popover/index.js';
@@ -23,10 +24,11 @@
 
 	type Props = {
 		columns: DataTableColumn<any>[];
+		filterFields?: FilterField[]; // Optional standalone filter definitions
 		onAdd: (filter: TableFilter) => void;
 	};
 
-	let { columns, onAdd }: Props = $props();
+	let { columns, filterFields, onAdd }: Props = $props();
 
 	// Filter state
 	let selectedField = $state<string>('');
@@ -34,23 +36,45 @@
 	let filterValue = $state<any>(undefined);
 	let isOpen = $state(false);
 
-	// Get columns with filter configuration
-	const filterableColumns = $derived(
-		columns.filter((col) => col.filter !== undefined || col.filterable !== false)
+	// Determine filter source: use filterFields if provided, otherwise use columns
+	const useFilterFields = $derived(!!filterFields && filterFields.length > 0);
+
+	// Build filterable options from filterFields
+	const filterableFields = $derived(
+		filterFields?.map((field) => ({
+			key: field.key,
+			label: field.label,
+			config: field.config
+		})) || []
 	);
 
-	// Get selected column
-	const selectedColumn = $derived(filterableColumns.find((col) => col.key === selectedField));
+	// Build filterable options from columns (legacy)
+	const filterableColumns = $derived(
+		columns
+			.filter((col) => col.filter !== undefined || col.filterable !== false)
+			.map((col) => ({
+				key: col.key,
+				label: col.filter?.label || col.title,
+				config: col.filter,
+				type: col.type
+			}))
+	);
+
+	// Get all filterable items (either from filterFields or columns)
+	const filterableItems = $derived(useFilterFields ? filterableFields : filterableColumns);
+
+	// Get selected item
+	const selectedItem = $derived(filterableItems.find((item) => item.key === selectedField));
 
 	// Get filter config (either explicit or derived from type)
 	const filterConfig = $derived.by<ColumnFilterConfig | undefined>(() => {
-		if (!selectedColumn) return undefined;
+		if (!selectedItem) return undefined;
 
 		// If explicit filter config exists, use it
-		if (selectedColumn.filter) return selectedColumn.filter;
+		if (selectedItem.config) return selectedItem.config;
 
-		// Otherwise, create a default config based on type (legacy support)
-		const type = selectedColumn.type || 'string';
+		// Otherwise, create a default config based on type (legacy support for columns)
+		const type = (selectedItem as any).type || 'string';
 		switch (type) {
 			case 'number':
 				return {
@@ -135,11 +159,11 @@
 					onValueChange={(val) => (selectedField = val || '')}
 				>
 					<Select.Trigger>
-						{selectedColumn?.title || 'Select field'}
+						{selectedItem?.label || 'Select field'}
 					</Select.Trigger>
 					<Select.Content>
-						{#each filterableColumns as column}
-							<Select.Item value={column.key}>{column.filter?.label || column.title}</Select.Item>
+						{#each filterableItems as item}
+							<Select.Item value={item.key}>{item.label}</Select.Item>
 						{/each}
 					</Select.Content>
 				</Select.Root>
@@ -172,8 +196,7 @@
 					{#if filterConfig.component === 'text'}
 						<TextFilterInput
 							bind:value={filterValue}
-							placeholder={filterConfig.placeholder ||
-								`Enter ${selectedColumn?.title.toLowerCase()}`}
+							placeholder={filterConfig.placeholder || `Enter ${selectedItem?.label.toLowerCase()}`}
 						/>
 					{:else if filterConfig.component === 'search'}
 						<SearchFilterInput

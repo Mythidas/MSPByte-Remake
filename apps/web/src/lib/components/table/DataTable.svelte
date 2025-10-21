@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { setTableState } from '$lib/state/DataTable.svelte.js';
-	import type { DataTableColumn, TableView } from '$lib/components/table/types.js';
+	import type { DataTableColumn, TableView, FilterField } from '$lib/components/table/types.js';
 	import TableToolbar from './TableToolbar.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Table from '$lib/components/ui/table/index.js';
@@ -17,13 +17,22 @@
 		isLoading: boolean;
 		columns: DataTableColumn<any>[];
 		views?: TableView[];
+		filterFields?: FilterField[]; // Optional: standalone filter definitions
 		filters?: any;
 	};
 
-	let { rows, columns, views = [], filters = $bindable(), isLoading }: Props = $props();
+	let {
+		rows,
+		columns,
+		views = [],
+		filterFields,
+		filters = $bindable(),
+		isLoading
+	}: Props = $props();
 	const tableState = setTableState();
 	tableState.columns.configs = columns;
 	tableState.views = views;
+	tableState.filterFields = filterFields;
 
 	$effect(() => {
 		tableState.data = rows;

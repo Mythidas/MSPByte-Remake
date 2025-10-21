@@ -185,6 +185,40 @@ export type DynamicFilter<T> = FilterConditions<T> | undefined;
 // ============================================================================
 
 /**
+ * Gets a nested value from an object using dot notation
+ * @param obj - The object to traverse
+ * @param path - The path to the value (e.g., 'normalizedData.status' or 'user.profile.name')
+ * @returns The value at the path, or undefined if not found
+ *
+ * @example
+ * const entity = { normalizedData: { status: 'active', name: 'Test' } };
+ * getNestedValue(entity, 'normalizedData.status') // 'active'
+ * getNestedValue(entity, 'normalizedData.missing') // undefined
+ * getNestedValue(entity, 'status') // undefined (top-level access still works)
+ */
+export function getNestedValue(obj: any, path: string): any {
+  if (!obj || !path) return undefined;
+
+  // Handle simple (non-nested) paths quickly
+  if (!path.includes('.')) {
+    return obj[path];
+  }
+
+  // Handle nested paths
+  const keys = path.split('.');
+  let current = obj;
+
+  for (const key of keys) {
+    if (current === null || current === undefined) {
+      return undefined;
+    }
+    current = current[key];
+  }
+
+  return current;
+}
+
+/**
  * Evaluates a single field filter against a value
  */
 export function evaluateFieldFilter<T>(
@@ -249,6 +283,11 @@ export function evaluateFieldFilter<T>(
 /**
  * Evaluates filter conditions against a record
  * Supports nested logical operators (and, or, not)
+ * Supports nested field access via dot notation (e.g., 'normalizedData.status')
+ *
+ * @example
+ * evaluateFilter(entity, { 'normalizedData.status': 'active' })
+ * evaluateFilter(entity, { 'normalizedData.name': { contains: 'test' } })
  */
 export function evaluateFilter<T extends Record<string, any>>(
   record: T,
@@ -269,12 +308,13 @@ export function evaluateFilter<T extends Record<string, any>>(
     return !evaluateFilter(record, filter.not);
   }
 
-  // Handle field-level filters
+  // Handle field-level filters (supports dot notation for nested access)
   for (const [key, fieldFilter] of Object.entries(filter)) {
     // Skip logical operators (already handled)
     if (key === "and" || key === "or" || key === "not") continue;
 
-    const value = record[key];
+    // Use getNestedValue to support dot notation (e.g., 'normalizedData.status')
+    const value = getNestedValue(record, key);
     if (!evaluateFieldFilter(value, fieldFilter)) {
       return false;
     }

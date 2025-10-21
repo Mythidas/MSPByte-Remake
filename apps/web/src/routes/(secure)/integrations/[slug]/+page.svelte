@@ -22,7 +22,7 @@
 	import { toast } from 'svelte-sonner';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import { useQuery } from 'convex-svelte';
-	import { api } from '$lib/convex';
+	import { api, type Doc } from '$lib/convex';
 	import { page } from '$app/state';
 	import Loader from '$lib/components/Loader.svelte';
 	import DatePicker from '$lib/components/DatePicker.svelte';
@@ -39,7 +39,7 @@
 
 	// Fetch dataSource from Convex (client-side, reactive)
 	// Pass empty string as integrationId when not available (query will return null)
-	const dataSourceQuery = useQuery(api.helpers.orm.get, () => ({
+	const dataSourceQuery = useQuery(api.helpers.orm.get, {
 		tableName: 'data_sources',
 		index: {
 			name: 'by_integration_primary',
@@ -48,8 +48,8 @@
 				isPrimary: true
 			}
 		}
-	}));
-	const dataSourceData = $derived(dataSourceQuery.data);
+	});
+	const dataSourceData = $derived(dataSourceQuery.data as Doc<'data_sources'>);
 
 	// Loading and error states
 	const isLoading = $derived(integrationQuery.isLoading || dataSourceQuery.isLoading);
@@ -57,8 +57,8 @@
 
 	// Initialize integration state with empty values (will be populated by effect)
 	const integration = setIntegration({
-		integration: {} as any,
-		dataSource: undefined
+		integration: integrationData as any,
+		dataSource: dataSourceData || undefined
 	});
 
 	// Update integration state when queries return new data

@@ -42,7 +42,7 @@
 
 	// Get unique versions from agents data
 	const uniqueVersions = $derived.by(() => {
-		const agents = agentsQuery.data || [];
+		const agents = (agentsQuery.data as Doc<'agents'>[]) || [];
 		const versions = new Set<string>();
 
 		for (const agent of agents) {
