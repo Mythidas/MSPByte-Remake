@@ -1,17 +1,16 @@
 <script lang="ts">
 	import Loader from '$lib/components/Loader.svelte';
-	import { api } from '$lib/convex/index.js';
+	import { api, type Doc } from '$lib/convex/index.js';
 	import { getAppState } from '$lib/state/Application.svelte.js';
 	import { useQuery } from 'convex-svelte';
 
-	const { data } = $props();
-
 	const appState = getAppState();
-	const siteQuery = useQuery(api.sites.crud.get, {
-		id: appState.getSite()?._id
+	const siteQuery = useQuery(api.helpers.orm.get, {
+		id: appState.getSite()?._id,
+		tableName: 'sites'
 	});
 
-	const site = $derived(siteQuery.data);
+	const site = $derived(siteQuery.data as Doc<'sites'> | undefined);
 </script>
 
 {#if siteQuery.isLoading}
@@ -21,7 +20,6 @@
 {:else}
 	<div class="flex size-full flex-col gap-4">
 		<h1 class="text-2xl font-bold">{site!.name}</h1>
-
 		Home
 	</div>
 {/if}

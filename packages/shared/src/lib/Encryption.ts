@@ -7,22 +7,23 @@ export default class Encryption {
     const iv = crypto.randomBytes(12);
     const cipher = crypto.createCipheriv(
       ALGORITHM,
-      key,
+      Buffer.from(key, "hex"),
       iv
     );
+
     const encrypted = Buffer.concat([
       cipher.update(text, "utf8"),
       cipher.final(),
     ]);
+
     const tag = cipher.getAuthTag();
-    return (
-      iv.toString("hex") +
-      ":" +
-      tag.toString("hex") +
-      ":" +
-      encrypted.toString("hex")
-    );
+    return [
+      iv.toString("hex"),
+      tag.toString("hex"),
+      encrypted.toString("hex"),
+    ].join(":");
   }
+
   static async decrypt(encryptedText: string, key: string) {
     const [ivHex, tagHex, dataHex] = encryptedText.split(":");
     if (!ivHex || !tagHex || !dataHex) return undefined;
@@ -30,9 +31,10 @@ export default class Encryption {
     const iv = Buffer.from(ivHex, "hex");
     const tag = Buffer.from(tagHex, "hex");
     const encrypted = Buffer.from(dataHex, "hex");
+
     const decipher = crypto.createDecipheriv(
       ALGORITHM,
-      key,
+      Buffer.from(key, "hex"),
       iv
     );
     decipher.setAuthTag(tag);
@@ -44,5 +46,7 @@ export default class Encryption {
 
   static sha256 = (s: string) =>
     crypto.createHash("sha256").update(s).digest("hex");
+
+  // Now outputs base64 by default
   static genKey = () => crypto.randomBytes(32).toString("hex");
 }

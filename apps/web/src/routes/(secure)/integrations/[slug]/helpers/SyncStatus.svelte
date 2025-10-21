@@ -22,20 +22,11 @@
 		return `${diffDays}d ago`;
 	};
 
-	const dataSource = $derived(integration.dataSource);
-	const supportedTypes = $derived(integration.integration.supportedTypes.map((st) => st.type));
-
-	// Args function: Return null if invalid to skip query
-	const queryArgs = $derived(() => {
-		const dsId = dataSource?._id;
-		if (!dsId || !supportedTypes.length) return 'skip'; // Skip if missing
-		return {
-			dataSourceId: dsId as Id<'data_sources'>, // Replace "dataSources" with your table name
-			supportedTypes
-		};
+	const supportedTypes = integration.integration.supportedTypes.map((st) => st.type);
+	const syncStatusQuery = useQuery(api.integrations.query.getStatusMatrix, {
+		dataSourceId: integration.dataSource?._id! as Id<'data_sources'>, // Replace "dataSources" with your table name
+		supportedTypes
 	});
-
-	const syncStatusQuery = useQuery(api.integrations.query.getStatusMatrix, () => queryArgs as any);
 	const syncStatuses = $derived(syncStatusQuery?.data);
 
 	const getStatusBadge = (status?: string) => {
