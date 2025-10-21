@@ -33,7 +33,7 @@ export const isValidTenant = async (first: string, second: string) => {
 };
 
 export const isValidSecret = async (secret: string) => {
-  if (secret !== process.env.CONVEX_API_SECRET) {
+  if (secret !== process.env.CONVEX_API_KEY) {
     throw new Error("Unauthorized: Invalid secret");
   }
 
