@@ -66,13 +66,15 @@ export default async function (fastify: FastifyInstance) {
     const result = !agent
       ? await client.mutation(api.helpers.orm.insert_s, {
           tableName: "agents",
-          data: {
-            siteId: site._id,
-            guid: calculatedGuid,
-            hostname,
-            platform,
-            version,
-          },
+          data: [
+            {
+              siteId: site._id,
+              guid: calculatedGuid,
+              hostname,
+              platform,
+              version,
+            },
+          ],
           tenantId: site.tenantId,
           secret: process.env.CONVEX_API_KEY!,
         })

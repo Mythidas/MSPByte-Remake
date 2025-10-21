@@ -71,7 +71,7 @@ export const insert = mutation({
 export const insert_s = mutation({
   args: {
     tableName: v.string(),
-    data: v.any(),
+    data: v.array(v.any()),
     tenantId: v.id("tenants"),
     secret: v.string(),
   },
@@ -81,10 +81,6 @@ export const insert_s = mutation({
       keyof DataModel
     > & { tenantId: Id<"tenants">; secret: string };
     const now = Date.now();
-
-    if (!Array.isArray(data) || data.length === 0) {
-      throw new Error("Insert failed: data must be a non-empty array");
-    }
 
     try {
       // Handle batch insert atomically
