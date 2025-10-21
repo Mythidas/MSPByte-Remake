@@ -1,8 +1,8 @@
 import { v } from "convex/values";
-import { DataModel } from "../../_generated/dataModel.js";
+import { DataModel, Id } from "../../_generated/dataModel.js";
 import { query } from "../../_generated/server.js";
 import { isAuthenticated, isValidSecret } from "../validators.js";
-import { DynamicListArgs, evaluateFilter, TableName, GetResult } from "./types.js";
+import { evaluateFilter, TableName, GetResult, GetArgs } from "./types.js";
 import { filter } from "convex-helpers/server/filter";
 
 /**
@@ -12,9 +12,21 @@ import { filter } from "convex-helpers/server/filter";
  * @param tableName - Name of the table to query
  * @param id - Optional document ID for direct lookup
  * @param index - Optional index configuration for optimized queries
- * @param filters - Optional filter conditions
+ * @param filters - Optional filter conditions (type-safe based on tableName)
  * @param includeSoftDeleted - Whether to include soft-deleted records (default: false)
- * @returns Single document matching the query, or null if not found
+ * @returns Single document matching the query, or null if not found (type-safe based on tableName)
+ *
+ * @example
+ * const site = await get({ tableName: 'sites', id: siteId });
+ * // site is typed as Doc<'sites'> | null
+ *
+ * @example
+ * const agent = await get({
+ *   tableName: 'agents',
+ *   index: { name: 'by_guid', params: { guid: 'abc-123' } },
+ *   filters: { status: 'online' }
+ * });
+ * // agent is typed as Doc<'agents'> | null
  */
 export const get = query({
   args: {
@@ -23,18 +35,21 @@ export const get = query({
     index: v.optional(
       v.object({
         name: v.string(),
-        params: v.any(),
+        params: v.object({}), // Any object shape for index params
       })
     ),
-    filters: v.optional(v.any()),
+    filters: v.optional(v.object({})), // Any object shape for filters
     includeSoftDeleted: v.optional(v.boolean()),
   },
-  handler: async (ctx, args): Promise<GetResult<keyof DataModel>> => {
+  handler: async <T extends keyof DataModel>(
+    ctx: any,
+    args: GetArgs<T>
+  ): Promise<GetResult<T>> => {
     const identity = await isAuthenticated(ctx);
 
     // Direct ID lookup
     if (args.id) {
-      const record = await ctx.db.get(args.id as any);
+      const record = await ctx.db.get(args.id as Id<T>);
       if (!record) return null;
       if ((record as any).tenantId === identity.tenantId) return record;
       return null;
@@ -46,7 +61,7 @@ export const get = query({
       index,
       filters,
       includeSoftDeleted = false,
-    } = args as DynamicListArgs<keyof DataModel>;
+    } = args;
 
     let queryBuilder: any;
 
@@ -69,12 +84,12 @@ export const get = query({
         );
     }
 
-    const result = await filter(queryBuilder, (record) => {
+    const result = await filter(queryBuilder, (record: any) => {
       if (!includeSoftDeleted && record.deletedAt) {
         return false;
       }
 
-      return evaluateFilter(record as any, filters);
+      return evaluateFilter(record, filters);
     }).first();
 
     return result ?? null;
@@ -83,6 +98,14 @@ export const get = query({
 
 /**
  * _s get function (no auth required, uses secret validation)
+ *
+ * @example
+ * const site = await get_s({
+ *   tableName: 'sites',
+ *   id: siteId,
+ *   secret: process.env.CONVEX_API_KEY
+ * });
+ * // site is typed as Doc<'sites'> | null
  */
 export const get_s = query({
   args: {
@@ -93,18 +116,21 @@ export const get_s = query({
     index: v.optional(
       v.object({
         name: v.string(),
-        params: v.any(),
+        params: v.object({}),
       })
     ),
-    filters: v.optional(v.any()),
+    filters: v.optional(v.object({})),
     includeSoftDeleted: v.optional(v.boolean()),
   },
-  handler: async (ctx, args): Promise<GetResult<keyof DataModel>> => {
+  handler: async <T extends keyof DataModel>(
+    ctx: any,
+    args: GetArgs<T> & { secret: string; tenantId?: Id<"tenants"> }
+  ): Promise<GetResult<T>> => {
     await isValidSecret(args.secret);
 
     // Direct ID lookup
     if (args.id) {
-      const record = await ctx.db.get(args.id as any);
+      const record = await ctx.db.get(args.id as Id<T>);
       return record ?? null;
     }
 
@@ -114,7 +140,8 @@ export const get_s = query({
       index,
       filters,
       includeSoftDeleted = false,
-    } = args as DynamicListArgs<keyof DataModel>;
+      tenantId,
+    } = args;
 
     let queryBuilder: any;
 
@@ -126,25 +153,25 @@ export const get_s = query({
           for (const [field, value] of Object.entries(index.params)) {
             filtered = filtered.eq(field, value);
           }
-          if (args.tenantId) filtered = filtered.eq("tenantId", args.tenantId);
+          if (tenantId) filtered = filtered.eq("tenantId", tenantId);
           return filtered;
         });
-    } else if (args.tenantId) {
+    } else if (tenantId) {
       queryBuilder = ctx.db
         .query(tableName)
         .withIndex("by_tenant" as any, (q: any) =>
-          q.eq("tenantId", args.tenantId)
+          q.eq("tenantId", tenantId)
         );
     } else {
       queryBuilder = ctx.db.query(tableName);
     }
 
-    const result = await filter(queryBuilder, (record) => {
+    const result = await filter(queryBuilder, (record: any) => {
       if (!includeSoftDeleted && record.deletedAt) {
         return false;
       }
 
-      return evaluateFilter(record as any, filters);
+      return evaluateFilter(record, filters);
     }).first();
 
     return result ?? null;

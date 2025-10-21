@@ -2,12 +2,7 @@ import { v } from "convex/values";
 import { DataModel, Doc, Id } from "../../_generated/dataModel.js";
 import { mutation } from "../../_generated/server.js";
 import { isAuthenticated, isValidSecret } from "../validators.js";
-import { InsertResult } from "./types.js";
-
-type DynamicInsertArgs<TableName extends keyof DataModel> = {
-  tableName: TableName;
-  data: Partial<Doc<TableName>>[];
-};
+import { InsertResult, InsertArgs, TableName } from "./types.js";
 
 /**
  * Universal insert mutation that works with ANY table
@@ -15,17 +10,24 @@ type DynamicInsertArgs<TableName extends keyof DataModel> = {
  *
  * @param tableName - Name of the table to insert into
  * @param data - Array of records to insert
- * @returns Array of IDs for successfully created records
+ * @returns Array of IDs for successfully created records (type-safe based on tableName)
  * @throws Error if any insertion fails (atomic transaction - all or nothing)
+ *
+ * @example
+ * const siteIds = await insert({ tableName: 'sites', data: [{name: 'Acme Corp'}] });
+ * // siteIds is typed as Id<'sites'>[]
  */
 export const insert = mutation({
   args: {
-    tableName: v.string(),
-    data: v.any(),
+    tableName: TableName,
+    data: v.array(v.object({})), // Any object shape, but enforces structure
   },
-  handler: async (ctx, args): Promise<InsertResult<keyof DataModel>> => {
+  handler: async <T extends keyof DataModel>(
+    ctx: any,
+    args: InsertArgs<T>
+  ): Promise<InsertResult<T>> => {
     const identity = await isAuthenticated(ctx);
-    const { tableName, data } = args as DynamicInsertArgs<keyof DataModel>;
+    const { tableName, data } = args;
     const now = Date.now();
 
     if (!Array.isArray(data) || data.length === 0) {
@@ -37,12 +39,14 @@ export const insert = mutation({
       const ids = await Promise.all(
         data.map(async (record, index) => {
           try {
-            const id = await ctx.db.insert(tableName, {
+            const insertData = {
               ...record,
               tenantId: identity.tenantId,
               updatedAt: now,
-            } as any);
-            return id as Id<typeof tableName>;
+            };
+
+            const id = await ctx.db.insert(tableName, insertData as any);
+            return id as Id<T>;
           } catch (error) {
             throw new Error(
               `Insert failed at index ${index} in table "${String(tableName)}": ${
@@ -67,19 +71,29 @@ export const insert = mutation({
 
 /**
  * _s insert function (no auth required, uses secret validation)
+ *
+ * @example
+ * const siteIds = await insert_s({
+ *   tableName: 'sites',
+ *   data: [{name: 'Acme Corp'}],
+ *   tenantId: 'k1abc123',
+ *   secret: process.env.CONVEX_API_KEY
+ * });
+ * // siteIds is typed as Id<'sites'>[]
  */
 export const insert_s = mutation({
   args: {
-    tableName: v.string(),
-    data: v.array(v.any()),
+    tableName: TableName,
+    data: v.array(v.object({})),
     tenantId: v.id("tenants"),
     secret: v.string(),
   },
-  handler: async (ctx, args): Promise<InsertResult<keyof DataModel>> => {
+  handler: async <T extends keyof DataModel>(
+    ctx: any,
+    args: InsertArgs<T> & { tenantId: Id<"tenants">; secret: string }
+  ): Promise<InsertResult<T>> => {
     await isValidSecret(args.secret);
-    const { tableName, data, tenantId } = args as DynamicInsertArgs<
-      keyof DataModel
-    > & { tenantId: Id<"tenants">; secret: string };
+    const { tableName, data, tenantId } = args;
     const now = Date.now();
 
     try {
@@ -87,12 +101,14 @@ export const insert_s = mutation({
       const ids = await Promise.all(
         data.map(async (record, index) => {
           try {
-            const id = await ctx.db.insert(tableName, {
+            const insertData = {
               ...record,
               tenantId,
               updatedAt: now,
-            } as any);
-            return id as Id<typeof tableName>;
+            };
+
+            const id = await ctx.db.insert(tableName, insertData as any);
+            return id as Id<T>;
           } catch (error) {
             throw new Error(
               `Insert failed at index ${index} in table "${String(tableName)}": ${

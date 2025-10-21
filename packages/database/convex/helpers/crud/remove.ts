@@ -2,13 +2,7 @@ import { v } from "convex/values";
 import { DataModel, Id } from "../../_generated/dataModel.js";
 import { mutation } from "../../_generated/server.js";
 import { isAuthenticated, isValidSecret } from "../validators.js";
-import { RemoveResult } from "./types.js";
-
-type DynamicDeleteArgs<TableName extends keyof DataModel> = {
-  tableName: TableName;
-  ids: Id<TableName> | Id<TableName>[];
-  hard?: boolean;
-};
+import { RemoveResult, RemoveArgs, TableName } from "./types.js";
 
 /**
  * Universal delete mutation that works with ANY table
@@ -16,28 +10,39 @@ type DynamicDeleteArgs<TableName extends keyof DataModel> = {
  * Supports soft delete (default, sets deletedAt) or hard delete
  *
  * @param tableName - Name of the table to delete from
- * @param ids - Single ID or array of IDs to delete
+ * @param ids - Single ID or array of IDs to delete (type-safe based on tableName)
  * @param hard - If true, permanently delete. Otherwise soft delete (default)
- * @returns Array of deleted IDs
+ * @returns Array of deleted IDs (type-safe based on tableName)
  * @throws Error if any deletion fails (atomic transaction - all or nothing)
+ *
+ * @example
+ * const deletedIds = await remove({
+ *   tableName: 'sites',
+ *   ids: siteId, // or [siteId1, siteId2]
+ *   hard: false
+ * });
+ * // deletedIds is typed as Id<'sites'>[]
  */
 export const remove = mutation({
   args: {
-    tableName: v.string(),
-    ids: v.any(),
+    tableName: TableName,
+    ids: v.union(v.string(), v.array(v.string())), // Single ID or array of IDs
     hard: v.optional(v.boolean()),
   },
-  handler: async (ctx, args): Promise<RemoveResult<keyof DataModel>> => {
+  handler: async <T extends keyof DataModel>(
+    ctx: any,
+    args: RemoveArgs<T>
+  ): Promise<RemoveResult<T>> => {
     const identity = await isAuthenticated(ctx);
     const {
       tableName,
       ids,
       hard = false,
-    } = args as DynamicDeleteArgs<keyof DataModel>;
+    } = args;
     const now = Date.now();
 
     // Normalize to array for consistent processing
-    const idsArray = Array.isArray(ids) ? ids : [ids];
+    const idsArray = (Array.isArray(ids) ? ids : [ids]) as Id<T>[];
 
     if (idsArray.length === 0) {
       throw new Error("Remove failed: ids must be a non-empty array or a single ID");
@@ -63,10 +68,11 @@ export const remove = mutation({
             if (hard) {
               await ctx.db.delete(id);
             } else {
-              await ctx.db.patch(id, {
+              const patchData = {
                 deletedAt: now,
                 updatedAt: now,
-              } as any);
+              };
+              await ctx.db.patch(id, patchData as any);
             }
           } catch (error) {
             throw new Error(
@@ -78,7 +84,7 @@ export const remove = mutation({
         })
       );
 
-      return idsArray as Id<typeof tableName>[];
+      return idsArray;
     } catch (error) {
       // Re-throw with context about the batch operation
       throw new Error(
@@ -92,30 +98,39 @@ export const remove = mutation({
 
 /**
  * _s delete function (no auth required, uses secret validation)
+ *
+ * @example
+ * const deletedIds = await remove_s({
+ *   tableName: 'sites',
+ *   ids: siteId,
+ *   tenantId: 'abc123',
+ *   secret: process.env.CONVEX_API_KEY
+ * });
+ * // deletedIds is typed as Id<'sites'>[]
  */
 export const remove_s = mutation({
   args: {
-    tableName: v.string(),
-    ids: v.any(),
+    tableName: TableName,
+    ids: v.union(v.string(), v.array(v.string())),
     tenantId: v.id("tenants"),
     hard: v.optional(v.boolean()),
     secret: v.string(),
   },
-  handler: async (ctx, args): Promise<RemoveResult<keyof DataModel>> => {
+  handler: async <T extends keyof DataModel>(
+    ctx: any,
+    args: RemoveArgs<T> & { tenantId: Id<"tenants">; secret: string }
+  ): Promise<RemoveResult<T>> => {
     await isValidSecret(args.secret);
     const {
       tableName,
       ids,
       tenantId,
       hard = false,
-    } = args as DynamicDeleteArgs<keyof DataModel> & {
-      tenantId: Id<"tenants">;
-      secret: string;
-    };
+    } = args;
     const now = Date.now();
 
     // Normalize to array for consistent processing
-    const idsArray = Array.isArray(ids) ? ids : [ids];
+    const idsArray = (Array.isArray(ids) ? ids : [ids]) as Id<T>[];
 
     if (idsArray.length === 0) {
       throw new Error("Remove failed: ids must be a non-empty array or a single ID");
@@ -141,10 +156,11 @@ export const remove_s = mutation({
             if (hard) {
               await ctx.db.delete(id);
             } else {
-              await ctx.db.patch(id, {
+              const patchData = {
                 deletedAt: now,
                 updatedAt: now,
-              } as any);
+              };
+              await ctx.db.patch(id, patchData as any);
             }
           } catch (error) {
             throw new Error(
@@ -156,7 +172,7 @@ export const remove_s = mutation({
         })
       );
 
-      return idsArray as Id<typeof tableName>[];
+      return idsArray;
     } catch (error) {
       // Re-throw with context about the batch operation
       throw new Error(

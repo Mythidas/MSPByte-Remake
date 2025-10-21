@@ -211,9 +211,8 @@ export abstract class BaseProcessor<T = any> {
             | "identities"
             | "groups"
             | "licenseAssignments"
-            | null
             | undefined;
-          dataHash?: string | null | undefined;
+          dataHash?: string | undefined;
           rawData?: any;
           normalizedData?: any;
         };
@@ -241,8 +240,9 @@ export abstract class BaseProcessor<T = any> {
             tableName: "entities",
             tenantId: tenantID as any,
             secret: process.env.CONVEX_API_KEY!,
-            filters: {
-              by_external_id: {
+            index: {
+              name: "by_external_id",
+              params: {
                 externalId: row.externalID,
               },
             },
@@ -273,17 +273,21 @@ export abstract class BaseProcessor<T = any> {
       );
 
       const [updateResult, createResult] = await Promise.all([
-        client.mutation(api.helpers.orm.update_s, {
-          tableName: "entities",
-          data: updates,
-          secret: process.env.CONVEX_API_KEY!,
-        }),
-        client.mutation(api.helpers.orm.insert_s, {
-          tableName: "entities",
-          tenantId: tenantID as any,
-          secret: process.env.CONVEX_API_KEY!,
-          data: creates,
-        }),
+        updates.length
+          ? client.mutation(api.helpers.orm.update_s, {
+              tableName: "entities",
+              data: updates,
+              secret: process.env.CONVEX_API_KEY!,
+            })
+          : [],
+        creates.length
+          ? client.mutation(api.helpers.orm.insert_s, {
+              tableName: "entities",
+              tenantId: tenantID as any,
+              secret: process.env.CONVEX_API_KEY!,
+              data: creates,
+            })
+          : [],
       ]);
 
       return {

@@ -4,7 +4,7 @@ import { getConnector } from '@workspace/shared/lib/connectors/index.js';
 import { ENCRYPTION_KEY } from '$env/static/private';
 import type { IntegrationType } from '@workspace/shared/types/pipeline/core.js';
 import Encryption from '@workspace/shared/lib/Encryption.js';
-import { api } from '$lib/convex';
+import { api, type Doc, type Id } from '$lib/convex';
 import { superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { m365ConnectionSchema } from './helpers/integration/schemas.js';
@@ -23,10 +23,10 @@ export const actions = {
 			return fail(400, { success: false, message: 'dataSourceId and integrationId are required' });
 		}
 
-		const dataSource = await locals.client.query(api.helpers.orm.get, {
+		const dataSource = (await locals.client.query(api.helpers.orm.get, {
 			tableName: 'data_sources',
 			id: dataSourceId as any
-		});
+		})) as Doc<'data_sources'>;
 
 		if (!dataSource) {
 			return fail(404, { success: false, message: 'Data source not found' });
@@ -105,16 +105,18 @@ export const actions = {
 			processedConfig[key] = value;
 		}
 
-		const data = await locals.client.mutation(api.helpers.orm.update, {
+		const data = (await locals.client.mutation(api.helpers.orm.update, {
 			tableName: 'data_sources',
-			data: {
-				id: dataSourceId as any,
-				updates: {
-					config: processedConfig,
-					credentialExpirationAt: expiration
+			data: [
+				{
+					id: dataSourceId as any,
+					updates: {
+						config: processedConfig,
+						credentialExpirationAt: expiration
+					}
 				}
-			}
-		});
+			]
+		})) as Id<'data_sources'>[];
 
 		if (!data) {
 			return fail(500, { success: false, message: 'Failed to save configuration' });
@@ -122,7 +124,7 @@ export const actions = {
 
 		await locals.client.mutation(api.scheduledjobs.mutate.scheduleJobsByIntegration, {
 			integrationId: integration._id,
-			dataSourceId: data._id
+			dataSourceId: data[0]
 		});
 
 		return { success: true, message: 'Configuration saved successfully!' };

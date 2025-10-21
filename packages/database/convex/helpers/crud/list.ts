@@ -1,8 +1,8 @@
 import { v } from "convex/values";
-import { DataModel } from "../../_generated/dataModel.js";
+import { DataModel, Id } from "../../_generated/dataModel.js";
 import { query } from "../../_generated/server.js";
 import { isAuthenticated, isValidSecret } from "../validators.js";
-import { DynamicListArgs, evaluateFilter, TableName, ListResult } from "./types.js";
+import { evaluateFilter, TableName, ListResult, ListArgs } from "./types.js";
 import { filter } from "convex-helpers/server/filter";
 
 /**
@@ -10,9 +10,21 @@ import { filter } from "convex-helpers/server/filter";
  *
  * @param tableName - Name of the table to query
  * @param index - Optional index configuration for optimized queries
- * @param filters - Optional filter conditions
+ * @param filters - Optional filter conditions (type-safe based on tableName)
  * @param includeSoftDeleted - Whether to include soft-deleted records (default: false)
- * @returns Array of documents matching the query
+ * @returns Array of documents matching the query (type-safe based on tableName)
+ *
+ * @example
+ * const sites = await list({ tableName: 'sites', filters: { status: 'active' } });
+ * // sites is typed as Doc<'sites'>[]
+ *
+ * @example
+ * const agents = await list({
+ *   tableName: 'agents',
+ *   index: { name: 'by_site', params: { siteId: 'abc123' } },
+ *   filters: { status: 'online' }
+ * });
+ * // agents is typed as Doc<'agents'>[]
  */
 export const list = query({
   args: {
@@ -20,20 +32,23 @@ export const list = query({
     index: v.optional(
       v.object({
         name: v.string(),
-        params: v.any(),
+        params: v.object({}), // Any object shape for index params
       })
     ),
-    filters: v.optional(v.any()),
+    filters: v.optional(v.object({})), // Any object shape for filters
     includeSoftDeleted: v.optional(v.boolean()),
   },
-  handler: async (ctx, args): Promise<ListResult<keyof DataModel>> => {
+  handler: async <T extends keyof DataModel>(
+    ctx: any,
+    args: ListArgs<T>
+  ): Promise<ListResult<T>> => {
     const identity = await isAuthenticated(ctx);
     const {
       tableName,
       index,
       filters,
       includeSoftDeleted = false,
-    } = args as DynamicListArgs<keyof DataModel>;
+    } = args;
 
     // Step 1: Start with index query
     let queryBuilder: any;
@@ -65,12 +80,12 @@ export const list = query({
     }
 
     // Step 2: Apply filters and collect results
-    const results = await filter(queryBuilder, (record) => {
+    const results = await filter(queryBuilder, (record: any) => {
       if (!includeSoftDeleted && record.deletedAt) {
         return false;
       }
 
-      return evaluateFilter(record as any, filters);
+      return evaluateFilter(record, filters);
     }).collect();
 
     return results;
@@ -79,6 +94,14 @@ export const list = query({
 
 /**
  * _s list function (no auth required, uses secret validation)
+ *
+ * @example
+ * const sites = await list_s({
+ *   tableName: 'sites',
+ *   tenantId: 'abc123',
+ *   secret: process.env.CONVEX_API_KEY
+ * });
+ * // sites is typed as Doc<'sites'>[]
  */
 export const list_s = query({
   args: {
@@ -88,13 +111,16 @@ export const list_s = query({
     index: v.optional(
       v.object({
         name: v.string(),
-        params: v.any(),
+        params: v.object({}),
       })
     ),
-    filters: v.optional(v.any()),
+    filters: v.optional(v.object({})),
     includeSoftDeleted: v.optional(v.boolean()),
   },
-  handler: async (ctx, args): Promise<ListResult<keyof DataModel>> => {
+  handler: async <T extends keyof DataModel>(
+    ctx: any,
+    args: ListArgs<T> & { secret: string; tenantId?: Id<"tenants"> }
+  ): Promise<ListResult<T>> => {
     await isValidSecret(args.secret);
 
     const {
@@ -102,7 +128,8 @@ export const list_s = query({
       index,
       filters,
       includeSoftDeleted = false,
-    } = args as DynamicListArgs<keyof DataModel>;
+      tenantId,
+    } = args;
 
     // Step 1: Start with index query
     let queryBuilder: any;
@@ -119,28 +146,28 @@ export const list_s = query({
             filtered = filtered.eq(field, value);
           }
 
-          if (args.tenantId) filtered = filtered.eq("tenantId", args.tenantId);
+          if (tenantId) filtered = filtered.eq("tenantId", tenantId);
 
           return filtered;
         });
-    } else if (args.tenantId) {
+    } else if (tenantId) {
       // Default to by_tenant index
       queryBuilder = ctx.db
         .query(tableName)
         .withIndex("by_tenant" as any, (q: any) =>
-          q.eq("tenantId", args.tenantId)
+          q.eq("tenantId", tenantId)
         );
     } else {
       queryBuilder = ctx.db.query(tableName);
     }
 
     // Step 2: Apply filters and collect results
-    const results = await filter(queryBuilder, (record) => {
+    const results = await filter(queryBuilder, (record: any) => {
       if (!includeSoftDeleted && record.deletedAt) {
         return false;
       }
 
-      return evaluateFilter(record as any, filters);
+      return evaluateFilter(record, filters);
     }).collect();
 
     return results;

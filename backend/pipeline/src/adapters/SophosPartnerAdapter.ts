@@ -67,8 +67,9 @@ export class SophosPartnerAdapter extends BaseAdapter {
     const sophosSource = (await client.query(api.helpers.orm.get_s, {
       tableName: "data_sources",
       secret: process.env.CONVEX_API_KEY!,
-      filters: {
-        by_integration_primary: {
+      index: {
+        name: "by_integration_primary",
+        params: {
           integrationId: props.eventData.integrationID,
           isPrimary: true,
         },

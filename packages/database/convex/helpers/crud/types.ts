@@ -336,3 +336,56 @@ export type UpdateResult<TableName extends keyof DataModel> = Id<TableName>[];
  * Throws error if any deletion fails (atomic transaction)
  */
 export type RemoveResult<TableName extends keyof DataModel> = Id<TableName>[];
+
+// ============================================================================
+// TYPE-SAFE ARGUMENT TYPES FOR CRUD OPERATIONS
+// ============================================================================
+
+/**
+ * Type-safe arguments for insert operation
+ */
+export type InsertArgs<TableName extends keyof DataModel> = {
+  tableName: TableName;
+  data: Partial<Doc<TableName>>[];
+};
+
+/**
+ * Type-safe arguments for get operation
+ */
+export type GetArgs<TableName extends keyof DataModel> = {
+  tableName: TableName;
+  id?: string;
+  index?: IndexConfig;
+  filters?: DynamicFilter<Doc<TableName>>;
+  includeSoftDeleted?: boolean;
+};
+
+/**
+ * Type-safe arguments for list operation
+ */
+export type ListArgs<TableName extends keyof DataModel> = {
+  tableName: TableName;
+  index?: IndexConfig;
+  filters?: DynamicFilter<Doc<TableName>>;
+  includeSoftDeleted?: boolean;
+};
+
+/**
+ * Type-safe arguments for update operation
+ */
+export type UpdateArgs<TableName extends keyof DataModel> = {
+  tableName: TableName;
+  data: Array<{
+    id: Id<TableName>;
+    updates: Partial<Doc<TableName>>;
+  }>;
+};
+
+/**
+ * Type-safe arguments for remove operation
+ */
+export type RemoveArgs<TableName extends keyof DataModel> = {
+  tableName: TableName;
+  ids: Id<TableName> | Id<TableName>[];
+  hard?: boolean;
+};

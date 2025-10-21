@@ -3,29 +3,23 @@ import { DataModel, Id, Doc } from "../../_generated/dataModel.js";
 import { mutation } from "../../_generated/server.js";
 import { cleanUpdates } from "../shortcuts.js";
 import { isAuthenticated, isValidSecret } from "../validators.js";
-import { TableName, UpdateResult } from "./types.js";
-
-type UpdateItem<TableName extends keyof DataModel> = {
-  id: Id<TableName>;
-  updates: Partial<Doc<TableName>>;
-};
-
-/**
- * Arguments for dynamic update
- */
-type DynamicUpdateArgs<TableName extends keyof DataModel> = {
-  tableName: TableName;
-  data: UpdateItem<TableName>[];
-};
+import { TableName, UpdateResult, UpdateArgs } from "./types.js";
 
 /**
  * Universal update mutation that works with ANY table
  * Supports both single record and batch updates
  *
  * @param tableName - Name of the table to update
- * @param data - Array of {id, updates} objects
- * @returns Array of IDs for successfully updated records
+ * @param data - Array of {id, updates} objects (type-safe based on tableName)
+ * @returns Array of IDs for successfully updated records (type-safe based on tableName)
  * @throws Error if any update fails (atomic transaction - all or nothing)
+ *
+ * @example
+ * const updatedIds = await update({
+ *   tableName: 'sites',
+ *   data: [{ id: siteId, updates: { name: 'New Name' } }]
+ * });
+ * // updatedIds is typed as Id<'sites'>[]
  */
 export const update = mutation({
   args: {
@@ -33,13 +27,16 @@ export const update = mutation({
     data: v.array(
       v.object({
         id: v.string(),
-        updates: v.any(),
+        updates: v.object({}), // Any object shape for updates
       })
     ),
   },
-  handler: async (ctx, args): Promise<UpdateResult<keyof DataModel>> => {
+  handler: async <T extends keyof DataModel>(
+    ctx: any,
+    args: UpdateArgs<T>
+  ): Promise<UpdateResult<T>> => {
     const identity = await isAuthenticated(ctx);
-    const { tableName, data } = args as DynamicUpdateArgs<keyof DataModel>;
+    const { tableName, data } = args;
     const now = Date.now();
 
     if (!Array.isArray(data) || data.length === 0) {
@@ -63,10 +60,12 @@ export const update = mutation({
               throw new Error("Access denied - tenant mismatch");
             }
 
-            await ctx.db.patch(item.id, {
+            const patchData = {
               ...cleanUpdates(item.updates),
               updatedAt: now,
-            } as any);
+            };
+
+            await ctx.db.patch(item.id, patchData as any);
           } catch (error) {
             throw new Error(
               `Update failed at index ${index} in table "${String(tableName)}" (id: ${item.id}): ${
@@ -78,7 +77,7 @@ export const update = mutation({
       );
 
       // Return all updated record IDs
-      return data.map((item) => item.id as Id<typeof tableName>);
+      return data.map((item) => item.id);
     } catch (error) {
       // Re-throw with context about the batch operation
       throw new Error(
@@ -92,6 +91,14 @@ export const update = mutation({
 
 /**
  * _s update function (no auth required, uses secret validation)
+ *
+ * @example
+ * const updatedIds = await update_s({
+ *   tableName: 'sites',
+ *   data: [{ id: siteId, updates: { name: 'New Name' } }],
+ *   secret: process.env.CONVEX_API_KEY
+ * });
+ * // updatedIds is typed as Id<'sites'>[]
  */
 export const update_s = mutation({
   args: {
@@ -99,16 +106,17 @@ export const update_s = mutation({
     data: v.array(
       v.object({
         id: v.string(),
-        updates: v.any(),
+        updates: v.object({}),
       })
     ),
     secret: v.string(),
   },
-  handler: async (ctx, args): Promise<UpdateResult<keyof DataModel>> => {
+  handler: async <T extends keyof DataModel>(
+    ctx: any,
+    args: UpdateArgs<T> & { secret: string }
+  ): Promise<UpdateResult<T>> => {
     await isValidSecret(args.secret);
-    const { tableName, data } = args as DynamicUpdateArgs<
-      keyof DataModel
-    > & { secret: string };
+    const { tableName, data } = args;
     const now = Date.now();
 
     if (!Array.isArray(data) || data.length === 0) {
@@ -128,10 +136,12 @@ export const update_s = mutation({
               );
             }
 
-            await ctx.db.patch(item.id, {
+            const patchData = {
               ...cleanUpdates(item.updates),
               updatedAt: now,
-            } as any);
+            };
+
+            await ctx.db.patch(item.id, patchData as any);
           } catch (error) {
             throw new Error(
               `Update failed at index ${index} in table "${String(tableName)}" (id: ${item.id}): ${
@@ -143,7 +153,7 @@ export const update_s = mutation({
       );
 
       // Return all updated record IDs
-      return data.map((item) => item.id as Id<typeof tableName>);
+      return data.map((item) => item.id);
     } catch (error) {
       // Re-throw with context about the batch operation
       throw new Error(
