@@ -36,9 +36,11 @@ export class HeartbeatManager {
   private redis: Redis;
   private staleCheckInterval?: NodeJS.Timeout;
   private syncInterval?: NodeJS.Timeout;
+  private reconcileInterval?: NodeJS.Timeout;
   private readonly STALE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes
   private readonly STALE_CHECK_INTERVAL_MS = 30 * 1000; // 30 seconds
-  private readonly SYNC_INTERVAL_MS = 5 * 60 * 1000; // 10 minutes
+  private readonly SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+  private readonly RECONCILE_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
   private readonly BATCH_SIZE = 50; // Max updates per batch
   private readonly PENDING_AGENTS_KEY = "heartbeat:pending_agents"; // Redis SET of agent IDs with pending updates
   private readonly UPDATE_KEY_PREFIX = "heartbeat:update:"; // Redis HASH key prefix for agent updates
@@ -99,6 +101,7 @@ export class HeartbeatManager {
     // Start background workers
     this.startStaleChecker();
     this.startSyncWorker();
+    this.startReconcileWorker();
 
     Debug.log({
       module: "HeartbeatManager",
@@ -130,6 +133,9 @@ export class HeartbeatManager {
     }
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
+    }
+    if (this.reconcileInterval) {
+      clearInterval(this.reconcileInterval);
     }
 
     // Flush pending updates
@@ -192,11 +198,12 @@ export class HeartbeatManager {
     };
 
     // Check status change
-    if (currentStatus && currentStatus !== "online") {
+    // Queue update if agent has no status in Redis OR status is changing to online
+    if (!currentStatus || currentStatus !== "online") {
       Debug.log({
         module: "HeartbeatManager",
         context: "recordHeartbeat",
-        message: `Agent ${agentId} status changed: ${currentStatus} → online`,
+        message: `Agent ${agentId} status changed: ${currentStatus || "none"} → online`,
       });
       needsUpdate = true;
     }
@@ -265,12 +272,6 @@ export class HeartbeatManager {
     // Queue update if anything changed
     if (needsUpdate) {
       await this.queueUpdate(update);
-    } else if (!currentStatus) {
-      Debug.log({
-        module: "HeartbeatManager",
-        context: "recordHeartbeat",
-        message: `Agent ${agentId} has no current status in Redis, not queuing update (will be seeded or is new)`,
-      });
     }
   }
 
@@ -488,6 +489,39 @@ export class HeartbeatManager {
   }
 
   /**
+   * Start the reconciliation worker background worker.
+   * Reconciles Redis state with Convex for online agents.
+   */
+  private startReconcileWorker(): void {
+    Debug.log({
+      module: "HeartbeatManager",
+      context: "startReconcileWorker",
+      message: `Starting reconciliation worker, next job at ${new Date(Date.now() + this.RECONCILE_INTERVAL_MS).toLocaleString()} (interval: ${this.RECONCILE_INTERVAL_MS}ms)`,
+    });
+
+    this.reconcileInterval = setInterval(async () => {
+      if (!this.isRunning) return;
+
+      try {
+        await this.reconcileOnlineAgents();
+
+        Debug.log({
+          module: "HeartbeatManager",
+          context: "startReconcileWorker",
+          message: `Next job at ${new Date(Date.now() + this.RECONCILE_INTERVAL_MS).toLocaleString()} (interval: ${this.RECONCILE_INTERVAL_MS}ms)`,
+        });
+      } catch (error) {
+        Debug.error({
+          module: "HeartbeatManager",
+          context: "reconcileWorker",
+          message: `Error reconciling agents: ${error}`,
+          code: "RECONCILE_WORKER_ERROR",
+        });
+      }
+    }, this.RECONCILE_INTERVAL_MS);
+  }
+
+  /**
    * Check for stale agents and queue status updates.
    */
   private async checkStaleAgents(): Promise<void> {
@@ -547,6 +581,100 @@ export class HeartbeatManager {
         context: "checkStaleAgents",
         message: `Error checking stale agents: ${error}`,
         code: "STALE_CHECK_ERROR",
+      });
+    }
+  }
+
+  /**
+   * Reconcile Redis state with Convex for online agents.
+   * Ensures agents that are online in Redis are also online in Convex.
+   */
+  private async reconcileOnlineAgents(): Promise<void> {
+    try {
+      Debug.log({
+        module: "HeartbeatManager",
+        context: "reconcileOnlineAgents",
+        message: "Starting reconciliation of online agents",
+      });
+
+      const keys = await this.redis.keys("agent:*");
+      if (keys.length === 0) {
+        Debug.log({
+          module: "HeartbeatManager",
+          context: "reconcileOnlineAgents",
+          message: "No agents in Redis to reconcile",
+        });
+        return;
+      }
+
+      let reconciledCount = 0;
+      const agentIds: Id<"agents">[] = [];
+
+      // Find all agents that are online in Redis
+      for (const key of keys) {
+        const data = await this.redis.hgetall(key);
+        if (data.status === "online") {
+          const agentId = key.replace("agent:", "") as Id<"agents">;
+          agentIds.push(agentId);
+        }
+      }
+
+      Debug.log({
+        module: "HeartbeatManager",
+        context: "reconcileOnlineAgents",
+        message: `Found ${agentIds.length} online agents in Redis`,
+      });
+
+      if (agentIds.length === 0) {
+        return;
+      }
+
+      // Fetch all agents from Convex
+      const agents = (await client.query(api.helpers.orm.list_s, {
+        tableName: "agents",
+        secret: process.env.CONVEX_API_KEY!,
+      })) as Doc<"agents">[];
+
+      // Create a map of agent statuses from Convex
+      const convexStatusMap = new Map<string, AgentStatus>();
+      for (const agent of agents) {
+        convexStatusMap.set(agent._id, (agent.status as AgentStatus) || "unknown");
+      }
+
+      // Check each online agent in Redis against Convex
+      const now = Date.now();
+      for (const agentId of agentIds) {
+        const convexStatus = convexStatusMap.get(agentId);
+
+        if (convexStatus !== "online") {
+          Debug.log({
+            module: "HeartbeatManager",
+            context: "reconcileOnlineAgents",
+            message: `Agent ${agentId} out of sync: Redis=online, Convex=${convexStatus || "not found"}`,
+          });
+
+          // Queue update to sync Convex with Redis
+          await this.queueUpdate({
+            id: agentId,
+            status: "online",
+            statusChangedAt: now,
+          });
+
+          reconciledCount++;
+        }
+      }
+
+      Debug.log({
+        module: "HeartbeatManager",
+        context: "reconcileOnlineAgents",
+        message: `Reconciliation complete. ${reconciledCount} agents queued for sync`,
+      });
+    } catch (error) {
+      Debug.error({
+        module: "HeartbeatManager",
+        context: "reconcileOnlineAgents",
+        message: `Error during reconciliation: ${error}`,
+        code: "RECONCILE_ERROR",
       });
     }
   }
