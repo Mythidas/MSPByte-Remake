@@ -128,7 +128,7 @@ pub fn start_heartbeat_task(running: Arc<AtomicBool>) {
         // Wait 5 seconds before first heartbeat to allow app to fully initialize
         tokio::time::sleep(Duration::from_secs(5)).await;
 
-        let mut heartbeat_interval = interval(Duration::from_secs(60));
+        let mut heartbeat_interval = interval(Duration::from_secs(60 * 10));
         let mut health_check_interval = interval(Duration::from_secs(86400)); // 24 hours
 
         // Skip first tick for health check to align with actual 24hr intervals
