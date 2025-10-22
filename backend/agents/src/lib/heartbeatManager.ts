@@ -37,7 +37,7 @@ export class HeartbeatManager {
   private staleCheckInterval?: NodeJS.Timeout;
   private syncInterval?: NodeJS.Timeout;
   private reconcileInterval?: NodeJS.Timeout;
-  private readonly STALE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes
+  private readonly STALE_THRESHOLD_MS = 15 * 60 * 1000; // 3 minutes
   private readonly STALE_CHECK_INTERVAL_MS = 30 * 1000; // 30 seconds
   private readonly SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
   private readonly RECONCILE_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
