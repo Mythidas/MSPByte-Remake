@@ -37,10 +37,10 @@ export class HeartbeatManager {
   private staleCheckInterval?: NodeJS.Timeout;
   private syncInterval?: NodeJS.Timeout;
   private reconcileInterval?: NodeJS.Timeout;
-  private readonly STALE_THRESHOLD_MS = 15 * 60 * 1000; // 3 minutes
-  private readonly STALE_CHECK_INTERVAL_MS = 30 * 1000; // 30 seconds
+  private readonly STALE_THRESHOLD_MS = 22 * 60 * 1000; // 22 minutes (2.2x heartbeat interval)
+  private readonly STALE_CHECK_INTERVAL_MS = 10 * 1000; // 10 minutes
   private readonly SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
-  private readonly RECONCILE_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
+  private readonly RECONCILE_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
   private readonly BATCH_SIZE = 50; // Max updates per batch
   private readonly PENDING_AGENTS_KEY = "heartbeat:pending_agents"; // Redis SET of agent IDs with pending updates
   private readonly UPDATE_KEY_PREFIX = "heartbeat:update:"; // Redis HASH key prefix for agent updates
@@ -430,7 +430,7 @@ export class HeartbeatManager {
 
   /**
    * Start the stale checker background worker.
-   * Checks for agents that haven't sent heartbeats in >3 minutes.
+   * Checks for agents that haven't sent heartbeats in >22 minutes.
    */
   private startStaleChecker(): void {
     this.staleCheckInterval = setInterval(async () => {
@@ -537,7 +537,7 @@ export class HeartbeatManager {
         const status = data.status as AgentStatus;
         const agentId = key.replace("agent:", "") as Id<"agents">;
 
-        // Check if agent is stale (>3 min since last heartbeat)
+        // Check if agent is stale (>22 min since last heartbeat)
         if (
           status === "online" &&
           now - lastHeartbeat > this.STALE_THRESHOLD_MS
