@@ -111,12 +111,6 @@ export default async function (fastify: FastifyInstance) {
         );
       }
 
-      Debug.log({
-        module: "v1.0/heartbeat",
-        context: "POST",
-        message: `Heartbeat from agent ${hostname} (DeviceID: ${deviceID}) (GUID: ${calculatedGuid})`,
-      });
-
       // Record heartbeat with metadata in Redis
       // HeartbeatManager will detect changes and queue updates for batching
       await perf.trackSpan("record_heartbeat_redis", async () => {

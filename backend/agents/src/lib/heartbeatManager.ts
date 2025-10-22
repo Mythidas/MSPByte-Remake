@@ -173,12 +173,6 @@ export class HeartbeatManager {
     const current = await this.redis.hgetall(key);
     const currentStatus = current.status as AgentStatus | "unknown";
 
-    Debug.log({
-      module: "HeartbeatManager",
-      context: "recordHeartbeat",
-      message: `Heartbeat for ${agentId}: current status = ${currentStatus}`,
-    });
-
     // Build update data
     const redisUpdate: Record<string, string | number> = {
       lastHeartbeat: now,
@@ -638,7 +632,10 @@ export class HeartbeatManager {
       // Create a map of agent statuses from Convex
       const convexStatusMap = new Map<string, AgentStatus>();
       for (const agent of agents) {
-        convexStatusMap.set(agent._id, (agent.status as AgentStatus) || "unknown");
+        convexStatusMap.set(
+          agent._id,
+          (agent.status as AgentStatus) || "unknown"
+        );
       }
 
       // Check each online agent in Redis against Convex
