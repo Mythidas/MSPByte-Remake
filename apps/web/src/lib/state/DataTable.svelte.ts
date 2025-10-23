@@ -117,8 +117,6 @@ class TableStateClass implements TableState {
 			this.page.current = Math.min(parseInt(this.params.page), this.page.total);
 			this.page.size = parseInt(this.params.size);
 
-			this.globalSearch = this.params.globalSearch;
-
 			const sort = this.params.sort ? this.params.sort.split(':') : undefined;
 			this.columns.sortedColumn = sort ? [sort[0], sort[1] as any] : undefined;
 
