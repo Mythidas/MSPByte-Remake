@@ -294,6 +294,7 @@ export default defineSchema({
     .index("by_type", ["entityType", "tenantId"])
     .index("by_data_source", ["dataSourceId", "tenantId"])
     .index("by_site", ["siteId", "tenantId"])
+    .index("by_site_type", ["siteId", "entityType", "tenantId"])
     .index("by_external_id", ["externalId", "tenantId"])
     .index("by_integration_type", ["integrationId", "entityType", "tenantId"]),
 

@@ -8,6 +8,7 @@ import { BaseLinker } from "@workspace/pipeline/linkers/BaseLinker.js";
 import { BaseProcessor } from "@workspace/pipeline/processors/BaseProcessor.js";
 import { CompanyProcessor } from "@workspace/pipeline/processors/CompanyProcessor.js";
 import { EndpointProcessor } from "@workspace/pipeline/processors/EndpointProcessor.js";
+import { FirewallProcessor } from "@workspace/pipeline/processors/FirewallProcessor.js";
 import { GroupProcessor } from "@workspace/pipeline/processors/GroupProcessor.js";
 import { IdentityProcessor } from "@workspace/pipeline/processors/IdentityProcessor.js";
 import { BaseResolver } from "@workspace/pipeline/resolvers/BaseResolver.js";
@@ -49,6 +50,7 @@ class MSPByteBackend {
       new EndpointProcessor(),
       new IdentityProcessor(),
       new GroupProcessor(),
+      new FirewallProcessor(),
     ];
     this.resolvers = [];
     this.linkers = [];

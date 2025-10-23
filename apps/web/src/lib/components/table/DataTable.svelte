@@ -114,7 +114,7 @@
 	<!--TableFooter-->
 	<div class="mt-auto grid w-full grid-cols-3 rounded bg-input p-2 text-sm shadow">
 		<div class="flex items-center justify-start">
-			Page {tableState.page.current} of {tableState.page.total} ({tableState.getRows().length} rows)
+			Page {tableState.page.current} of {tableState.page.total} ({tableState.data.length} rows)
 		</div>
 		<div class="flex items-center justify-center gap-1">
 			<Button class="h-8 w-8" variant="secondary" onclick={tableState.page.firstPage}>
