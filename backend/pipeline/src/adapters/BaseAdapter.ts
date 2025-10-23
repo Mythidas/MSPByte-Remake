@@ -51,7 +51,6 @@ export abstract class BaseAdapter {
         module: "BaseAdapter",
         context: "handleJob",
         message: `Adapter ${this.integrationType} does not support entity type ${entityType}`,
-        code: "UNSUPPORTED_ENTITY",
       });
       await Scheduler.failJob(
         job,
@@ -101,7 +100,6 @@ export abstract class BaseAdapter {
         module: "BaseAdapter",
         context: "handleJob",
         message: `No next stage found for ${entityType} in ${this.integrationType}`,
-        code: "FLOW_RESOLUTION_ERROR",
       });
       return;
     }
@@ -136,7 +134,6 @@ export abstract class BaseAdapter {
         module: "BaseAdapter",
         context: "handleJob",
         message: `Failed to publish: ${err}`,
-        code: "EVENT_FAILURE",
       });
     }
   }

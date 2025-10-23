@@ -23,7 +23,6 @@ class NatsClient {
         module: "NatsClient",
         context: "connect",
         message: "Failed to connect to NATS",
-        code: "NATS_CONNECT_FAILED",
       });
       throw error;
     }
@@ -69,7 +68,6 @@ class NatsClient {
             module: "NatsClient",
             context: "subscribe",
             message: `Error processing message from ${subject}: ${error}`,
-            code: "NATS_MESSAGE_ERROR",
           });
         }
       }

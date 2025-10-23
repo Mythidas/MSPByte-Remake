@@ -25,7 +25,6 @@ export default async function (fastify: FastifyInstance) {
             context: "POST",
             message:
               "Site, Hostname, Platform and Version are required for registration",
-            code: "400",
           },
         },
         400
@@ -45,7 +44,6 @@ export default async function (fastify: FastifyInstance) {
             module: "v1.0/register",
             context: "POST",
             message: "Invalid site_uid provided",
-            code: "400",
           },
         },
         400
@@ -101,7 +99,6 @@ export default async function (fastify: FastifyInstance) {
             module: "v1.0/register",
             context: "POST",
             message: "Failed to create agent",
-            code: "500",
           },
         },
         500

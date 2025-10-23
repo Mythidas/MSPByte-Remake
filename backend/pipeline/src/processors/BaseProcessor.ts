@@ -7,6 +7,7 @@ import type {
 import type {
   Company,
   Endpoint,
+  Firewall,
   Group,
   Identity,
 } from "@workspace/database/convex/types/normalized.js";
@@ -36,6 +37,7 @@ export type CompanyData = ProcessedEntityData<Company>;
 export type EndpointData = ProcessedEntityData<Endpoint>;
 export type IdentityData = ProcessedEntityData<Identity>;
 export type GroupData = ProcessedEntityData<Group>;
+export type FirewallData = ProcessedEntityData<Firewall>;
 
 export abstract class BaseProcessor<T = any> {
   protected entityType: EntityType;
@@ -127,7 +129,6 @@ export abstract class BaseProcessor<T = any> {
         module: "BaseProcessor",
         context: "handleProcessing",
         message: `Failed for event ${eventID} (${entityType} | ${integrationID}): ${error}`,
-        code: "PROCESSOR_FAILED",
       });
 
       await this.publishFailedEvent(
@@ -168,7 +169,7 @@ export abstract class BaseProcessor<T = any> {
         error: {
           module: "BaseProcessor",
           context: "getExistingData",
-          code: "DB_FAILURE",
+
           message: error instanceof Error ? error.message : "Unknown error",
           time: new Date().toISOString(),
         },
@@ -205,13 +206,7 @@ export abstract class BaseProcessor<T = any> {
       const updates: {
         id: Id<"entities">;
         updates: {
-          entityType?:
-            | "companies"
-            | "endpoints"
-            | "identities"
-            | "groups"
-            | "licenseAssignments"
-            | undefined;
+          entityType?: EntityType;
           dataHash?: string | undefined;
           rawData?: any;
           normalizedData?: any;
@@ -222,12 +217,7 @@ export abstract class BaseProcessor<T = any> {
         integrationId: Id<"integrations">;
         externalId: string;
         dataSourceId: Id<"data_sources">;
-        entityType:
-          | "companies"
-          | "endpoints"
-          | "identities"
-          | "groups"
-          | "licenseAssignments";
+        entityType: EntityType;
         dataHash: string;
         rawData: any;
         normalizedData: any;
@@ -305,7 +295,7 @@ export abstract class BaseProcessor<T = any> {
         error: {
           module: "BaseProcessor",
           context: "getExistingData",
-          code: "DB_FAILURE",
+
           message: "Failed to create or update entities",
           time: new Date().toISOString(),
         },
@@ -353,7 +343,6 @@ export abstract class BaseProcessor<T = any> {
         module: "BaseProcessor",
         context: "publishProcessedEvent",
         message: `Failed to publish ${eventName}: ${err}`,
-        code: "NATS_FAILURE",
       });
     }
   }
@@ -375,7 +364,6 @@ export abstract class BaseProcessor<T = any> {
       parentEventID: originalEvent.eventID,
 
       error: {
-        code: errorCode,
         message: errorMessage,
         retryable: errorCode !== "UNSUPPORTED_ENTITY",
       },
@@ -391,7 +379,6 @@ export abstract class BaseProcessor<T = any> {
         module: "BaseProcessor",
         context: "publishFailedEvent",
         message: `Failed to publish failure event: ${err}`,
-        code: "NATS_FAILURE",
       });
     }
   }

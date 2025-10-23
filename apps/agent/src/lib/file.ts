@@ -15,7 +15,6 @@ export async function takeScreenshot(): Promise<APIResponse<string>> {
       module: "File",
       context: "takeScreenshot",
       message: `Failed to take screenshot: ${err}`,
-      code: "FILE_ERROR",
     });
   }
 }
@@ -45,7 +44,6 @@ export async function chooseImageDialog(): Promise<APIResponse<string>> {
       module: "File",
       context: "chooseImageDialog",
       message: String(err),
-      code: "DIALOG_ERROR",
     });
   }
 }
@@ -70,7 +68,7 @@ export async function logToFile(
       error: {
         module: "File",
         context: "logToFile",
-        code: "LOG_ERROR",
+
         message: `Failed to write to log file: ${err}`,
         time: new Date().toISOString(),
       },
@@ -92,7 +90,6 @@ export async function readFileText(path: string): Promise<APIResponse<string>> {
       module: "File",
       context: "readFileBase64",
       message: `Failed to read file: ${err}`,
-      code: "FILE_ERROR",
     });
   }
 }
@@ -113,7 +110,6 @@ export async function readFileBase64(
       module: "File",
       context: "readFileBase64",
       message: `Failed to read file: ${err}`,
-      code: "FILE_ERROR",
     });
   }
 }
@@ -134,7 +130,6 @@ export async function readFileBinary(
       module: "File",
       context: "readFileBinary",
       message: `Failed to read file: ${err}`,
-      code: "FILE_ERROR",
     });
   }
 }

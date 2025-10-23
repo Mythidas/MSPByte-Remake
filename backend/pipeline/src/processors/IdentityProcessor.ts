@@ -26,7 +26,6 @@ export class IdentityProcessor extends BaseProcessor {
           module: "IdentityProcessor",
           context: "normalizeData",
           message: `No normalizer for this data: ${integrationType}`,
-          code: "NORMALIZER_NOT_FOUND",
         });
         return [];
       }

@@ -26,7 +26,6 @@ export async function getSettings(): Promise<APIResponse<AgentSettings>> {
       module: "Agent",
       context: "getSettings",
       message: `Failed to get agent settings: ${err}`,
-      code: "SYSTEM_ERROR",
     });
   }
 }

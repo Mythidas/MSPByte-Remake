@@ -79,7 +79,6 @@ export class Scheduler {
         module: "Scheduler",
         context: "pollJobs",
         message: `Error polling jobs: ${error}`,
-        code: "SCHEDULER_POLL_ERROR",
       });
     }
   }
@@ -136,7 +135,6 @@ export class Scheduler {
         module: "Scheduler",
         context: "processJob",
         message: `Failed to process job ${job._id}`,
-        code: "SCHEDULER_JOB_FAILED",
       });
 
       await Scheduler.failJob(job, error as string);

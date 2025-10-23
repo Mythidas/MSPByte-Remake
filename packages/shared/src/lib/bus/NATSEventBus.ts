@@ -45,7 +45,6 @@ export class NATSEventBus implements IEventBus {
         module: "NATSEventBus",
         context: "open",
         message: `Failed to open NATS connection: ${err}`,
-        code: "EB_FAILED_SETUP",
       });
     }
   }

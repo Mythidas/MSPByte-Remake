@@ -23,7 +23,6 @@ export class Microsoft365Adapter extends BaseAdapter {
         module: "Microsoft365Adapter",
         context: "getRawData",
         message: "Microsoft365 does not support global syncs",
-        code: "INVALID_SYNC",
       });
     }
 
@@ -40,7 +39,6 @@ export class Microsoft365Adapter extends BaseAdapter {
       module: "Microsoft365Adapter",
       context: "getRawData",
       message: `Entity type not supported: ${props.eventData.entityType}`,
-      code: "UNKNOWN_PIPELINE",
     });
   }
 
@@ -54,7 +52,6 @@ export class Microsoft365Adapter extends BaseAdapter {
         module: "Microsoft365Adapter",
         context: "handleIdentitySync",
         message: `Connector failed health check: ${dataSource._id}`,
-        code: "CONNECTOR_FAILURE",
       });
     }
 
@@ -97,7 +94,6 @@ export class Microsoft365Adapter extends BaseAdapter {
         module: "Microsoft365Adapter",
         context: "handleIdentitySync",
         message: `Connector failed health check: ${dataSource._id}`,
-        code: "CONNECTOR_FAILURE",
       });
     }
 

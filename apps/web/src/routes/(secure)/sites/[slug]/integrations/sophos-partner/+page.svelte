@@ -15,7 +15,7 @@
 	let dynamicFilters = $state<any>(undefined);
 
 	// Query with dynamic filters from table
-	const table = useQuery(api.helpers.orm.list, () => ({
+	const table = useQuery(api.helpers.orm.list, {
 		tableName: 'entities',
 		filters: dynamicFilters,
 		index: {
@@ -24,7 +24,7 @@
 				siteId: appState.getSite()?._id!
 			}
 		}
-	}));
+	});
 </script>
 
 <div class="flex size-full flex-col gap-4">

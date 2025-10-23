@@ -26,7 +26,6 @@ export class GroupProcessor extends BaseProcessor {
           module: "GroupProcessor",
           context: "normalizeData",
           message: `No normalizer for this data: ${integrationType}`,
-          code: "NORMALIZER_NOT_FOUND",
         });
         return [];
       }

@@ -46,3 +46,16 @@ export type Group = {
 
   created_at: string;
 };
+
+export type Firewall = {
+  externalId: string;
+  serial: string;
+
+  hostname: string;
+  status: "online" | "offline";
+  firmware: string;
+  model: string;
+
+  extAddress: string;
+  lastSeenAt: string;
+};

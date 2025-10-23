@@ -32,7 +32,6 @@ export default async function (fastify: FastifyInstance) {
               module: "v1.0/heartbeat",
               context: "POST",
               message: "API headers invalid",
-              code: "401",
             },
           },
           401
@@ -69,7 +68,6 @@ export default async function (fastify: FastifyInstance) {
               module: "v1.0/heartbeat",
               context: "POST",
               message: "Hostname and version are required",
-              code: "400",
             },
           },
           400
@@ -104,7 +102,6 @@ export default async function (fastify: FastifyInstance) {
               module: "v1.0/heartbeat",
               context: "POST",
               message: "Agent not found",
-              code: "404",
             },
           },
           404
@@ -168,7 +165,6 @@ export default async function (fastify: FastifyInstance) {
             module: "v1.0/heartbeat",
             context: "POST",
             message: `Failed to process heartbeat: ${err}`,
-            code: "500",
           },
         },
         500

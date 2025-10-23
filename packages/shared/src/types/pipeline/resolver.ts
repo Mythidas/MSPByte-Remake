@@ -182,7 +182,7 @@ export function parseEventName(
     "endpoints",
     "identities",
     "groups",
-    "licenseAssignments",
+    "firewalls",
   ];
 
   if (

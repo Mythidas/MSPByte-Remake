@@ -25,7 +25,6 @@ export class AutoTaskAdapter extends BaseAdapter {
         module: "AutoTaskAdapter",
         context: "getRawData",
         message: `AutoTask doesn't have any global sync methods. Missing data_source.`,
-        code: "AUTOTASK_FETCH_FAILED",
       });
     }
 
@@ -45,7 +44,6 @@ export class AutoTaskAdapter extends BaseAdapter {
       module: "AutoTaskAdapter",
       context: "getRawData",
       message: `Stage not supported: ${eventData.stage}`,
-      code: "UNKNOWN_PIPELINE",
     });
   }
 
@@ -62,7 +60,6 @@ export class AutoTaskAdapter extends BaseAdapter {
         module: "AutoTaskAdapter",
         context: "handleCompanySync",
         message: `Connector failed health check: ${dataSource._id}`,
-        code: "CONNECTOR_FAILURE",
       });
     }
 

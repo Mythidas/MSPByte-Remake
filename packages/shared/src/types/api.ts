@@ -3,7 +3,6 @@ export type APIError = {
   context: string;
   message: string;
   time: string;
-  code: string | number;
 };
 
 export type APIResponse<T> =

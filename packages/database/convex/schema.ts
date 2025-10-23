@@ -5,8 +5,8 @@ export const entityTypeValidator = v.union(
   v.literal("companies"),
   v.literal("endpoints"),
   v.literal("identities"),
-  v.literal("groups"),
-  v.literal("licenseAssignments")
+  v.literal("firewalls"),
+  v.literal("groups")
 );
 
 export default defineSchema({

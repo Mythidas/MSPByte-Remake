@@ -3,6 +3,7 @@ import Debug from "@workspace/shared/lib/Debug.js";
 import Encryption from "@workspace/shared/lib/Encryption.js";
 import { APIResponse } from "@workspace/shared/types/api.js";
 import { SophosPartnerEndpoint } from "@workspace/shared/types/integrations/sophos-partner/endpoints.js";
+import { SophosPartnerFirewall } from "@workspace/shared/types/integrations/sophos-partner/firewall.js";
 import {
   SophosPartnerConfig,
   SophosPartnerAPIResponse,
@@ -56,7 +57,6 @@ export default class SophosPartnerConnector implements IConnector {
             module: "SophosPartnerConnector",
             context: "getTenants",
             message: `HTTP ${response.status}: ${response.statusText}`,
-            code: response.status,
           });
         }
 
@@ -78,7 +78,6 @@ export default class SophosPartnerConnector implements IConnector {
         module: "SophosPartnerConnector",
         context: "getTenants",
         message: String(err),
-        code: "SOPHOS_API_FAILURE",
       });
     }
   }
@@ -106,7 +105,6 @@ export default class SophosPartnerConnector implements IConnector {
           module: "SophosPartnerConnector",
           context: "getEndpoints",
           message: `HTTP ${response.status}: ${response.statusText}`,
-          code: response.status,
         });
       }
 
@@ -121,7 +119,72 @@ export default class SophosPartnerConnector implements IConnector {
         module: "SophosPartnerConnector",
         context: "getEndpoints",
         message: String(err),
-        code: "SOPHOS_API_FAILURE",
+      });
+    }
+  }
+
+  async getFirewalls(
+    config: SophosTenantConfig
+  ): Promise<APIResponse<SophosPartnerFirewall[]>> {
+    try {
+      const { data: token, error: tokenError } = await this.getToken();
+      if (tokenError) return { error: tokenError };
+
+      const path = "/firewall/v1/firewalls";
+      const url = config.apiHost + path;
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "X-Tenant-ID": config.tenantId,
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error);
+      }
+
+      const data = await response.json();
+
+      if (data.items && data.items.length) {
+        const response = await fetch(url + "/actions/firmware-upgrade-check", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "X-Tenant-ID": config.tenantId,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            firewalls: data.items.map((fw: SophosPartnerFirewall) => fw.id),
+          }),
+        });
+
+        const firmwares = await response.json();
+        if (firmwares.firewalls && firmwares.firewalls.length) {
+          for (const check of firmwares.firewalls) {
+            const firewall = data.items.find(
+              (fw: SophosPartnerFirewall) => fw.id === check.id
+            );
+            if (firewall) {
+              firewall.firmware = {
+                ...check,
+                newestFirmware: check.upgradeToVersion[0] || "",
+              };
+            }
+          }
+        }
+      }
+
+      return {
+        data: [...data.items],
+      };
+    } catch (err) {
+      return Debug.error({
+        module: "SophosPartner",
+        context: "getEndpoints",
+        message: String(err),
       });
     }
   }
@@ -142,7 +205,6 @@ export default class SophosPartnerConnector implements IConnector {
           module: "SophosPartnerConnector",
           context: "getPartnerID",
           message: `HTTP ${response.status}: ${response.statusText}`,
-          code: response.status,
         });
       }
 
@@ -156,7 +218,6 @@ export default class SophosPartnerConnector implements IConnector {
         module: "SophosPartnerConnector",
         context: "getPartnerID",
         message: String(err),
-        code: "SOPHOS_API_FAILURE",
       });
     }
   }
@@ -198,7 +259,6 @@ export default class SophosPartnerConnector implements IConnector {
           module: "SophosPartnerConnector",
           context: "getToken",
           message: `HTTP ${response.status}: ${response.statusText}`,
-          code: response.status,
         });
       }
 
@@ -214,7 +274,6 @@ export default class SophosPartnerConnector implements IConnector {
         module: "SophosPartnerConnector",
         context: "getToken",
         message: String(err),
-        code: "SOPHOS_API_FAILURE",
       });
     }
   }

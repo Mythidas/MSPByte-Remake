@@ -74,7 +74,6 @@ export default class Microsoft365Connector implements IConnector {
         module: "Microsoft365Connector",
         context: "getIdentities",
         message: `Failed to fetch: ${err}`,
-        code: "GRAPH_FAILURE",
       });
     }
   }
@@ -107,7 +106,6 @@ export default class Microsoft365Connector implements IConnector {
         module: "Microsoft365Connector",
         context: "getGroups",
         message: `Failed to fetch: ${err}`,
-        code: "GRAPH_FAILURE",
       });
     }
   }
@@ -129,7 +127,6 @@ export default class Microsoft365Connector implements IConnector {
         module: "Microsoft365Connector",
         context: "getGroups",
         message: `Failed to fetch: ${err}`,
-        code: "GRAPH_FAILURE",
       });
     }
   }
@@ -161,7 +158,6 @@ export default class Microsoft365Connector implements IConnector {
         module: "Microsoft365Connector",
         context: "getGraphClient",
         message: `Failed to create client: ${err}`,
-        code: "GRAPH_FAILURE",
       });
     }
   }

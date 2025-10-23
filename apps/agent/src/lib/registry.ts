@@ -21,7 +21,6 @@ export async function getRegistryValue(
       module: "Registry",
       context: "getRegistryKey",
       message: `Failed to get registry value: ${err}`,
-      code: "REGISTRY_FAILURE",
     });
   }
 }

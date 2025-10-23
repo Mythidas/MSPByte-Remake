@@ -48,7 +48,6 @@ export class AutoTaskConnector implements IConnector {
           module: "AutoTaskConnector",
           context: "getCompanies",
           message: `HTTP ${response.status}: ${response.statusText}`,
-          code: response.status,
         });
       }
 
@@ -62,7 +61,6 @@ export class AutoTaskConnector implements IConnector {
         module: "AutoTaskConnector",
         context: "getCompanies",
         message: String(err),
-        code: "AUTOTASK_API_FAILURE",
       });
     }
   }

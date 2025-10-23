@@ -25,17 +25,18 @@ export const StandardFlows: Record<EntityType, StandardFlow<EntityType>> = {
   endpoints: defaultEntityFlow,
   identities: defaultEntityFlow,
   groups: defaultEntityFlow,
+  firewalls: defaultEntityFlow,
 
   // Special case: license_assignments might not always need entity storage
-  licenseAssignments: {
-    sync: "fetched",
-    fetched: "processed", // Can go to processed for storage
-    processed: "linked",
-    resolved: "linked", // Or can be resolved directly to linking
-    linked: "completed",
-    completed: null,
-    failed: null,
-  },
+  // licenseAssignments: {
+  //   sync: "fetched",
+  //   fetched: "processed", // Can go to processed for storage
+  //   processed: "linked",
+  //   resolved: "linked", // Or can be resolved directly to linking
+  //   linked: "completed",
+  //   completed: null,
+  //   failed: null,
+  // },
 };
 
 // Custom flows allow integrations to override standard behavior
@@ -53,17 +54,17 @@ export type CustomFlow = {
 
 // Custom flow definitions for specific integration behaviors
 export const CustomFlows: CustomFlow[] = [
-  {
-    integration: "microsoft-365",
-    entity: "licenseAssignments",
-    overrides: {
-      // Microsoft365 license assignments skip entity storage and go directly to relationship creation
-      sync: "fetched",
-      fetched: "resolved", // Skip processed stage
-      resolved: "linked",
-      linked: "completed",
-    },
-  },
+  // {
+  //   integration: "microsoft-365",
+  //   entity: "licenseAssignments",
+  //   overrides: {
+  //     // Microsoft365 license assignments skip entity storage and go directly to relationship creation
+  //     sync: "fetched",
+  //     fetched: "resolved", // Skip processed stage
+  //     resolved: "linked",
+  //     linked: "completed",
+  //   },
+  // },
 ];
 
 // Flow resolution utilities

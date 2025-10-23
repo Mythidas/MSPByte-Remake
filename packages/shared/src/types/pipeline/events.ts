@@ -52,7 +52,6 @@ export interface CompletedEventPayload extends BasePipelineEvent {
 export interface FailedEventPayload extends BasePipelineEvent {
   stage: "failed";
   error: {
-    code: string;
     message: string;
     details?: any;
     retryable: boolean;

@@ -1,29 +1,29 @@
 import {
   BaseProcessor,
-  EndpointData,
+  FirewallData,
 } from "@workspace/pipeline/processors/BaseProcessor.js";
 import Debug from "@workspace/shared/lib/Debug.js";
-import { SophosPartnerEndpoint } from "@workspace/shared/types/integrations/sophos-partner/endpoints.js";
+import { SophosPartnerFirewall } from "@workspace/shared/types/integrations/sophos-partner/firewall.js";
 import {
   DataFetchPayload,
   IntegrationType,
 } from "@workspace/shared/types/pipeline/index.js";
 
-export class EndpointProcessor extends BaseProcessor {
+export class FirewallProcessor extends BaseProcessor {
   constructor() {
-    super("endpoints");
+    super("firewalls");
   }
 
   protected normalizeData(
     integrationType: IntegrationType,
     data: DataFetchPayload[]
-  ): EndpointData[] {
+  ): FirewallData[] {
     switch (integrationType) {
       case "sophos-partner":
         return this.fromSophosPartner(data);
       default: {
         Debug.error({
-          module: "EndpointProcessor",
+          module: "FirewallProcessor",
           context: "normalizeData",
           message: `No normalizer for this data: ${integrationType}`,
         });
@@ -35,7 +35,7 @@ export class EndpointProcessor extends BaseProcessor {
   private fromSophosPartner(data: DataFetchPayload[]) {
     return data.map((row) => {
       const { rawData, dataHash, siteID } = row as {
-        rawData: SophosPartnerEndpoint;
+        rawData: SophosPartnerFirewall;
         dataHash: string;
         siteID?: string;
       };
@@ -46,19 +46,18 @@ export class EndpointProcessor extends BaseProcessor {
         hash: dataHash,
         siteID,
         normalized: {
-          external_id: rawData.id,
+          externalId: rawData.id,
+          serial: rawData.serialNumber,
 
           hostname: rawData.hostname,
-          status: rawData.online ? "online" : "offline",
-          os: rawData.os.name,
+          status: rawData.status.connected ? "online" : "offline",
+          firmware: rawData.firmware?.firmwareVersion,
+          model: rawData.model,
 
-          ip_address: rawData.ipv4Addresses?.[0] || "",
-          ext_address: "",
-          mac_address: rawData.macAddresses?.[0] || "",
-
-          last_check_in: rawData.lastSeenAt,
+          extAddress: rawData.externalIpv4Addresses?.[0] || "",
+          lastSeenAt: rawData.stateChangedAt,
         },
-      } as EndpointData;
+      } as FirewallData;
     });
   }
 }

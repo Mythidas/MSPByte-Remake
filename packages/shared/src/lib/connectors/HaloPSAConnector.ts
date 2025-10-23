@@ -51,7 +51,6 @@ export class HaloPSAConnector {
         module: "HaloPSAConnector",
         context: "getSites",
         message: `HTTP ${response.status}: ${response.statusText}`,
-        code: response.status,
       });
     }
 
@@ -116,7 +115,6 @@ export class HaloPSAConnector {
         module: "HaloPSAConnector",
         context: "getAssets",
         message: `HTTP ${response.status}: ${response.statusText}`,
-        code: response.status,
       });
     }
 
@@ -213,7 +211,6 @@ export class HaloPSAConnector {
         module: "HaloPSAConnector",
         context: "createTicket",
         message: `HTTP ${response.status}: ${response.statusText}`,
-        code: response.status,
       });
     }
 
@@ -246,7 +243,6 @@ export class HaloPSAConnector {
         module: "HaloPSAConnector",
         context: "uploadImage",
         message: `HTTP ${response.status}: ${response.statusText}`,
-        code: response.status,
       });
     }
 
@@ -277,7 +273,6 @@ export class HaloPSAConnector {
         module: "HaloPSAConnector",
         context: "getToken",
         message: `HTTP ${response.status}: ${response.statusText}`,
-        code: response.status,
       });
     }
 

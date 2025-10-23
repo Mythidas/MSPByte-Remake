@@ -140,7 +140,6 @@ class MSPByteBackend {
         module: "MSPByteBackend",
         context: "start",
         message: "Failed to start MSPByte Backend Services",
-        code: "BACKEND_START_FAILED",
       });
       process.exit(1);
     }
@@ -171,7 +170,6 @@ class MSPByteBackend {
         module: "MSPByteBackend",
         context: "gracefulShutdown",
         message: "Error during graceful shutdown",
-        code: "BACKEND_SHUTDOWN_FAILED",
       });
       process.exit(1);
     }

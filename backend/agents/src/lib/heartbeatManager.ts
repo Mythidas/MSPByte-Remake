@@ -68,7 +68,6 @@ export class HeartbeatManager {
         module: "HeartbeatManager",
         context: "constructor",
         message: `Redis error: ${err.message}`,
-        code: "REDIS_ERROR",
       });
     });
   }
@@ -350,7 +349,6 @@ export class HeartbeatManager {
         module: "HeartbeatManager",
         context: "getOrFetchAgent",
         message: `Failed to fetch agent ${agentId} from Convex: ${error}`,
-        code: "FETCH_AGENT_ERROR",
       });
       return null;
     }
@@ -423,7 +421,6 @@ export class HeartbeatManager {
         module: "HeartbeatManager",
         context: "seedFromConvex",
         message: `Failed to seed from Convex: ${error}`,
-        code: "SEED_ERROR",
       });
     }
   }
@@ -443,7 +440,6 @@ export class HeartbeatManager {
           module: "HeartbeatManager",
           context: "staleChecker",
           message: `Error checking stale agents: ${error}`,
-          code: "STALE_CHECK_ERROR",
         });
       }
     }, this.STALE_CHECK_INTERVAL_MS);
@@ -476,7 +472,6 @@ export class HeartbeatManager {
           module: "HeartbeatManager",
           context: "syncWorker",
           message: `Error syncing to Convex: ${error}`,
-          code: "SYNC_ERROR",
         });
       }
     }, this.SYNC_INTERVAL_MS);
@@ -509,7 +504,6 @@ export class HeartbeatManager {
           module: "HeartbeatManager",
           context: "reconcileWorker",
           message: `Error reconciling agents: ${error}`,
-          code: "RECONCILE_WORKER_ERROR",
         });
       }
     }, this.RECONCILE_INTERVAL_MS);
@@ -574,7 +568,6 @@ export class HeartbeatManager {
         module: "HeartbeatManager",
         context: "checkStaleAgents",
         message: `Error checking stale agents: ${error}`,
-        code: "STALE_CHECK_ERROR",
       });
     }
   }
@@ -671,7 +664,6 @@ export class HeartbeatManager {
         module: "HeartbeatManager",
         context: "reconcileOnlineAgents",
         message: `Error during reconciliation: ${error}`,
-        code: "RECONCILE_ERROR",
       });
     }
   }
@@ -729,7 +721,6 @@ export class HeartbeatManager {
               module: "HeartbeatManager",
               context: "syncToConvex",
               message: `Failed to parse update for ${agentId}: ${error}`,
-              code: "PARSE_ERROR",
             });
           }
         }
@@ -769,7 +760,6 @@ export class HeartbeatManager {
           module: "HeartbeatManager",
           context: "syncToConvex",
           message: `Failed to update ${failures.length} agents: ${JSON.stringify(failures)}`,
-          code: "BATCH_UPDATE_PARTIAL_FAILURE",
         });
       }
     } catch (error) {
@@ -777,7 +767,6 @@ export class HeartbeatManager {
         module: "HeartbeatManager",
         context: "syncToConvex",
         message: `Failed to sync batch to Convex: ${error}`,
-        code: "BATCH_UPDATE_ERROR",
       });
     }
   }
@@ -818,7 +807,6 @@ export class HeartbeatManager {
         module: "HeartbeatManager",
         context: "queueUpdate",
         message: `Failed to queue update: ${error}`,
-        code: "QUEUE_UPDATE_ERROR",
       });
     }
   }

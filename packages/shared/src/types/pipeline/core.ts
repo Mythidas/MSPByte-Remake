@@ -17,8 +17,8 @@ export type EntityType =
   | "companies"
   | "endpoints"
   | "identities"
-  | "groups"
-  | "licenseAssignments";
+  | "firewalls"
+  | "groups";
 
 // Integration types for adapter identification
 export type IntegrationType =

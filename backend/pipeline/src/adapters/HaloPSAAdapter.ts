@@ -25,7 +25,6 @@ export class HaloPSAAdapter extends BaseAdapter {
         module: "HaloPSAAdapter",
         context: "getRawData",
         message: `HaloPSA doesn't have any global sync methods. Missing data_source.`,
-        code: "HALOPSA_FETCH_FAILED",
       });
     }
 
@@ -45,7 +44,6 @@ export class HaloPSAAdapter extends BaseAdapter {
       module: "HaloPSAAdapter",
       context: "getRawData",
       message: `Stage not supported: ${eventData.stage}`,
-      code: "UNKNOWN_PIPELINE",
     });
   }
 
@@ -62,7 +60,6 @@ export class HaloPSAAdapter extends BaseAdapter {
         module: "HaloPSAAdapter",
         context: "handleCompanySync",
         message: `Connector failed health check: ${dataSource._id}`,
-        code: "CONNECTOR_FAILURE",
       });
     }
 

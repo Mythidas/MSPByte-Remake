@@ -38,7 +38,6 @@ export default async function (fastify: FastifyInstance) {
               module: "v1.0/ticket/create",
               context: "POST",
               message: "API headers invalid",
-              code: "401",
             },
           },
           401
@@ -128,7 +127,6 @@ export default async function (fastify: FastifyInstance) {
               module: "v1.0/ticket/create",
               context: "POST",
               message: "PSA records not valid",
-              code: "401",
             },
           },
           404
@@ -344,7 +342,6 @@ export default async function (fastify: FastifyInstance) {
               module: "v1.0/ticket/create",
               context: "POST",
               message: "Failed to create ticket",
-              code: "500",
             },
           },
           500
@@ -435,7 +432,6 @@ export default async function (fastify: FastifyInstance) {
             module: "v1.0/ticket/create",
             context: "POST",
             message: `Failed to create ticket: ${err}`,
-            code: "500",
           },
         },
         500

@@ -53,7 +53,6 @@ export abstract class BaseResolver {
         module: "BaseResolver",
         context: this.constructor.name,
         message: `Failed for entity ${entityId}`,
-        code: "RESOLVER_FAILED",
       });
     }
   }
