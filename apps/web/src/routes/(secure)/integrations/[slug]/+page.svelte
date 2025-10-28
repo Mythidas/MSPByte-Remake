@@ -23,19 +23,15 @@
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import { useQuery } from 'convex-svelte';
 	import { api, type Doc } from '$lib/convex';
-	import { page } from '$app/state';
 	import Loader from '$lib/components/Loader.svelte';
 	import DatePicker from '$lib/components/DatePicker.svelte';
 	import { getAppState } from '$lib/state/Application.svelte.js';
+	import type { PageProps } from './$types.js';
+
+	const { data }: PageProps = $props();
 
 	const appState = getAppState();
-	const slug = $derived(page.params.slug);
-
-	// Fetch integration from Convex (client-side, reactive)
-	const integrationQuery = useQuery(api.integrations.query.getBySlug, () => ({
-		slug: slug || ''
-	}));
-	const integrationData = $derived(integrationQuery.data);
+	const integrationData = data.integration;
 
 	// Fetch dataSource from Convex (client-side, reactive)
 	// Pass empty string as integrationId when not available (query will return null)
@@ -52,8 +48,7 @@
 	const dataSourceData = $derived(dataSourceQuery.data as Doc<'data_sources'>);
 
 	// Loading and error states
-	const isLoading = $derived(integrationQuery.isLoading || dataSourceQuery.isLoading);
-	const hasError = $derived(integrationQuery.error !== undefined);
+	const isLoading = $derived(dataSourceQuery.isLoading);
 
 	// Initialize integration state with empty values (will be populated by effect)
 	const integration = setIntegration({
@@ -89,7 +84,7 @@
 	);
 
 	const config = $derived(
-		integrationConfigs[integration.integration.slug] || {
+		integrationConfigs[integration.integration?.slug] || {
 			overview: {
 				description: 'No configuration available for this integration',
 				features: []
@@ -194,10 +189,6 @@
 		<div class="flex size-full items-center justify-center">
 			<Loader />
 		</div>
-	{:else if hasError || !integrationData}
-		<div class="flex h-64 items-center justify-center">
-			<p class="text-destructive">Integration not found</p>
-		</div>
 	{:else}
 		<!-- Header -->
 		<IntegrationHeader />
@@ -213,8 +204,8 @@
 							<CardTitle class="text-sm font-medium">Last Month</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div class="h-8 w-24 animate-pulse rounded bg-muted"></div>
-							<p class="mt-1 text-xs text-muted-foreground">Previous billing period</p>
+							<div class="bg-muted h-8 w-24 animate-pulse rounded"></div>
+							<p class="text-muted-foreground mt-1 text-xs">Previous billing period</p>
 						</CardContent>
 					</Card>
 					<Card>
@@ -222,8 +213,8 @@
 							<CardTitle class="text-sm font-medium">Current Month</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div class="h-8 w-24 animate-pulse rounded bg-muted"></div>
-							<p class="mt-1 text-xs text-muted-foreground">Current billing period</p>
+							<div class="bg-muted h-8 w-24 animate-pulse rounded"></div>
+							<p class="text-muted-foreground mt-1 text-xs">Current billing period</p>
 						</CardContent>
 					</Card>
 					<Card>
@@ -231,8 +222,8 @@
 							<CardTitle class="text-sm font-medium">Predicted Cost</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div class="h-8 w-24 animate-pulse rounded bg-muted"></div>
-							<p class="mt-1 text-xs text-muted-foreground">Year to date</p>
+							<div class="bg-muted h-8 w-24 animate-pulse rounded"></div>
+							<p class="text-muted-foreground mt-1 text-xs">Year to date</p>
 						</CardContent>
 					</Card>
 				{:then billingData}
@@ -250,12 +241,12 @@
 				{:catch}
 					<Card>
 						<CardHeader class="pb-2">
-							<CardTitle class="text-sm font-medium text-destructive"
+							<CardTitle class="text-destructive text-sm font-medium"
 								>Error Loading Billing</CardTitle
 							>
 						</CardHeader>
 						<CardContent>
-							<p class="text-xs text-muted-foreground">Failed to load billing data</p>
+							<p class="text-muted-foreground text-xs">Failed to load billing data</p>
 						</CardContent>
 					</Card>
 				{/await}
@@ -342,7 +333,7 @@
 						{#if config.setup.requirements && config.setup.requirements.length > 0}
 							<div>
 								<h3 class="mb-2 font-semibold">Requirements</h3>
-								<ul class="ml-5 list-disc space-y-1 text-sm text-muted-foreground">
+								<ul class="text-muted-foreground ml-5 list-disc space-y-1 text-sm">
 									{#each config.setup.requirements as requirement}
 										<li>{requirement}</li>
 									{/each}
@@ -364,7 +355,7 @@
 			</TabsContent>
 
 			<!-- Configuration Tab -->
-			<TabsContent value="configuration" class="space-y-4">
+			<TabsContent value="configuration" class="space-y-4 overflow-hidden">
 				<Card class="size-full overflow-hidden">
 					<CardHeader>
 						<CardTitle>Configuration Settings</CardTitle>
@@ -372,7 +363,7 @@
 							>Configure your {integration.integration?.name} integration settings below.</CardDescription
 						>
 					</CardHeader>
-					<CardContent class="space-y-4">
+					<CardContent class="size-full space-y-4 overflow-hidden">
 						{#if config.configuration !== undefined}
 							<config.configuration />
 						{:else}
@@ -431,10 +422,10 @@
 									{#each Array(3) as _}
 										<div class="flex items-center justify-between rounded-lg border p-3">
 											<div class="space-y-2">
-												<div class="h-5 w-32 animate-pulse rounded bg-muted"></div>
-												<div class="h-4 w-48 animate-pulse rounded bg-muted"></div>
+												<div class="bg-muted h-5 w-32 animate-pulse rounded"></div>
+												<div class="bg-muted h-4 w-48 animate-pulse rounded"></div>
 											</div>
-											<div class="h-6 w-20 animate-pulse rounded bg-muted"></div>
+											<div class="bg-muted h-6 w-20 animate-pulse rounded"></div>
 										</div>
 									{/each}
 								</div>
@@ -447,7 +438,7 @@
 											<div class="flex items-center justify-between rounded-lg border p-3">
 												<div class="space-y-1">
 													<p class="font-medium">{item.label}</p>
-													<p class="text-sm text-muted-foreground">
+													<p class="text-muted-foreground text-sm">
 														{item.units} × ${item.unitCost.toFixed(2)} per unit
 													</p>
 												</div>
@@ -458,18 +449,18 @@
 
 									<Separator />
 
-									<div class="flex items-center justify-between rounded-lg bg-muted p-3">
+									<div class="bg-muted flex items-center justify-between rounded-lg p-3">
 										<span class="font-semibold">Total (Month to Date)</span>
 										<span class="text-xl font-bold">${billingData.currentMonth.toFixed(2)}</span>
 									</div>
 								{:else}
-									<div class="flex items-center justify-center p-8 text-muted-foreground">
+									<div class="text-muted-foreground flex items-center justify-center p-8">
 										<p>No billing data available</p>
 									</div>
 								{/if}
 							</div>
 						{:catch}
-							<div class="flex items-center justify-center p-8 text-destructive">
+							<div class="text-destructive flex items-center justify-center p-8">
 								<p>Failed to load billing data</p>
 							</div>
 						{/await}
@@ -489,7 +480,7 @@
 								{#each config.troubleshooting as item}
 									<div class="space-y-2">
 										<h3 class="font-semibold">{item.title}</h3>
-										<p class="text-sm text-muted-foreground">{item.solution}</p>
+										<p class="text-muted-foreground text-sm">{item.solution}</p>
 									</div>
 									{#if config.troubleshooting.indexOf(item) < config.troubleshooting.length - 1}
 										<Separator />
@@ -497,7 +488,7 @@
 								{/each}
 							</div>
 						{:else}
-							<p class="text-sm text-muted-foreground">No troubleshooting information available.</p>
+							<p class="text-muted-foreground text-sm">No troubleshooting information available.</p>
 						{/if}
 					</CardContent>
 				</Card>

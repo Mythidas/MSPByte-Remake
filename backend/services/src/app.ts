@@ -11,6 +11,8 @@ import { EndpointProcessor } from "@workspace/pipeline/processors/EndpointProces
 import { FirewallProcessor } from "@workspace/pipeline/processors/FirewallProcessor.js";
 import { GroupProcessor } from "@workspace/pipeline/processors/GroupProcessor.js";
 import { IdentityProcessor } from "@workspace/pipeline/processors/IdentityProcessor.js";
+import { RoleProcessor } from "@workspace/pipeline/processors/RoleProcessor.js";
+import { PolicyProcessor } from "@workspace/pipeline/processors/PolicyProcessor.js";
 import { BaseResolver } from "@workspace/pipeline/resolvers/BaseResolver.js";
 import { Scheduler } from "@workspace/pipeline/scheduler/index.js";
 import { BaseWorker } from "@workspace/pipeline/workers/base.js";
@@ -28,154 +30,155 @@ console.log(join(__dirname, "../../../../.env"));
 dotenv.config({ path: join(__dirname, "../../../.env") });
 
 class MSPByteBackend {
-  private scheduler: Scheduler;
-  private adapters: Map<IntegrationType, BaseAdapter>;
-  private processors: BaseProcessor[];
-  private resolvers: BaseResolver[];
-  private linkers: BaseLinker[];
-  private workers: BaseWorker[];
+    private scheduler: Scheduler;
+    private adapters: Map<IntegrationType, BaseAdapter>;
+    private processors: BaseProcessor[];
+    private resolvers: BaseResolver[];
+    private linkers: BaseLinker[];
+    private workers: BaseWorker[];
 
-  constructor() {
-    this.scheduler = new Scheduler();
-    this.adapters = new Map([
-      ["autotask", new AutoTaskAdapter() as BaseAdapter],
-      ["sophos-partner", new SophosPartnerAdapter()],
-      ["microsoft-365", new Microsoft365Adapter()],
-      ["halopsa", new HaloPSAAdapter()],
-    ]);
+    constructor() {
+        this.scheduler = new Scheduler();
+        this.adapters = new Map([
+            ["autotask", new AutoTaskAdapter() as BaseAdapter],
+            ["sophos-partner", new SophosPartnerAdapter()],
+            ["microsoft-365", new Microsoft365Adapter()],
+            ["halopsa", new HaloPSAAdapter()],
+        ]);
 
-    // Initialize empty arrays - you'll add concrete implementations later
-    this.processors = [
-      new CompanyProcessor(),
-      new EndpointProcessor(),
-      new IdentityProcessor(),
-      new GroupProcessor(),
-      new FirewallProcessor(),
-    ];
-    this.resolvers = [];
-    this.linkers = [];
-    this.workers = [];
-  }
-
-  async start(): Promise<void> {
-    try {
-      Debug.log({
-        module: "MSPByteBackend",
-        context: "start",
-        message: "Starting MSPByte Backend Services...",
-      });
-
-      // Connect to NATS
-      await natsClient.connect();
-
-      // Start pipeline stages in order
-      Debug.log({
-        module: "MSPByteBackend",
-        context: "start",
-        message: "Starting pipeline stages...",
-      });
-
-      // Start all adapters
-      for await (const [name, adapter] of this.adapters) {
-        Debug.log({
-          module: "MSPByteBackend",
-          context: "start",
-          message: `Starting ${name} adapter...`,
-        });
-        await adapter.start();
-      }
-
-      // Start all processors
-      for await (const processor of this.processors) {
-        Debug.log({
-          module: "MSPByteBackend",
-          context: "start",
-          message: `Starting ${processor.constructor.name}...`,
-        });
-        await processor.start();
-      }
-
-      // Start all resolvers
-      for await (const resolver of this.resolvers) {
-        Debug.log({
-          module: "MSPByteBackend",
-          context: "start",
-          message: `Starting ${resolver.constructor.name}...`,
-        });
-        await resolver.start();
-      }
-
-      // Start all linkers
-      for await (const linker of this.linkers) {
-        Debug.log({
-          module: "MSPByteBackend",
-          context: "start",
-          message: `Starting ${linker.constructor.name}...`,
-        });
-        await linker.start();
-      }
-
-      // Start all workers
-      for await (const worker of this.workers) {
-        Debug.log({
-          module: "MSPByteBackend",
-          context: "start",
-          message: `Starting ${worker.constructor.name}...`,
-        });
-        await worker.start();
-      }
-
-      // Start scheduler
-      await this.scheduler.start();
-
-      Debug.log({
-        module: "MSPByteBackend",
-        context: "start",
-        message: "MSPByte Backend Services started successfully",
-      });
-
-      // Keep the process running
-      process.on("SIGINT", this.gracefulShutdown.bind(this));
-      process.on("SIGTERM", this.gracefulShutdown.bind(this));
-    } catch (error) {
-      Debug.error({
-        module: "MSPByteBackend",
-        context: "start",
-        message: "Failed to start MSPByte Backend Services",
-      });
-      process.exit(1);
+        this.processors = [
+            new CompanyProcessor(),
+            new EndpointProcessor(),
+            new IdentityProcessor(),
+            new GroupProcessor(),
+            new FirewallProcessor(),
+            new RoleProcessor(),
+            new PolicyProcessor(),
+        ];
+        this.resolvers = [];
+        this.linkers = [];
+        this.workers = [];
     }
-  }
 
-  async gracefulShutdown(): Promise<void> {
-    Debug.log({
-      module: "MSPByteBackend",
-      context: "gracefulShutdown",
-      message: "Shutting down MSPByte Backend Services...",
-    });
+    async start(): Promise<void> {
+        try {
+            Debug.log({
+                module: "MSPByteBackend",
+                context: "start",
+                message: "Starting MSPByte Backend Services...",
+            });
 
-    try {
-      // Stop scheduler
-      await this.scheduler.stop();
+            // Connect to NATS
+            await natsClient.connect();
 
-      // Close NATS connection
-      await natsClient.close();
+            // Start pipeline stages in order
+            Debug.log({
+                module: "MSPByteBackend",
+                context: "start",
+                message: "Starting pipeline stages...",
+            });
 
-      Debug.log({
-        module: "MSPByteBackend",
-        context: "gracefulShutdown",
-        message: "MSPByte Backend Services shut down gracefully",
-      });
-      process.exit(0);
-    } catch (error) {
-      Debug.error({
-        module: "MSPByteBackend",
-        context: "gracefulShutdown",
-        message: "Error during graceful shutdown",
-      });
-      process.exit(1);
+            // Start all adapters
+            for await (const [name, adapter] of this.adapters) {
+                Debug.log({
+                    module: "MSPByteBackend",
+                    context: "start",
+                    message: `Starting ${name} adapter...`,
+                });
+                await adapter.start();
+            }
+
+            // Start all processors
+            for await (const processor of this.processors) {
+                Debug.log({
+                    module: "MSPByteBackend",
+                    context: "start",
+                    message: `Starting ${processor.constructor.name}...`,
+                });
+                await processor.start();
+            }
+
+            // Start all resolvers
+            for await (const resolver of this.resolvers) {
+                Debug.log({
+                    module: "MSPByteBackend",
+                    context: "start",
+                    message: `Starting ${resolver.constructor.name}...`,
+                });
+                await resolver.start();
+            }
+
+            // Start all linkers
+            for await (const linker of this.linkers) {
+                Debug.log({
+                    module: "MSPByteBackend",
+                    context: "start",
+                    message: `Starting ${linker.constructor.name}...`,
+                });
+                await linker.start();
+            }
+
+            // Start all workers
+            for await (const worker of this.workers) {
+                Debug.log({
+                    module: "MSPByteBackend",
+                    context: "start",
+                    message: `Starting ${worker.constructor.name}...`,
+                });
+                await worker.start();
+            }
+
+            // Start scheduler
+            await this.scheduler.start();
+
+            Debug.log({
+                module: "MSPByteBackend",
+                context: "start",
+                message: "MSPByte Backend Services started successfully",
+            });
+
+            // Keep the process running
+            process.on("SIGINT", this.gracefulShutdown.bind(this));
+            process.on("SIGTERM", this.gracefulShutdown.bind(this));
+        } catch (error) {
+            Debug.error({
+                module: "MSPByteBackend",
+                context: "start",
+                message: "Failed to start MSPByte Backend Services",
+            });
+            process.exit(1);
+        }
     }
-  }
+
+    async gracefulShutdown(): Promise<void> {
+        Debug.log({
+            module: "MSPByteBackend",
+            context: "gracefulShutdown",
+            message: "Shutting down MSPByte Backend Services...",
+        });
+
+        try {
+            // Stop scheduler
+            await this.scheduler.stop();
+
+            // Close NATS connection
+            await natsClient.close();
+
+            Debug.log({
+                module: "MSPByteBackend",
+                context: "gracefulShutdown",
+                message: "MSPByte Backend Services shut down gracefully",
+            });
+            process.exit(0);
+        } catch (error) {
+            Debug.error({
+                module: "MSPByteBackend",
+                context: "gracefulShutdown",
+                message: "Error during graceful shutdown",
+            });
+            process.exit(1);
+        }
+    }
 }
 
 // Start the application

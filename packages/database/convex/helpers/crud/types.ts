@@ -106,65 +106,66 @@ import { v } from "convex/values";
 import { DataModel, Doc, Id } from "../../_generated/dataModel.js";
 
 export const TableName = v.union(
-  v.literal("users"),
-  v.literal("roles"),
-  v.literal("entities"),
-  v.literal("agents"),
-  v.literal("data_sources"),
-  v.literal("integrations"),
-  v.literal("scheduled_jobs"),
-  v.literal("sites")
+    v.literal("users"),
+    v.literal("roles"),
+    v.literal("entities"),
+    v.literal("agents"),
+    v.literal("data_sources"),
+    v.literal("integrations"),
+    v.literal("scheduled_jobs"),
+    v.literal("sites"),
+    v.literal("data_source_to_site")
 );
 
 /**
  * Comparison operators for numeric and string values
  */
 export type ComparisonOperators<T> = {
-  gt?: T;
-  gte?: T;
-  lt?: T;
-  lte?: T;
-  eq?: T;
-  ne?: T;
+    gt?: T;
+    gte?: T;
+    lt?: T;
+    lte?: T;
+    eq?: T;
+    ne?: T;
 };
 
 /**
  * Array operators
  */
 export type ArrayOperators<T> = {
-  in?: T[];
-  nin?: T[];
-  includes?: T extends Array<infer U> ? U : never;
+    in?: T[];
+    nin?: T[];
+    includes?: T extends Array<infer U> ? U : never;
 };
 
 /**
  * String operators
  */
 export type StringOperators = {
-  contains?: string;
-  startsWith?: string;
-  endsWith?: string;
-  regex?: RegExp;
+    contains?: string;
+    startsWith?: string;
+    endsWith?: string;
+    regex?: RegExp;
 };
 
 /**
  * Field-level filter that can be a direct value or operators
  */
 export type FieldFilter<T> = T extends string
-  ? T | ComparisonOperators<T> | StringOperators | ArrayOperators<T>
-  : T extends number
+    ? T | ComparisonOperators<T> | StringOperators | ArrayOperators<T>
+    : T extends number
     ? T | ComparisonOperators<T> | ArrayOperators<T>
     : T extends boolean
-      ? T | { eq?: T; ne?: T }
-      : T | ComparisonOperators<T> | ArrayOperators<T>;
+    ? T | { eq?: T; ne?: T }
+    : T | ComparisonOperators<T> | ArrayOperators<T>;
 
 /**
  * Logical operators for combining filters
  */
 export type LogicalOperators<T> = {
-  and?: FilterConditions<T>[];
-  or?: FilterConditions<T>[];
-  not?: FilterConditions<T>;
+    and?: FilterConditions<T>[];
+    or?: FilterConditions<T>[];
+    not?: FilterConditions<T>;
 };
 
 /**
@@ -172,7 +173,7 @@ export type LogicalOperators<T> = {
  * Can specify field filters and logical operators
  */
 export type FilterConditions<T> = {
-  [K in keyof T]?: FieldFilter<T[K]>;
+    [K in keyof T]?: FieldFilter<T[K]>;
 } & LogicalOperators<T>;
 
 /**
@@ -197,87 +198,87 @@ export type DynamicFilter<T> = FilterConditions<T> | undefined;
  * getNestedValue(entity, 'status') // undefined (top-level access still works)
  */
 export function getNestedValue(obj: any, path: string): any {
-  if (!obj || !path) return undefined;
+    if (!obj || !path) return undefined;
 
-  // Handle simple (non-nested) paths quickly
-  if (!path.includes('.')) {
-    return obj[path];
-  }
-
-  // Handle nested paths
-  const keys = path.split('.');
-  let current = obj;
-
-  for (const key of keys) {
-    if (current === null || current === undefined) {
-      return undefined;
+    // Handle simple (non-nested) paths quickly
+    if (!path.includes('.')) {
+        return obj[path];
     }
-    current = current[key];
-  }
 
-  return current;
+    // Handle nested paths
+    const keys = path.split('.');
+    let current = obj;
+
+    for (const key of keys) {
+        if (current === null || current === undefined) {
+            return undefined;
+        }
+        current = current[key];
+    }
+
+    return current;
 }
 
 /**
  * Evaluates a single field filter against a value
  */
 export function evaluateFieldFilter<T>(
-  value: T,
-  filter: FieldFilter<T>
+    value: T,
+    filter: FieldFilter<T>
 ): boolean {
-  // Direct value comparison
-  if (value === undefined && filter === null) return true;
-  if (
-    typeof filter !== "object" ||
-    filter === null ||
-    filter instanceof Date ||
-    filter instanceof RegExp
-  ) {
-    return value === filter;
-  }
-
-  const operators = filter as Record<string, any>;
-
-  // Comparison operators
-  if ("gt" in operators && !(value > operators.gt)) return false;
-  if ("gte" in operators && !(value >= operators.gte)) return false;
-  if ("lt" in operators && !(value < operators.lt)) return false;
-  if ("lte" in operators && !(value <= operators.lte)) return false;
-  if ("eq" in operators && value !== operators.eq) return false;
-  if ("ne" in operators && value === operators.ne) return false;
-
-  // Array operators
-  if ("in" in operators && !operators.in.includes(value)) return false;
-  if ("nin" in operators && operators.nin.includes(value)) return false;
-  if (
-    "includes" in operators &&
-    (!Array.isArray(value) || !value.includes(operators.includes))
-  )
-    return false;
-
-  // String operators
-  if (typeof value === "string") {
+    // Direct value comparison
+    if (value === undefined && filter === null) return true;
     if (
-      "contains" in operators &&
-      !value
-        .toLowerCase()
-        .includes((operators.contains as string).toLowerCase())
-    )
-      return false;
-    if (
-      "startsWith" in operators &&
-      !value.startsWith(operators.startsWith as string)
-    )
-      return false;
-    if (
-      "endsWith" in operators &&
-      !value.endsWith(operators.endsWith as string)
-    )
-      return false;
-    if ("regex" in operators && !operators.regex.test(value)) return false;
-  }
+        typeof filter !== "object" ||
+        filter === null ||
+        filter instanceof Date ||
+        filter instanceof RegExp
+    ) {
+        return value === filter;
+    }
 
-  return true;
+    const operators = filter as Record<string, any>;
+
+    // Comparison operators
+    if ("gt" in operators && !(value > operators.gt)) return false;
+    if ("gte" in operators && !(value >= operators.gte)) return false;
+    if ("lt" in operators && !(value < operators.lt)) return false;
+    if ("lte" in operators && !(value <= operators.lte)) return false;
+    if ("eq" in operators && value !== operators.eq) return false;
+    if ("ne" in operators && value === operators.ne) return false;
+
+    // Array operators
+    if ("in" in operators && !operators.in.includes(value)) return false;
+    if ("nin" in operators && operators.nin.includes(value)) return false;
+    if (
+        "includes" in operators &&
+        (!Array.isArray(value) || !value.includes(operators.includes))
+    )
+        return false;
+
+    // String operators
+    if (typeof value === "string") {
+        if (
+            "contains" in operators &&
+            !value
+                .toLowerCase()
+                .includes((operators.contains as string).toLowerCase())
+        )
+            return false;
+        if (
+            "startsWith" in operators &&
+            !value.startsWith(operators.startsWith as string)
+        )
+            return false;
+        if (
+            "endsWith" in operators &&
+            !value.endsWith(operators.endsWith as string)
+        )
+            return false;
+        if ("regex" in operators && !operators.regex.test(value)) return false;
+    }
+
+    return true;
 }
 
 /**
@@ -290,37 +291,37 @@ export function evaluateFieldFilter<T>(
  * evaluateFilter(entity, { 'normalizedData.name': { contains: 'test' } })
  */
 export function evaluateFilter<T extends Record<string, any>>(
-  record: T,
-  filter: FilterConditions<T> | undefined
+    record: T,
+    filter: FilterConditions<T> | undefined
 ): boolean {
-  if (!filter) return true;
+    if (!filter) return true;
 
-  // Handle logical operators
-  if ("and" in filter && filter.and) {
-    return filter.and.every((subFilter) => evaluateFilter(record, subFilter));
-  }
-
-  if ("or" in filter && filter.or) {
-    return filter.or.some((subFilter) => evaluateFilter(record, subFilter));
-  }
-
-  if ("not" in filter && filter.not) {
-    return !evaluateFilter(record, filter.not);
-  }
-
-  // Handle field-level filters (supports dot notation for nested access)
-  for (const [key, fieldFilter] of Object.entries(filter)) {
-    // Skip logical operators (already handled)
-    if (key === "and" || key === "or" || key === "not") continue;
-
-    // Use getNestedValue to support dot notation (e.g., 'normalizedData.status')
-    const value = getNestedValue(record, key);
-    if (!evaluateFieldFilter(value, fieldFilter)) {
-      return false;
+    // Handle logical operators
+    if ("and" in filter && filter.and) {
+        return filter.and.every((subFilter) => evaluateFilter(record, subFilter));
     }
-  }
 
-  return true;
+    if ("or" in filter && filter.or) {
+        return filter.or.some((subFilter) => evaluateFilter(record, subFilter));
+    }
+
+    if ("not" in filter && filter.not) {
+        return !evaluateFilter(record, filter.not);
+    }
+
+    // Handle field-level filters (supports dot notation for nested access)
+    for (const [key, fieldFilter] of Object.entries(filter)) {
+        // Skip logical operators (already handled)
+        if (key === "and" || key === "or" || key === "not") continue;
+
+        // Use getNestedValue to support dot notation (e.g., 'normalizedData.status')
+        const value = getNestedValue(record, key);
+        if (!evaluateFieldFilter(value, fieldFilter)) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 // ============================================================================
@@ -331,18 +332,18 @@ export function evaluateFilter<T extends Record<string, any>>(
  * Configuration for index-based querying
  */
 export type IndexConfig = {
-  name: string;
-  params: Record<string, any>;
+    name: string;
+    params: Record<string, any>;
 };
 
 /**
  * Arguments for dynamic list query
  */
 export type DynamicListArgs<TableName extends keyof DataModel> = {
-  tableName: TableName;
-  index?: IndexConfig;
-  filters?: DynamicFilter<Doc<TableName>>;
-  includeSoftDeleted?: boolean;
+    tableName: TableName;
+    index?: IndexConfig;
+    filters?: DynamicFilter<Doc<TableName>>;
+    includeSoftDeleted?: boolean;
 };
 
 // ============================================================================
@@ -385,47 +386,47 @@ export type RemoveResult<TableName extends keyof DataModel> = Id<TableName>[];
  * Type-safe arguments for insert operation
  */
 export type InsertArgs<TableName extends keyof DataModel> = {
-  tableName: TableName;
-  data: Partial<Doc<TableName>>[];
+    tableName: TableName;
+    data: Partial<Doc<TableName>>[];
 };
 
 /**
  * Type-safe arguments for get operation
  */
 export type GetArgs<TableName extends keyof DataModel> = {
-  tableName: TableName;
-  id?: string;
-  index?: IndexConfig;
-  filters?: DynamicFilter<Doc<TableName>>;
-  includeSoftDeleted?: boolean;
+    tableName: TableName;
+    id?: string;
+    index?: IndexConfig;
+    filters?: DynamicFilter<Doc<TableName>>;
+    includeSoftDeleted?: boolean;
 };
 
 /**
  * Type-safe arguments for list operation
  */
 export type ListArgs<TableName extends keyof DataModel> = {
-  tableName: TableName;
-  index?: IndexConfig;
-  filters?: DynamicFilter<Doc<TableName>>;
-  includeSoftDeleted?: boolean;
+    tableName: TableName;
+    index?: IndexConfig;
+    filters?: DynamicFilter<Doc<TableName>>;
+    includeSoftDeleted?: boolean;
 };
 
 /**
  * Type-safe arguments for update operation
  */
 export type UpdateArgs<TableName extends keyof DataModel> = {
-  tableName: TableName;
-  data: Array<{
-    id: Id<TableName>;
-    updates: Partial<Doc<TableName>>;
-  }>;
+    tableName: TableName;
+    data: Array<{
+        id: Id<TableName>;
+        updates: Partial<Doc<TableName>>;
+    }>;
 };
 
 /**
  * Type-safe arguments for remove operation
  */
 export type RemoveArgs<TableName extends keyof DataModel> = {
-  tableName: TableName;
-  ids: Id<TableName> | Id<TableName>[];
-  hard?: boolean;
+    tableName: TableName;
+    ids: Id<TableName> | Id<TableName>[];
+    hard?: boolean;
 };
