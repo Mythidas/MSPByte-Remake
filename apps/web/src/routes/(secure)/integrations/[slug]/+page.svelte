@@ -1,9 +1,12 @@
 <script lang="ts">
-	import { Tabs, TabsContent, TabsList, TabsTrigger } from '$lib/components/ui/tabs';
+	import { TabsList } from '$lib/components/ui/tabs';
 	import { Card, CardAction, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Separator } from '$lib/components/ui/separator';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
+	import RouteTabs from '$lib/components/tabs/RouteTabs.svelte';
+	import RouteTabsTrigger from '$lib/components/tabs/RouteTabsTrigger.svelte';
+	import RouteTabsContent from '$lib/components/tabs/RouteTabsContent.svelte';
 	import CostCard from './helpers/CostCard.svelte';
 	import FeatureList from './helpers/FeatureList.svelte';
 	import CardDescription from '$lib/components/ui/card/card-description.svelte';
@@ -53,14 +56,11 @@
 	// Initialize integration state with empty values (will be populated by effect)
 	const integration = setIntegration({
 		integration: integrationData as any,
-		dataSource: dataSourceData || undefined
+		dataSource: undefined
 	});
 
 	// Update integration state when queries return new data
 	$effect(() => {
-		if (integrationData) {
-			integration.integration = integrationData;
-		}
 		if (dataSourceData !== undefined) {
 			integration.dataSource = dataSourceData || undefined;
 		}
@@ -255,38 +255,38 @@
 		{/if}
 
 		<!-- Tabs -->
-		<Tabs value="overview" class="size-full overflow-hidden">
+		<RouteTabs defaultTab="overview" class="size-full overflow-hidden">
 			<TabsList>
-				<TabsTrigger value="overview">Overview</TabsTrigger>
+				<RouteTabsTrigger value="overview">Overview</RouteTabsTrigger>
 				{#if integration.isEnabled()}
-					<TabsTrigger value="setup">Setup</TabsTrigger>
+					<RouteTabsTrigger value="setup">Setup</RouteTabsTrigger>
 					{#if integration.integration?.level === 'global'}
-						<TabsTrigger value="configuration">Configuration</TabsTrigger>
+						<RouteTabsTrigger value="configuration">Configuration</RouteTabsTrigger>
 					{/if}
-					<TabsTrigger value="billing">Billing</TabsTrigger>
+					<RouteTabsTrigger value="billing">Billing</RouteTabsTrigger>
 					{#if integration.isValidConfig() && (config.hasSyncStats === undefined || config.hasSyncStats)}
-						<TabsTrigger value="sync-status" class="relative">
+						<RouteTabsTrigger value="sync-status" class="relative">
 							Sync Status
 							{#if (totalFailedJobs || 0) > 0}
 								<Badge variant="destructive" class="ml-2 h-5 min-w-5 px-1.5 text-xs">
 									{totalFailedJobs}
 								</Badge>
 							{/if}
-						</TabsTrigger>
+						</RouteTabsTrigger>
 					{/if}
 					{#if config.troubleshooting}
-						<TabsTrigger value="troubleshooting">Troubleshooting</TabsTrigger>
+						<RouteTabsTrigger value="troubleshooting">Troubleshooting</RouteTabsTrigger>
 					{/if}
 					{#if config.customTabs && integration.isValidConfig()}
 						{#each config.customTabs as tab}
-							<TabsTrigger value={tab.id}>{tab.label}</TabsTrigger>
+							<RouteTabsTrigger value={tab.id}>{tab.label}</RouteTabsTrigger>
 						{/each}
 					{/if}
 				{/if}
 			</TabsList>
 
 			<!-- Sync Status Tab -->
-			<TabsContent value="sync-status" class="flex flex-col space-y-4 overflow-hidden">
+			<RouteTabsContent value="sync-status" class="flex flex-col space-y-4 overflow-hidden">
 				<Card class="size-full overflow-hidden">
 					<CardHeader>
 						<CardTitle>Sync Status</CardTitle>
@@ -303,10 +303,10 @@
 						{/if}
 					</CardContent>
 				</Card>
-			</TabsContent>
+			</RouteTabsContent>
 
 			<!-- Overview Tab -->
-			<TabsContent value="overview" class="space-y-4">
+			<RouteTabsContent value="overview" class="space-y-4">
 				<Card class="size-full overflow-hidden">
 					<CardHeader>
 						<CardTitle>About {integration.integration?.name}</CardTitle>
@@ -321,10 +321,10 @@
 						{/if}
 					</CardContent>
 				</Card>
-			</TabsContent>
+			</RouteTabsContent>
 
 			<!-- Setup Tab -->
-			<TabsContent value="setup" class="space-y-4">
+			<RouteTabsContent value="setup" class="space-y-4">
 				<Card class="size-full overflow-hidden">
 					<CardHeader>
 						<CardTitle>Setup Instructions</CardTitle>
@@ -352,10 +352,10 @@
 						</div>
 					</CardContent>
 				</Card>
-			</TabsContent>
+			</RouteTabsContent>
 
 			<!-- Configuration Tab -->
-			<TabsContent value="configuration" class="space-y-4 overflow-hidden">
+			<RouteTabsContent value="configuration" class="space-y-4 overflow-hidden">
 				<Card class="size-full overflow-hidden">
 					<CardHeader>
 						<CardTitle>Configuration Settings</CardTitle>
@@ -406,10 +406,10 @@
 						{/if}
 					</CardContent>
 				</Card>
-			</TabsContent>
+			</RouteTabsContent>
 
 			<!-- Billing Tab -->
-			<TabsContent value="billing" class="space-y-4">
+			<RouteTabsContent value="billing" class="space-y-4">
 				<Card class="size-full overflow-hidden">
 					<CardHeader>
 						<CardTitle>Billing Breakdown</CardTitle>
@@ -466,10 +466,10 @@
 						{/await}
 					</CardContent>
 				</Card>
-			</TabsContent>
+			</RouteTabsContent>
 
 			<!-- Troubleshooting Tab -->
-			<TabsContent value="troubleshooting" class="space-y-4">
+			<RouteTabsContent value="troubleshooting" class="space-y-4">
 				<Card class="size-full overflow-hidden">
 					<CardHeader>
 						<CardTitle>Troubleshooting & FAQ</CardTitle>
@@ -492,12 +492,12 @@
 						{/if}
 					</CardContent>
 				</Card>
-			</TabsContent>
+			</RouteTabsContent>
 
 			<!-- Custom Tabs (e.g., Site Mapping for AutoTask) -->
 			{#if config.customTabs}
 				{#each config.customTabs as tab}
-					<TabsContent value={tab.id} class="flex flex-col overflow-hidden">
+					<RouteTabsContent value={tab.id} class="flex flex-col overflow-hidden">
 						<Card class="size-full overflow-hidden">
 							<CardHeader>
 								<CardTitle>{tab.label}</CardTitle>
@@ -506,10 +506,10 @@
 								<tab.component />
 							</CardContent>
 						</Card>
-					</TabsContent>
+					</RouteTabsContent>
 				{/each}
 			{/if}
-		</Tabs>
+		</RouteTabs>
 	{/if}
 </div>
 

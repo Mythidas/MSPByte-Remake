@@ -24,7 +24,7 @@
 
 	const supportedTypes = integration.integration.supportedTypes.map((st) => st.type);
 	const syncStatusQuery = useQuery(api.integrations.query.getStatusMatrix, {
-		dataSourceId: integration.dataSource?._id! as Id<'data_sources'>, // Replace "dataSources" with your table name
+		dataSourceId: integration.dataSource?._id! as Id<'data_sources'>,
 		supportedTypes
 	});
 	const syncStatuses = $derived(syncStatusQuery?.data);
@@ -62,7 +62,7 @@
 {:else if syncStatuses && syncStatuses.length === 0}
 	<div class="flex flex-col items-center justify-center py-12 text-center">
 		<p class="text-muted-foreground">No sync data available</p>
-		<p class="mt-1 text-sm text-muted-foreground">
+		<p class="text-muted-foreground mt-1 text-sm">
 			Configure the integration to start syncing data
 		</p>
 	</div>
@@ -108,9 +108,9 @@
 						</div>
 
 						{#if syncStatus?.error}
-							<div class="mt-3 rounded-md bg-destructive/10 p-3">
-								<p class="text-sm font-medium text-destructive">Latest Error:</p>
-								<p class="mt-1 text-sm text-destructive/80">{syncStatus.error}</p>
+							<div class="bg-destructive/10 mt-3 rounded-md p-3">
+								<p class="text-destructive text-sm font-medium">Latest Error:</p>
+								<p class="text-destructive/80 mt-1 text-sm">{syncStatus.error}</p>
 							</div>
 						{/if}
 					</div>
