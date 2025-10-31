@@ -10,7 +10,7 @@
 	import { toast } from 'svelte-sonner';
 	import SearchBox from '$lib/components/SearchBox.svelte';
 	import { useQuery } from 'convex-svelte';
-	import { api } from '$lib/convex';
+	import { api, type Doc } from '$lib/convex';
 	import { getAppState } from '$lib/state/Application.svelte.js';
 	import { genSUUID } from '$lib/utils.js';
 
@@ -24,14 +24,14 @@
 	let companyToUnlink = $state<{ id: string; name: string } | null>(null);
 	let companyToCreate = $state<any | null>(null);
 
-	const sitesQuery = useQuery(api.helpers.orm.list, () => ({
+	const sitesQuery = useQuery(api.helpers.orm.list, {
 		tableName: 'sites'
-	}));
+	});
 	const psaCompaniesQuery = useQuery(api.entities.query.getCompaniesWithSite, {
 		integrationId: integration.integration._id
 	});
 
-	const sites = $derived(sitesQuery.data);
+	const sites = $derived(sitesQuery.data as Doc<'sites'>[]);
 	const companies = $derived(psaCompaniesQuery.data);
 
 	async function onSiteSelect(companyExternalId: string, siteId?: string) {
@@ -54,15 +54,17 @@
 
 		const query = await appState.convex.mutation(api.helpers.orm.update, {
 			tableName: 'sites',
-			data: {
-				id: siteId as any,
-				updates: {
-					psaCompanyId: company.externalId,
-					psaIntegrationId: integration.integration._id,
-					psaParentCompanyId: company.externalParentId,
-					psaIntegrationName: integration.integration.name
+			data: [
+				{
+					id: siteId as any,
+					updates: {
+						psaCompanyId: company.externalId,
+						psaIntegrationId: integration.integration._id,
+						psaParentCompanyId: company.externalParentId,
+						psaIntegrationName: integration.integration.name
+					}
 				}
-			}
+			]
 		});
 
 		if (!query) {
@@ -83,15 +85,17 @@
 
 		const newSite = await appState.convex.mutation(api.helpers.orm.insert, {
 			tableName: 'sites',
-			data: {
-				name: companyToCreate.name,
-				psaCompanyId: companyToCreate.externalId,
-				psaParentCompanyId: companyToCreate?.externalParentId,
-				psaIntegrationId: integration.integration._id,
-				psaIntegrationName: integration.integration.name,
-				status: 'active',
-				slug: genSUUID()
-			}
+			data: [
+				{
+					name: companyToCreate.name,
+					psaCompanyId: companyToCreate.externalId,
+					psaParentCompanyId: companyToCreate?.externalParentId,
+					psaIntegrationId: integration.integration._id,
+					psaIntegrationName: integration.integration.name,
+					status: 'active',
+					slug: genSUUID()
+				}
+			]
 		});
 
 		if (!newSite) {
@@ -124,15 +128,17 @@
 
 		const query = await appState.convex.mutation(api.helpers.orm.update, {
 			tableName: 'sites',
-			data: {
-				id: linkedSite._id,
-				updates: {
-					psaCompanyId: null,
-					psaIntegrationId: null,
-					psaIntegrationName: null,
-					psaParentCompanyId: null
+			data: [
+				{
+					id: linkedSite._id,
+					updates: {
+						psaCompanyId: null,
+						psaIntegrationId: null,
+						psaIntegrationName: null,
+						psaParentCompanyId: null
+					}
 				}
-			}
+			]
 		});
 
 		if (!query) {
@@ -212,7 +218,7 @@
 					{@const isLinked = !!linkedSite}
 					{@const availableSites = getAvailableSites(company.externalId!)}
 					<div
-						class="flex w-full items-center justify-between rounded-lg border bg-card p-2 shadow-sm transition-shadow hover:shadow-md"
+						class="bg-card flex w-full items-center justify-between rounded-lg border p-2 shadow-sm transition-shadow hover:shadow-md"
 					>
 						<div class="flex items-center gap-3">
 							<div class="flex flex-col">
@@ -220,10 +226,12 @@
 									{company.name}
 								</span>
 								<div class="flex items-center gap-2">
-									<p class="text-xs text-muted-foreground">(ID: {company.externalId})</p>
+									<p class="text-muted-foreground text-xs">(ID: {company.externalId})</p>
 									{#if linkedSite}
 										<ArrowRight class="w-3" />
-										<span class="my-auto text-xs text-muted-foreground">{linkedSite.name}</span>
+										<span class="text-muted-foreground my-auto text-xs"
+											>{linkedSite.name} ({linkedSite._id})</span
+										>
 									{/if}
 									{#if isLinked}
 										<Link2 class="h-4 w-4 text-green-600" />
@@ -242,7 +250,7 @@
 									<Unlink class="h-4 w-4" />
 								</Button>
 
-								<div class="w-80 rounded bg-input p-2 px-4 text-right shadow">
+								<div class="bg-input w-80 rounded p-2 px-4 text-right shadow">
 									{linkedSite.name}
 								</div>
 							{/if}
@@ -271,7 +279,7 @@
 				{/each}
 
 				{#if filteredCompanies?.length === 0}
-					<div class="flex items-center justify-center p-8 text-muted-foreground">
+					<div class="text-muted-foreground flex items-center justify-center p-8">
 						<p>No companies found matching your criteria</p>
 					</div>
 				{/if}
