@@ -279,6 +279,7 @@ mkdir -p "${LOG_DIR}"
 # Set permissions - readable by all, writable by admin
 chmod 1777 "${CONFIG_DIR}"
 chmod 1777 "${LOG_DIR}"
+chmod 1744 "/var/root/.mono/registry/CurrentUser/software/centrastage/values.xml"
 
 log "Directory created successfully"
 
