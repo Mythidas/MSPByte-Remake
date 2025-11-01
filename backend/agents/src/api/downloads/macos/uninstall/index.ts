@@ -1,43 +1,24 @@
 import { FastifyInstance } from "fastify";
-import path from "path";
-import fs from "fs/promises";
-import { createReadStream } from "fs";
+import path, { dirname } from "path";
+import { fileURLToPath } from "url";
 
-const INSTALLERS_DIR = path.join(__dirname, "../../../../lib/installers");
-const SCRIPTS_DIR = path.join(INSTALLERS_DIR, "scripts");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const INSTALLERS_DIR = path.join(__dirname, "../../../../lib/installers/scripts");
 
-export default async function (fastify: FastifyInstance) {
-  fastify.get("/", async (req, reply) => {
-    try {
-      const scriptPath = path.join(SCRIPTS_DIR, "uninstall_mspagent_mac.sh");
+export default async function(fastify: FastifyInstance) {
+    fastify.get("/", async (req, reply) => {
+        const fileName = "uninstall_mspagent_mac.sh";
 
-      // Check if file exists
-      try {
-        await fs.access(scriptPath);
-      } catch {
-        return reply.code(404).send({
-          error: "Uninstall script not found",
-          path: scriptPath,
-        });
-      }
-
-      const stat = await fs.stat(scriptPath);
-      const scriptStream = createReadStream(scriptPath);
-
-      fastify.log.info(`Serving uninstall script: ${scriptPath} (${stat.size} bytes)`);
-
-      reply
-        .header("Content-Type", "text/x-shellscript")
-        .header(
-          "Content-Disposition",
-          'inline; filename="uninstall_mspagent_mac.sh"'
-        )
-        .header("Content-Length", stat.size)
-        .header("Cache-Control", "public, max-age=300")
-        .send(scriptStream);
-    } catch (err) {
-      fastify.log.error("Error serving uninstall script:", err);
-      reply.code(500).send({ error: "Failed to serve uninstall script" });
-    }
-  });
+        try {
+            // `sendFile` handles streaming and most headers automatically
+            return reply
+                .header("Content-Type", "text/x-shellscript")
+                .header("Content-Disposition", `inline; filename="${fileName}"`)
+                .sendFile(fileName, INSTALLERS_DIR);
+        } catch (err) {
+            fastify.log.error(err, "Failed to serve uninstall script");
+            return reply.code(500).send({ error: "Failed to serve uninstall script" });
+        }
+    });
 }

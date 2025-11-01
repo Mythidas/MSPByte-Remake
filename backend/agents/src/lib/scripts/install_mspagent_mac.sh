@@ -340,7 +340,7 @@ if [ "${SHOULD_CREATE_SETTINGS}" = true ]; then
 EOF
 
     # Set permissions - readable by all users
-    chmod 644 "${SETTINGS_FILE}"
+    chmod 666 "${SETTINGS_FILE}"
     
     log "settings.json created successfully"
     

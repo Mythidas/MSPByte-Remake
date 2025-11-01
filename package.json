@@ -18,7 +18,6 @@
     "gendb:schema": "bunx supabase gen types typescript --project-id lrgaygjiyukdhhdbszjk --schema public,views > ./packages/shared/src/types/database/import.ts"
   },
   "devDependencies": {
-    "@types/minimatch": "^6.0.0",
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "esbuild-node-externals": "^1.18.0",
