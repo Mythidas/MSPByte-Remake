@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@fastify/static": "^8.3.0",
     "@workspace/database": "workspace:*",
     "@workspace/pipeline": "workspace:*",
     "@workspace/shared": "workspace:*",

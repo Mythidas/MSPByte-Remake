@@ -1,13 +1,16 @@
-import fastify, { FastifyInstance } from "fastify";
+import { FastifyInstance } from "fastify";
 import path from "path";
+import fs from "fs/promises";
+import { createReadStream } from "fs";
 
 const INSTALLERS_DIR = path.join(__dirname, "../../../../lib/installers");
 const DMG_DIR = path.join(INSTALLERS_DIR, "dmg");
+const APP_VERSION = "0.1.14";
 
 export default async function (fastify: FastifyInstance) {
-  fastify.get("/", async (req) => {
+  fastify.get("/", async (req, reply) => {
     try {
-      const dmgPath = path.join(DMG_DIR, `MSPAgent_0.1.14.dmg`);
+      const dmgPath = path.join(DMG_DIR, `MSPAgent_${APP_VERSION}.dmg`);
 
       // Check if file exists
       try {
@@ -15,13 +18,13 @@ export default async function (fastify: FastifyInstance) {
       } catch {
         return reply.code(404).send({
           error: "DMG not found",
-          version,
+          version: APP_VERSION,
           path: dmgPath,
         });
       }
 
       const stat = await fs.stat(dmgPath);
-      const dmgStream = (await import("fs")).createReadStream(dmgPath);
+      const dmgStream = createReadStream(dmgPath);
 
       fastify.log.info(`Serving DMG: ${dmgPath} (${stat.size} bytes)`);
 
@@ -29,9 +32,10 @@ export default async function (fastify: FastifyInstance) {
         .header("Content-Type", "application/x-apple-diskimage")
         .header(
           "Content-Disposition",
-          `attachment; filename="MSPAgent_${version}.dmg"`
+          `attachment; filename="MSPAgent_${APP_VERSION}.dmg"`
         )
         .header("Content-Length", stat.size)
+        .header("Cache-Control", "public, max-age=3600")
         .send(dmgStream);
     } catch (err) {
       fastify.log.error("Error serving DMG:", err);
