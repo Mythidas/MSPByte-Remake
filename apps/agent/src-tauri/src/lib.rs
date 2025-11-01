@@ -17,7 +17,7 @@ use tauri_plugin_screenshots::{get_monitor_screenshot, get_screenshotable_monito
 
 use device_manager::{get_settings, is_device_registered};
 use device_registration::register_device_with_server;
-use heartbeat::start_heartbeat_task;
+use heartbeat::{start_heartbeat_task, gather_system_info, HeartbeatRequest};
 use logger::log_to_file;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -136,7 +136,8 @@ pub fn run() {
             read_file_base64,
             read_file_binary,
             read_registry_value,
-            log_to_file
+            log_to_file,
+            get_os_info
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -159,10 +160,11 @@ fn create_tray_icon(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         true,
         None::<&str>,
     )?;
-    let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+    let about_i = MenuItem::with_id(app, "about", "About", true, None::<&str>)?;
+    // let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
 
     // Create menu with items
-    let menu = Menu::with_items(app, &[&request_support_sc_i, &request_support_i, &quit_i])?;
+    let menu = Menu::with_items(app, &[&request_support_sc_i, &request_support_i, &about_i])?;
 
     // Build tray icon with menu
     let _tray = TrayIconBuilder::new()
@@ -175,15 +177,34 @@ fn create_tray_icon(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
             "request_support" => {
                 handle_support_window(app, false);
             }
-            "quit" => {
-                app.exit(0);
+            "about" => {
+                handle_about_window(app);               
             }
+            // "quit" => {
+            //     app.exit(0);
+            // }
             _ => {}
         })
+        .menu_on_left_click(false)
         .build(app)?;
 
     log_to_file(String::from("INFO"), String::from("System tray icon created successfully"));
     Ok(())
+}
+
+fn handle_about_window(app: &AppHandle) {
+    let app_handle = app.clone();
+
+    let window = if let Some(window) = app_handle.get_webview_window("about") {
+        let _ = window.show();
+        let _ = window.set_focus();
+    } else {
+        WebviewWindowBuilder::new(app, "about", WebviewUrl::App("about.html".into()))
+            .title("About")
+            .inner_size(300.0, 300.0)
+            .build()
+            .expect("Failed to create about window");
+    };
 }
 
 fn create_support_window(app: &AppHandle) {
@@ -418,5 +439,17 @@ fn read_registry_value(_path: &str, _key: &str) -> Result<String, String> {
         let err_msg = String::from("Registry only works on Windows");
         log_to_file(String::from("ERROR"), err_msg.clone());
         Err(err_msg)
+    }
+}
+
+#[tauri::command]
+async fn get_os_info() -> Result<HeartbeatRequest, String> {
+    match gather_system_info().await {
+        Ok(info) => {
+            return Ok(info);
+        }
+        Err(e) => {
+            return Err(String::from("Failed to get system info"))
+        }
     }
 }

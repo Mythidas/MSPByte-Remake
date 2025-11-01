@@ -4,7 +4,7 @@
 !define APP_NAME "MSPAgent"
 !define APP_COMPANY "MSPByte"
 !define CONFIG_DIR_NAME "MSPAgent"  ; Folder name in ProgramData
-!define APP_VERSION "0.1.12"
+!define APP_VERSION "0.1.14"
 !define API_HOST "https://agent.mspbyte.pro"
 
 ; =============================================================================

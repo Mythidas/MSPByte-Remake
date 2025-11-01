@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use whoami;
 
 #[cfg(target_os = "windows")]
 use std::process::Command;
@@ -320,4 +321,8 @@ pub fn get_rmm_device_id() -> Option<String> {
 pub async fn get_api_endpoint(path: &str) -> Result<String, Box<dyn std::error::Error>> {
     let settings = get_settings().await?;
     Ok(format!("{}{}", settings.api_host, path))
+}
+
+pub async fn get_username() -> Option<String> {
+    Some(whoami::username())
 }

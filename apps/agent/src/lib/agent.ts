@@ -13,6 +13,16 @@ export type AgentSettings = {
   registered_at?: string;
 };
 
+export type SystemInfo = {
+  hostname: string;
+  ip_address?: string;
+  ext_address?: string;
+  mac_address?: string;
+  guid?: string;
+  version?: string;
+  username?: string;
+};
+
 export async function getSettings(): Promise<APIResponse<AgentSettings>> {
   try {
     const content = await invoke<AgentSettings>("get_settings_info");
@@ -26,6 +36,23 @@ export async function getSettings(): Promise<APIResponse<AgentSettings>> {
       module: "Agent",
       context: "getSettings",
       message: `Failed to get agent settings: ${err}`,
+    });
+  }
+}
+
+export async function getSystemInfo(): Promise<APIResponse<SystemInfo>> {
+  try {
+    const content = await invoke<SystemInfo>("get_os_info");
+    if (!content) throw "No system info found";
+
+    return {
+      data: content,
+    };
+  } catch (err) {
+    return Debug.error({
+      module: "Agent",
+      context: "getSystemInfo",
+      message: `Failed to get system info`,
     });
   }
 }

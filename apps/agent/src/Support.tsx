@@ -301,7 +301,11 @@ export default function Support() {
               <FormItem>
                 <FormLabel>Title</FormLabel>
                 <FormControl>
-                  <Input placeholder="Ticket title" {...field} />
+                  <Input
+                    placeholder="Ticket title"
+                    {...field}
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -319,6 +323,7 @@ export default function Support() {
                     placeholder="Tell us about the issue"
                     className="h-20 resize-none"
                     {...field}
+                    disabled={isSubmitting}
                   />
                 </FormControl>
                 <FormMessage />
@@ -334,7 +339,11 @@ export default function Support() {
                 <FormItem className="flex flex-col w-full">
                   <FormLabel>How urgent is your request?</FormLabel>
                   <FormControl>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={isSubmitting}
+                    >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select urgency" />
                       </SelectTrigger>
@@ -356,7 +365,11 @@ export default function Support() {
                 <FormItem className="flex flex-col w-full">
                   <FormLabel>How urgent is your request?</FormLabel>
                   <FormControl>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={isSubmitting}
+                    >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select urgency" />
                       </SelectTrigger>
@@ -381,7 +394,11 @@ export default function Support() {
                 <FormItem className="col-span-3">
                   <FormLabel>Name *</FormLabel>
                   <FormControl>
-                    <Input placeholder="John Doe" {...field} />
+                    <Input
+                      placeholder="John Doe"
+                      {...field}
+                      disabled={isSubmitting}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -399,6 +416,7 @@ export default function Support() {
                       type="email"
                       placeholder="john.doe@gmail.com"
                       {...field}
+                      disabled={isSubmitting}
                     />
                   </FormControl>
                   <FormMessage />
@@ -413,7 +431,11 @@ export default function Support() {
                 <FormItem className="col-span-2">
                   <FormLabel>Phone Number *</FormLabel>
                   <FormControl>
-                    <Input placeholder="123-123-1234" {...field} />
+                    <Input
+                      placeholder="123-123-1234"
+                      {...field}
+                      disabled={isSubmitting}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -437,11 +459,16 @@ export default function Support() {
                 <Button
                   variant="destructive"
                   onClick={() => form.setValue("screenshot", undefined)}
+                  disabled={isSubmitting}
                 >
                   Clear Screenshot
                 </Button>
               ) : (
-                <Button type="button" onClick={handleScreenshot}>
+                <Button
+                  type="button"
+                  onClick={handleScreenshot}
+                  disabled={isSubmitting}
+                >
                   Take Screenshot
                 </Button>
               )}

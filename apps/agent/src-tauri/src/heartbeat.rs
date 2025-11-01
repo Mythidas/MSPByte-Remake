@@ -1,4 +1,4 @@
-use crate::device_manager::{get_api_endpoint, get_primary_mac, get_settings};
+use crate::device_manager::{get_api_endpoint, get_primary_mac, get_settings, get_username};
 use crate::logger::log_to_file;
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -13,6 +13,7 @@ pub struct HeartbeatRequest {
     pub version: String,
     pub mac_address: Option<String>,
     pub guid: Option<String>,
+    pub username: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -33,12 +34,9 @@ pub async fn gather_system_info() -> Result<HeartbeatRequest, Box<dyn std::error
         .clone()
         .unwrap_or_else(|| hostname::get().unwrap().to_string_lossy().to_string());
     let mac_address = get_primary_mac();
-
-    // Get local IP address
     let ip_address = get_local_ip();
-
-    // Get external IP address (best effort, don't fail if unavailable)
     let ext_address = get_external_ip().await.ok();
+    let username = get_username().await;
 
     Ok(HeartbeatRequest {
         hostname,
@@ -47,11 +45,12 @@ pub async fn gather_system_info() -> Result<HeartbeatRequest, Box<dyn std::error
         version: env!("CARGO_PKG_VERSION").to_string(),
         mac_address,
         guid: settings.guid,
+        username,
     })
 }
 
 /// Gets the local IP address of the machine
-fn get_local_ip() -> Option<String> {
+pub fn get_local_ip() -> Option<String> {
     use local_ip_address::local_ip;
 
     match local_ip() {
