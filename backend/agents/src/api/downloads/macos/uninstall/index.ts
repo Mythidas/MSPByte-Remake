@@ -4,7 +4,8 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const INSTALLERS_DIR = path.join(__dirname, "../../../../lib/installers/scripts");
+const PROJECT_ROOT = path.resolve(__dirname, "../../../../../../../");
+const INSTALLERS_DIR = path.join(PROJECT_ROOT, "assets/installers/scripts");
 
 export default async function(fastify: FastifyInstance) {
     fastify.get("/", async (req, reply) => {

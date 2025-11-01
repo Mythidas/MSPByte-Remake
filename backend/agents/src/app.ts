@@ -51,8 +51,9 @@ await fastify.register(autoload, {
     options: {},
 });
 
+const PROJECT_ROOT = path.resolve(__dirname, "../../../../");
 await fastify.register(fastifyStatic, {
-    root: path.join(__dirname, "lib/installers/scripts"),
+    root: path.join(PROJECT_ROOT, "backend/agents/assets/installers/scripts"),
     prefix: "/installers/", // optional
     decorateReply: true, // <-- this enables reply.sendFile()
 });
