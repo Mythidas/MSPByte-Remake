@@ -277,15 +277,15 @@ mkdir -p "${CONFIG_DIR}"
 mkdir -p "${LOG_DIR}"
 
 # Set permissions - readable by all, writable by admin
-chmod 755 "${CONFIG_DIR}"
-chmod 755 "${LOG_DIR}"
+chmod 1777 "${CONFIG_DIR}"
+chmod 1777 "${LOG_DIR}"
 
 log "Directory created successfully"
 
 # Set extended permissions to ensure all users can read
 # This makes the config globally accessible
 log "Setting global read permissions"
-chmod -R a+r "${CONFIG_DIR}"
+chmod -R a+rw "${CONFIG_DIR}"
 
 # Ensure logs are writable by all (for runtime logging)
 # Use sticky bit (1777) so users can write but not delete others' logs
@@ -340,7 +340,7 @@ if [ "${SHOULD_CREATE_SETTINGS}" = true ]; then
 EOF
 
     # Set permissions - readable by all users
-    chmod 644 "${SETTINGS_FILE}"
+    chmod 666 "${SETTINGS_FILE}"
     
     log "settings.json created successfully"
     
