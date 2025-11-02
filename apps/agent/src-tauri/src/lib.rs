@@ -15,7 +15,7 @@ use tauri::{
 };
 use tauri_plugin_screenshots::{get_monitor_screenshot, get_screenshotable_monitors};
 
-use device_manager::{get_settings, is_device_registered};
+use device_manager::{get_settings, is_device_registered, get_rmm_device_id};
 use device_registration::register_device_with_server;
 use heartbeat::{start_heartbeat_task, gather_system_info, HeartbeatRequest};
 use logger::log_to_file;
@@ -451,5 +451,13 @@ async fn get_os_info() -> Result<HeartbeatRequest, String> {
         Err(e) => {
             return Err(String::from("Failed to get system info"))
         }
+    }
+}
+
+#[tauri::command]
+async fn get_rmm_id() -> Result<String, String> {
+    match get_rmm_device_id() {
+        Some(id) => Ok(id),
+        None => Err("Failed to get key".into()),
     }
 }

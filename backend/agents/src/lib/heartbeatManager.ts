@@ -151,6 +151,31 @@ export class HeartbeatManager {
   }
 
   /**
+   * Helper function to check if a metadata value has changed.
+   * Returns true only if:
+   * 1. New value exists AND old value exists AND they differ
+   * 2. New value exists AND old value doesn't exist (first-time population)
+   * Returns false if new value doesn't exist (not sent in this heartbeat)
+   */
+  private hasMetadataChanged(
+    newValue: string | undefined,
+    oldValue: string | undefined
+  ): boolean {
+    // If new value is not provided, treat as no change
+    if (newValue === undefined || newValue === null) {
+      return false;
+    }
+
+    // If old value doesn't exist, this is a new value being set
+    if (oldValue === undefined || oldValue === null) {
+      return true;
+    }
+
+    // Both exist, compare them
+    return newValue !== oldValue;
+  }
+
+  /**
    * Record a heartbeat from an agent.
    * Updates Redis timestamp and queues status/metadata changes if needed.
    */
@@ -172,12 +197,23 @@ export class HeartbeatManager {
     const current = await this.redis.hgetall(key);
     const currentStatus = current.status as AgentStatus | "unknown";
 
-    // Build update data
+    // Build update data - only include defined metadata values
     const redisUpdate: Record<string, string | number> = {
       lastHeartbeat: now,
       status: "online",
-      ...metadata,
     };
+
+    // Only add defined metadata values to prevent undefined from being written to Redis
+    if (metadata.guid !== undefined) redisUpdate.guid = metadata.guid;
+    if (metadata.hostname !== undefined)
+      redisUpdate.hostname = metadata.hostname;
+    if (metadata.version !== undefined) redisUpdate.version = metadata.version;
+    if (metadata.ipAddress !== undefined)
+      redisUpdate.ipAddress = metadata.ipAddress;
+    if (metadata.extAddress !== undefined)
+      redisUpdate.extAddress = metadata.extAddress;
+    if (metadata.macAddress !== undefined)
+      redisUpdate.macAddress = metadata.macAddress;
 
     // Update Redis with heartbeat + metadata
     await this.redis.hset(key, redisUpdate);
@@ -201,8 +237,8 @@ export class HeartbeatManager {
       needsUpdate = true;
     }
 
-    // Check metadata changes
-    if (metadata.guid && metadata.guid !== current.guid) {
+    // Check metadata changes using proper comparison logic
+    if (this.hasMetadataChanged(metadata.guid, current.guid)) {
       Debug.log({
         module: "HeartbeatManager",
         context: "recordHeartbeat",
@@ -212,7 +248,7 @@ export class HeartbeatManager {
       needsUpdate = true;
     }
 
-    if (metadata.hostname && metadata.hostname !== current.hostname) {
+    if (this.hasMetadataChanged(metadata.hostname, current.hostname)) {
       Debug.log({
         module: "HeartbeatManager",
         context: "recordHeartbeat",
@@ -222,7 +258,7 @@ export class HeartbeatManager {
       needsUpdate = true;
     }
 
-    if (metadata.version && metadata.version !== current.version) {
+    if (this.hasMetadataChanged(metadata.version, current.version)) {
       Debug.log({
         module: "HeartbeatManager",
         context: "recordHeartbeat",
@@ -232,7 +268,7 @@ export class HeartbeatManager {
       needsUpdate = true;
     }
 
-    if (metadata.ipAddress && metadata.ipAddress !== current.ipAddress) {
+    if (this.hasMetadataChanged(metadata.ipAddress, current.ipAddress)) {
       Debug.log({
         module: "HeartbeatManager",
         context: "recordHeartbeat",
@@ -242,7 +278,7 @@ export class HeartbeatManager {
       needsUpdate = true;
     }
 
-    if (metadata.extAddress && metadata.extAddress !== current.extAddress) {
+    if (this.hasMetadataChanged(metadata.extAddress, current.extAddress)) {
       Debug.log({
         module: "HeartbeatManager",
         context: "recordHeartbeat",
@@ -252,7 +288,7 @@ export class HeartbeatManager {
       needsUpdate = true;
     }
 
-    if (metadata.macAddress && metadata.macAddress !== current.macAddress) {
+    if (this.hasMetadataChanged(metadata.macAddress, current.macAddress)) {
       Debug.log({
         module: "HeartbeatManager",
         context: "recordHeartbeat",

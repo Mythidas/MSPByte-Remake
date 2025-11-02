@@ -292,7 +292,7 @@ pub fn get_primary_mac() -> Option<String> {
     }
 }
 
-/// Gets the RMM Device ID from CentraStage registry (if installed)
+/// Gets the RMM Device ID from CentraStage (if installed)
 pub fn get_rmm_device_id() -> Option<String> {
     #[cfg(target_os = "windows")]
     {
@@ -311,7 +311,34 @@ pub fn get_rmm_device_id() -> Option<String> {
         None
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
+    {
+        use std::fs;
+
+        let settings_path = "/usr/local/share/CentraStage/AEMAgent/Settings.json";
+
+        match fs::read_to_string(settings_path) {
+            Ok(contents) => {
+                match serde_json::from_str::<serde_json::Value>(&contents) {
+                    Ok(json) => {
+                        if let Some(device_uid) = json.get("deviceUID") {
+                            if let Some(device_uid_str) = device_uid.as_str() {
+                                let trimmed = device_uid_str.trim();
+                                if !trimmed.is_empty() {
+                                    return Some(trimmed.to_string());
+                                }
+                            }
+                        }
+                        None
+                    }
+                    Err(_) => None,
+                }
+            }
+            Err(_) => None,
+        }
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
         None
     }
