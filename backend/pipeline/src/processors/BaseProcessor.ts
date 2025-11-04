@@ -11,7 +11,8 @@ import type {
     Group,
     Identity,
     Role,
-    Policy
+    Policy,
+    License
 } from "@workspace/database/convex/types/normalized.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import { APIResponse } from "@workspace/shared/types/api.js";
@@ -42,6 +43,7 @@ export type GroupData = ProcessedEntityData<Group>;
 export type FirewallData = ProcessedEntityData<Firewall>;
 export type RoleData = ProcessedEntityData<Role>;
 export type PolicyData = ProcessedEntityData<Policy>;
+export type LicenseData = ProcessedEntityData<License>;
 
 export abstract class BaseProcessor<T = any> {
     protected entityType: EntityType;
@@ -331,6 +333,7 @@ export abstract class BaseProcessor<T = any> {
             entitiesCreated: storedEntities.created,
             entitiesUpdated: storedEntities.updated,
             entitiesSkipped: originalEvent.total - totalProcessed,
+            changedEntityIds: storedEntities.ids, // Track changed entities for incremental processing
         };
 
         const eventName = buildEventName("processed", originalEvent.entityType);

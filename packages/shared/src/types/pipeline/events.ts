@@ -1,4 +1,4 @@
-import { Doc } from "@workspace/database/convex/_generated/dataModel.js";
+import { Doc, Id } from "@workspace/database/convex/_generated/dataModel.js";
 import {
   BasePipelineEvent,
   PipelineStage,
@@ -28,6 +28,7 @@ export interface ProcessedEventPayload extends BasePipelineEvent {
   entitiesCreated: number;
   entitiesUpdated: number;
   entitiesSkipped: number;
+  changedEntityIds?: Id<"entities">[]; // IDs of entities that were created or updated
 }
 
 export interface ResolvedEventPayload extends BasePipelineEvent {
@@ -41,6 +42,7 @@ export interface LinkedEventPayload extends BasePipelineEvent {
   stage: "linked";
   relationshipsCreated: EntityRelationship[];
   relationshipsUpdated: EntityRelationship[];
+  changedEntityIds?: Id<"entities">[]; // IDs of entities affected by linking operations
 }
 
 export interface CompletedEventPayload extends BasePipelineEvent {

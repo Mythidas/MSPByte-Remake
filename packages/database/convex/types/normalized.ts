@@ -31,6 +31,7 @@ export type Identity = {
     aliases: string[];
     type: "member" | "guest";
     enabled: boolean;
+    tags: string[]; // e.g., "MFA", "Deleted", "Locked", "Admin", "Guest", "Service", "Stale"
 
     licenses: string[];
     last_login_at: string;
@@ -76,4 +77,13 @@ export type Policy = {
     status: "enabled" | "disabled" | "report-only";
 
     createdAt: number;
+}
+
+export type License = {
+    externalId: string;
+
+    name: string;
+    skuPartNumber: string;
+    totalUnits: number;
+    consumedUnits: number;
 }

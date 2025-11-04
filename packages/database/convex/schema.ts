@@ -8,7 +8,8 @@ export const entityTypeValidator = v.union(
     v.literal("firewalls"),
     v.literal("groups"),
     v.literal("roles"),
-    v.literal("policies")
+    v.literal("policies"),
+    v.literal("licenses")
 );
 
 export default defineSchema({
@@ -327,6 +328,35 @@ export default defineSchema({
         .index("by_parent", ["parentEntityId"])
         .index("by_child", ["childEntityId"])
         .index("by_type", ["relationshipType"]),
+
+    entity_alerts: defineTable({
+        tenantId: v.id("tenants"),
+        entityId: v.id("entities"),
+        alertType: v.string(), // e.g., "mfa_not_enforced", "stale_user", "license_waste", "policy_gap"
+        severity: v.union(
+            v.literal("low"),
+            v.literal("medium"),
+            v.literal("high"),
+            v.literal("critical")
+        ),
+        message: v.string(), // Human-readable alert description
+        metadata: v.optional(v.any()), // Additional context (days inactive, license cost, etc.)
+        status: v.union(
+            v.literal("active"),
+            v.literal("resolved"),
+            v.literal("suppressed")
+        ),
+        createdAt: v.number(),
+        resolvedAt: v.optional(v.number()),
+
+        updatedAt: v.number(),
+    })
+        .index("by_tenant", ["tenantId"])
+        .index("by_entity", ["entityId", "tenantId"])
+        .index("by_type", ["alertType", "tenantId"])
+        .index("by_severity", ["severity", "tenantId"])
+        .index("by_status", ["status", "tenantId"])
+        .index("by_entity_status", ["entityId", "status", "tenantId"]),
 
     // ============================================================================
     // RELATIONSHIPS & MAPPING

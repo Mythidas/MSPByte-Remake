@@ -114,7 +114,9 @@ export const TableName = v.union(
     v.literal("integrations"),
     v.literal("scheduled_jobs"),
     v.literal("sites"),
-    v.literal("data_source_to_site")
+    v.literal("data_source_to_site"),
+    v.literal("entity_alerts"),
+    v.literal("entity_relationships")
 );
 
 /**

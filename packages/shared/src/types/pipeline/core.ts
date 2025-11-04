@@ -20,7 +20,8 @@ export type EntityType =
     | "firewalls"
     | "groups"
     | "roles"
-    | "policies";
+    | "policies"
+    | "licenses";
 
 // Integration types for adapter identification
 export type IntegrationType =

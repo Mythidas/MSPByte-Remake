@@ -12,7 +12,7 @@ import { Microsoft365DataSourceConfig } from "@workspace/shared/types/integratio
 
 export class Microsoft365Adapter extends BaseAdapter {
     constructor() {
-        super("microsoft-365", ["identities", "groups", "roles", "policies"]);
+        super("microsoft-365", ["identities", "groups", "roles", "policies", "licenses"]);
     }
 
     protected async getRawData(
@@ -38,6 +38,9 @@ export class Microsoft365Adapter extends BaseAdapter {
             }
             case "policies": {
                 return await this.handlePolicySync(props.dataSource);
+            }
+            case "licenses": {
+                return await this.handleLicenseSync(props.dataSource);
             }
         }
 
@@ -203,6 +206,42 @@ export class Microsoft365Adapter extends BaseAdapter {
 
                 return {
                     externalID: rawData.id,
+
+                    dataHash,
+                    rawData,
+                };
+            }),
+        };
+    }
+
+    private async handleLicenseSync(dataSource: Doc<"data_sources">) {
+        const config = dataSource.config as Microsoft365DataSourceConfig;
+
+        const connector = new Microsoft365Connector(config);
+        const health = await connector.checkHealth();
+        if (!health) {
+            return Debug.error({
+                module: "Microsoft365Adapter",
+                context: "handleLicenseSync",
+                message: `Connector failed health check: ${dataSource._id}`,
+            });
+        }
+
+        const { data: skus, error } = await connector.getSubscribedSkus();
+        if (error) {
+            return { error };
+        }
+
+        return {
+            data: skus.map((rawData) => {
+                const dataHash = Encryption.sha256(
+                    JSON.stringify({
+                        ...rawData,
+                    })
+                );
+
+                return {
+                    externalID: rawData.skuId,
 
                     dataHash,
                     rawData,

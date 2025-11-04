@@ -27,7 +27,8 @@ export const StandardFlows: Record<EntityType, StandardFlow<EntityType>> = {
     groups: defaultEntityFlow,
     firewalls: defaultEntityFlow,
     roles: defaultEntityFlow,
-    policies: defaultEntityFlow
+    policies: defaultEntityFlow,
+    licenses: defaultEntityFlow,
 
     // Special case: license_assignments might not always need entity storage
     // licenseAssignments: {

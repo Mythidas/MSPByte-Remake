@@ -1,29 +1,28 @@
 import {
     BaseProcessor,
-    RoleData,
+    LicenseData,
 } from "@workspace/pipeline/processors/BaseProcessor.js";
 import Debug from "@workspace/shared/lib/Debug.js";
-import { MSGraphRole } from "@workspace/shared/types/integrations/microsoft-365/roles.js";
 import {
     IntegrationType,
     DataFetchPayload,
 } from "@workspace/shared/types/pipeline/index.js";
 
-export class RoleProcessor extends BaseProcessor {
+export class LicenseProcessor extends BaseProcessor {
     constructor() {
-        super("roles");
+        super("licenses");
     }
 
     protected normalizeData(
         integrationType: IntegrationType,
         data: DataFetchPayload[]
-    ): RoleData[] {
+    ): LicenseData[] {
         switch (integrationType) {
             case "microsoft-365":
                 return this.fromMicrosoft365(data);
             default: {
                 Debug.error({
-                    module: "RoleProcessor",
+                    module: "LicenseProcessor",
                     context: "normalizeData",
                     message: `No normalizer for this data: ${integrationType}`,
                 });
@@ -35,22 +34,23 @@ export class RoleProcessor extends BaseProcessor {
     private fromMicrosoft365(data: DataFetchPayload[]) {
         return data.map((row) => {
             const { rawData, dataHash } = row as {
-                rawData: MSGraphRole;
+                rawData: any; // Microsoft Graph SubscribedSku type
                 dataHash: string;
             };
 
             return {
-                externalID: String(rawData.id),
+                externalID: String(rawData.skuId),
                 raw: rawData,
                 hash: dataHash,
                 normalized: {
-                    externalId: rawData.id,
+                    externalId: rawData.skuId,
 
-                    name: rawData.displayName,
-                    description: rawData.description,
-                    status: "enabled", // Active directory roles are always enabled
+                    name: rawData.skuPartNumber,
+                    skuPartNumber: rawData.skuPartNumber,
+                    totalUnits: rawData.prepaidUnits?.enabled || 0,
+                    consumedUnits: rawData.consumedUnits || 0,
                 },
-            } as RoleData;
+            } as LicenseData;
         });
     }
 }

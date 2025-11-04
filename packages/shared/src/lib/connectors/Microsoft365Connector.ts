@@ -187,6 +187,90 @@ export default class Microsoft365Connector implements IConnector {
         }
     }
 
+    async getSubscribedSkus(): Promise<APIResponse<any[]>> {
+        try {
+            const { data: client, error: clientError } = await this.getGraphClient();
+            if (clientError) return { error: clientError };
+
+            let allSkus: any[] = [];
+            let query = client.api('/subscribedSkus');
+            let response = await query.get();
+
+            allSkus = allSkus.concat(response.value);
+
+            while (response['@odata.nextLink']) {
+                response = await client.api(response['@odata.nextLink']).get();
+                allSkus = allSkus.concat(response.value);
+            }
+
+            return {
+                data: allSkus,
+            };
+        } catch (err) {
+            return Debug.error({
+                module: 'Microsoft365Connector',
+                context: 'getSubscribedSkus',
+                message: String(err),
+            });
+        }
+    }
+
+    async getGroupMembers(groupId: string): Promise<APIResponse<any[]>> {
+        try {
+            const { data: client, error: clientError } = await this.getGraphClient();
+            if (clientError) return { error: clientError };
+
+            let allMembers: any[] = [];
+            let query = client.api(`/groups/${groupId}/members`);
+            let response = await query.get();
+
+            allMembers = allMembers.concat(response.value);
+
+            while (response['@odata.nextLink']) {
+                response = await client.api(response['@odata.nextLink']).get();
+                allMembers = allMembers.concat(response.value);
+            }
+
+            return {
+                data: allMembers,
+            };
+        } catch (err) {
+            return Debug.error({
+                module: 'Microsoft365Connector',
+                context: 'getGroupMembers',
+                message: String(err),
+            });
+        }
+    }
+
+    async getRoleMembers(roleId: string): Promise<APIResponse<any[]>> {
+        try {
+            const { data: client, error: clientError } = await this.getGraphClient();
+            if (clientError) return { error: clientError };
+
+            let allMembers: any[] = [];
+            let query = client.api(`/directoryRoles/${roleId}/members`);
+            let response = await query.get();
+
+            allMembers = allMembers.concat(response.value);
+
+            while (response['@odata.nextLink']) {
+                response = await client.api(response['@odata.nextLink']).get();
+                allMembers = allMembers.concat(response.value);
+            }
+
+            return {
+                data: allMembers,
+            };
+        } catch (err) {
+            return Debug.error({
+                module: 'Microsoft365Connector',
+                context: 'getRoleMembers',
+                message: String(err),
+            });
+        }
+    }
+
     async getOrganization(): Promise<APIResponse<any>> {
         try {
             const { data: client, error: clientError } = await this.getGraphClient();

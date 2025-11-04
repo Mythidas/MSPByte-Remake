@@ -5,6 +5,7 @@ import { SophosPartnerAdapter } from "@workspace/pipeline/adapters/SophosPartner
 import { HaloPSAAdapter } from "@workspace/pipeline/adapters/HaloPSAAdapter.js";
 import { natsClient } from "@workspace/pipeline/helpers/nats.js";
 import { BaseLinker } from "@workspace/pipeline/linkers/BaseLinker.js";
+import { Microsoft365Linker } from "@workspace/pipeline/linkers/Microsoft365Linker.js";
 import { BaseProcessor } from "@workspace/pipeline/processors/BaseProcessor.js";
 import { CompanyProcessor } from "@workspace/pipeline/processors/CompanyProcessor.js";
 import { EndpointProcessor } from "@workspace/pipeline/processors/EndpointProcessor.js";
@@ -13,9 +14,14 @@ import { GroupProcessor } from "@workspace/pipeline/processors/GroupProcessor.js
 import { IdentityProcessor } from "@workspace/pipeline/processors/IdentityProcessor.js";
 import { RoleProcessor } from "@workspace/pipeline/processors/RoleProcessor.js";
 import { PolicyProcessor } from "@workspace/pipeline/processors/PolicyProcessor.js";
+import { LicenseProcessor } from "@workspace/pipeline/processors/LicenseProcessor.js";
 import { BaseResolver } from "@workspace/pipeline/resolvers/BaseResolver.js";
 import { Scheduler } from "@workspace/pipeline/scheduler/index.js";
 import { BaseWorker } from "@workspace/pipeline/workers/base.js";
+import { Microsoft365MFAAnalyzer } from "@workspace/pipeline/workers/Microsoft365MFAAnalyzer.js";
+import { Microsoft365StaleUserAnalyzer } from "@workspace/pipeline/workers/Microsoft365StaleUserAnalyzer.js";
+import { Microsoft365LicenseAnalyzer } from "@workspace/pipeline/workers/Microsoft365LicenseAnalyzer.js";
+import { Microsoft365PolicyAnalyzer } from "@workspace/pipeline/workers/Microsoft365PolicyAnalyzer.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import { IntegrationType } from "@workspace/shared/types/pipeline/core.js";
 import { dirname, join } from "path";
@@ -54,10 +60,18 @@ class MSPByteBackend {
             new FirewallProcessor(),
             new RoleProcessor(),
             new PolicyProcessor(),
+            new LicenseProcessor(),
         ];
         this.resolvers = [];
-        this.linkers = [];
-        this.workers = [];
+        this.linkers = [
+            new Microsoft365Linker(),
+        ];
+        this.workers = [
+            new Microsoft365MFAAnalyzer(),
+            new Microsoft365StaleUserAnalyzer(),
+            new Microsoft365LicenseAnalyzer(),
+            new Microsoft365PolicyAnalyzer(),
+        ];
     }
 
     async start(): Promise<void> {

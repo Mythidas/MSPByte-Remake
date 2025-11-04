@@ -40,6 +40,31 @@ export class IdentityProcessor extends BaseProcessor {
         siteID: string;
       };
 
+      // Determine initial tags based on raw data
+      const tags: string[] = [];
+      const userType = rawData.userType?.toLowerCase() || "member";
+
+      if (userType === "guest") {
+        tags.push("Guest");
+      }
+
+      if (!rawData.accountEnabled) {
+        tags.push("Disabled");
+      }
+
+      // Check for service account patterns
+      const email = rawData.userPrincipalName.toLowerCase();
+      if (
+        email.includes("service") ||
+        email.includes("svc") ||
+        email.includes("admin") ||
+        email.startsWith("system") ||
+        email.includes("no-reply") ||
+        email.includes("noreply")
+      ) {
+        tags.push("Service");
+      }
+
       return {
         externalID: String(rawData.id),
         raw: rawData,
@@ -57,8 +82,9 @@ export class IdentityProcessor extends BaseProcessor {
                 (prox) =>
                   prox.toLowerCase() !== rawData.userPrincipalName.toLowerCase()
               ) || [],
-          type: rawData.userType?.toLowerCase() || "member",
+          type: userType,
           enabled: rawData.accountEnabled,
+          tags, // Initial tags (MFA, Admin, Stale will be added by analyzers/linkers)
 
           licenses: rawData.assignedLicenses?.map((lic) => lic.skuId) || [],
           last_login_at:
