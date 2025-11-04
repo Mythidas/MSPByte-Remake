@@ -11,6 +11,9 @@ import { DataFetchPayload } from "@workspace/shared/types/pipeline/events.js";
 import { Microsoft365DataSourceConfig } from "@workspace/shared/types/integrations/microsoft-365/index.js";
 
 export class Microsoft365Adapter extends BaseAdapter {
+    private licenseCatalog: Map<string, string> = new Map();
+    private catalogLoaded = false;
+
     constructor() {
         super("microsoft-365", ["identities", "groups", "roles", "policies", "licenses"]);
     }
@@ -156,6 +159,11 @@ export class Microsoft365Adapter extends BaseAdapter {
             return { error };
         }
         const { data: securityDefaults } = await connector.getSecurityDefaultsEnabled();
+        const sdPolicy = {
+            externalID: 'security-defaults',
+            dataHash: Encryption.sha256(String(securityDefaults || false)),
+            rawData: securityDefaults
+        }
 
         return {
             data: [
@@ -174,7 +182,7 @@ export class Microsoft365Adapter extends BaseAdapter {
                         dataHash,
                         rawData,
                     };
-                }), { externalId: 'security-defaults', dataHash: Encryption.sha256(String(securityDefaults || false)), rawData: securityDefaults || false }] as DataFetchPayload[]
+                }), sdPolicy] as DataFetchPayload[]
         };
     }
 
@@ -214,6 +222,51 @@ export class Microsoft365Adapter extends BaseAdapter {
         };
     }
 
+    /**
+     * Load license catalog into memory for friendly name lookups
+     * Only loads once per adapter instance
+     */
+    private async loadLicenseCatalog(connector: Microsoft365Connector): Promise<void> {
+        if (this.catalogLoaded) return;
+
+        try {
+            const { data: skus, error } = await connector.getSubscribedSkus();
+            if (error) {
+                Debug.error({
+                    module: "Microsoft365Adapter",
+                    context: "loadLicenseCatalog",
+                    message: `Failed to load license catalog: ${error.message}`,
+                });
+                return;
+            }
+
+            // Build catalog: SKU part number → Friendly name
+            skus.forEach((sku) => {
+                // Use the first service plan name as the friendly name
+                // Fall back to skuPartNumber if no service plans
+                const friendlyName = sku.servicePlans?.[0]?.servicePlanName || sku.skuPartNumber;
+
+                // Map both skuPartNumber and skuId for lookups
+                this.licenseCatalog.set(sku.skuPartNumber, friendlyName);
+                this.licenseCatalog.set(sku.skuId, friendlyName);
+            });
+
+            this.catalogLoaded = true;
+
+            Debug.log({
+                module: "Microsoft365Adapter",
+                context: "loadLicenseCatalog",
+                message: `Loaded ${this.licenseCatalog.size / 2} license SKUs into memory`, // Divide by 2 since we store each twice
+            });
+        } catch (err) {
+            Debug.error({
+                module: "Microsoft365Adapter",
+                context: "loadLicenseCatalog",
+                message: `Error loading license catalog: ${err}`,
+            });
+        }
+    }
+
     private async handleLicenseSync(dataSource: Doc<"data_sources">) {
         const config = dataSource.config as Microsoft365DataSourceConfig;
 
@@ -226,6 +279,9 @@ export class Microsoft365Adapter extends BaseAdapter {
                 message: `Connector failed health check: ${dataSource._id}`,
             });
         }
+
+        // Load catalog on first license sync
+        await this.loadLicenseCatalog(connector);
 
         const { data: skus, error } = await connector.getSubscribedSkus();
         if (error) {
@@ -240,11 +296,16 @@ export class Microsoft365Adapter extends BaseAdapter {
                     })
                 );
 
+                // Get friendly name from catalog, fallback to skuPartNumber
+                const friendlyName = this.licenseCatalog.get(rawData.skuPartNumber)
+                    || this.licenseCatalog.get(rawData.skuId)
+                    || rawData.skuPartNumber;
+
                 return {
                     externalID: rawData.skuId,
-
                     dataHash,
                     rawData,
+                    friendlyName, // Add friendly name to payload
                 };
             }),
         };

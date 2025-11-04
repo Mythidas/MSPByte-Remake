@@ -63,8 +63,8 @@ export class PolicyProcessor extends BaseProcessor {
             const status = rawData.state === 'enabled'
                 ? 'enabled'
                 : rawData.state === 'enabledForReportingButNotEnforced'
-                ? 'report-only'
-                : 'disabled';
+                    ? 'report-only'
+                    : 'disabled';
 
             return {
                 externalID: String(rawData.id),

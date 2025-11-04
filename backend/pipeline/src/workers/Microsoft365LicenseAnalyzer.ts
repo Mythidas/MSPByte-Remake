@@ -135,7 +135,6 @@ export class Microsoft365LicenseAnalyzer extends BaseWorker {
                                         userStale: isStale,
                                     },
                                     status: "active",
-                                    createdAt: Date.now(),
                                     updatedAt: Date.now(),
                                 }],
                             });

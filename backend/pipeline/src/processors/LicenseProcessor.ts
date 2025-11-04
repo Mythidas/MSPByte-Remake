@@ -33,9 +33,10 @@ export class LicenseProcessor extends BaseProcessor {
 
     private fromMicrosoft365(data: DataFetchPayload[]) {
         return data.map((row) => {
-            const { rawData, dataHash } = row as {
+            const { rawData, dataHash, friendlyName } = row as {
                 rawData: any; // Microsoft Graph SubscribedSku type
                 dataHash: string;
+                friendlyName?: string;
             };
 
             return {
@@ -45,7 +46,8 @@ export class LicenseProcessor extends BaseProcessor {
                 normalized: {
                     externalId: rawData.skuId,
 
-                    name: rawData.skuPartNumber,
+                    // Use friendly name from adapter if available, otherwise use SKU part number
+                    name: friendlyName || rawData.skuPartNumber,
                     skuPartNumber: rawData.skuPartNumber,
                     totalUnits: rawData.prepaidUnits?.enabled || 0,
                     consumedUnits: rawData.consumedUnits || 0,

@@ -163,7 +163,6 @@ export class Microsoft365StaleUserAnalyzer extends BaseWorker {
                                     isAdmin,
                                 },
                                 status: "active",
-                                createdAt: Date.now(),
                                 updatedAt: Date.now(),
                             }],
                         });

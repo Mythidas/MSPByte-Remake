@@ -244,7 +244,6 @@ export class Microsoft365MFAAnalyzer extends BaseWorker {
                                     securityDefaultsEnabled,
                                 },
                                 status: "active",
-                                createdAt: Date.now(),
                                 updatedAt: Date.now(),
                             }],
                         });

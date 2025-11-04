@@ -9,6 +9,21 @@ import { Microsoft365DataSourceConfig } from "@workspace/shared/types/integratio
 import { MSGraphRole } from "@workspace/shared/types/integrations/microsoft-365/roles.js";
 import { MSGraphConditionalAccessPolicy } from "@workspace/shared/types/integrations/microsoft-365/policies.js";
 
+export type MSGraphSubscribedSku = {
+    skuId: string;
+    skuPartNumber: string;
+    servicePlans: Array<{
+        servicePlanId: string;
+        servicePlanName: string;
+    }>;
+    prepaidUnits?: {
+        enabled: number;
+        suspended: number;
+        warning: number;
+    };
+    consumedUnits?: number;
+};
+
 export default class Microsoft365Connector implements IConnector {
     constructor(private config: Microsoft365DataSourceConfig) { }
 
@@ -187,12 +202,12 @@ export default class Microsoft365Connector implements IConnector {
         }
     }
 
-    async getSubscribedSkus(): Promise<APIResponse<any[]>> {
+    async getSubscribedSkus(): Promise<APIResponse<MSGraphSubscribedSku[]>> {
         try {
             const { data: client, error: clientError } = await this.getGraphClient();
             if (clientError) return { error: clientError };
 
-            let allSkus: any[] = [];
+            let allSkus: MSGraphSubscribedSku[] = [];
             let query = client.api('/subscribedSkus');
             let response = await query.get();
 

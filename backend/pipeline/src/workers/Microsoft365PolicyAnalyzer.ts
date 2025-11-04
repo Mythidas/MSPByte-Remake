@@ -205,7 +205,6 @@ export class Microsoft365PolicyAnalyzer extends BaseWorker {
                                     enabledPolicyCount: enabledPolicies.length,
                                 },
                                 status: "active",
-                                createdAt: Date.now(),
                                 updatedAt: Date.now(),
                             }],
                         });

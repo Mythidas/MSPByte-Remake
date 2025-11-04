@@ -346,7 +346,6 @@ export default defineSchema({
             v.literal("resolved"),
             v.literal("suppressed")
         ),
-        createdAt: v.number(),
         resolvedAt: v.optional(v.number()),
 
         updatedAt: v.number(),
