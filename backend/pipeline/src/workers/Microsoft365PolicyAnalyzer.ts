@@ -170,24 +170,45 @@ export class Microsoft365PolicyAnalyzer extends BaseWorker {
                 if (!coveredByPolicy) {
                     const severity = isAdmin ? "high" : "medium";
 
-                    // Check if alert already exists
-                    const existingAlert = await client.query(api.helpers.orm.get_s, {
+                    // Check if active alert already exists for this entity and type
+                    const existingAlerts = await client.query(api.helpers.orm.list_s, {
                         tableName: "entity_alerts",
                         secret: process.env.CONVEX_API_KEY!,
                         index: {
-                            name: "by_entity",
+                            name: "by_entity_status",
                             params: {
                                 entityId: identity._id,
+                                status: "active",
                             },
                         },
+                        filters: {
+                            alertType: "policy_gap"
+                        },
                         tenantId: tenantID as Id<"tenants">,
-                    }) as Doc<"entity_alerts"> | null;
+                    }) as Doc<"entity_alerts">[];
 
-                    const alertExists = existingAlert &&
-                        existingAlert.alertType === "policy_gap" &&
-                        existingAlert.status === "active";
-
-                    if (!alertExists) {
+                    if (existingAlerts.length > 0) {
+                        // UPDATE existing alert with fresh metadata
+                        await client.mutation(api.helpers.orm.update_s, {
+                            tableName: "entity_alerts",
+                            secret: process.env.CONVEX_API_KEY!,
+                            data: [{
+                                id: existingAlerts[0]._id,
+                                updates: {
+                                    severity,
+                                    message: `User ${identity.normalizedData.name} is not covered by any security policy`,
+                                    metadata: {
+                                        email: identity.normalizedData.email,
+                                        isAdmin,
+                                        securityDefaultsEnabled,
+                                        enabledPolicyCount: enabledPolicies.length,
+                                    },
+                                    updatedAt: Date.now(),
+                                },
+                            }],
+                        });
+                    } else {
+                        // INSERT new alert
                         await client.mutation(api.helpers.orm.insert_s, {
                             tableName: "entity_alerts",
                             secret: process.env.CONVEX_API_KEY!,
@@ -195,6 +216,7 @@ export class Microsoft365PolicyAnalyzer extends BaseWorker {
                             data: [{
                                 tenantId: tenantID as Id<"tenants">,
                                 entityId: identity._id,
+                                dataSourceId: dataSourceID,
                                 alertType: "policy_gap",
                                 severity,
                                 message: `User ${identity.normalizedData.name} is not covered by any security policy`,
@@ -211,28 +233,28 @@ export class Microsoft365PolicyAnalyzer extends BaseWorker {
                     }
                 } else {
                     // Resolve any existing policy gap alerts
-                    const existingAlert = await client.query(api.helpers.orm.get_s, {
+                    const existingAlerts = await client.query(api.helpers.orm.list_s, {
                         tableName: "entity_alerts",
                         secret: process.env.CONVEX_API_KEY!,
                         index: {
-                            name: "by_entity",
+                            name: "by_entity_status",
                             params: {
                                 entityId: identity._id,
+                                status: "active",
                             },
                         },
+                        filters: {
+                            alertType: "policy_gap"
+                        },
                         tenantId: tenantID as Id<"tenants">,
-                    }) as Doc<"entity_alerts"> | null;
+                    }) as Doc<"entity_alerts">[];
 
-                    if (
-                        existingAlert &&
-                        existingAlert.alertType === "policy_gap" &&
-                        existingAlert.status === "active"
-                    ) {
+                    if (existingAlerts.length > 0) {
                         await client.mutation(api.helpers.orm.update_s, {
                             tableName: "entity_alerts",
                             secret: process.env.CONVEX_API_KEY!,
                             data: [{
-                                id: existingAlert._id,
+                                id: existingAlerts[0]._id,
                                 updates: {
                                     status: "resolved",
                                     resolvedAt: Date.now(),

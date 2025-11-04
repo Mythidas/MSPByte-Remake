@@ -97,25 +97,52 @@ export class Microsoft365LicenseAnalyzer extends BaseWorker {
                         const severity = !enabled ? "medium" : "low";
                         const reason = !enabled ? "disabled" : "stale";
 
-                        // Check if alert already exists for this identity
-                        const existingAlert = await client.query(api.helpers.orm.get_s, {
+                        // Check if active alert already exists for this entity, type, and license
+                        const existingAlerts = await client.query(api.helpers.orm.list_s, {
                             tableName: "entity_alerts",
                             secret: process.env.CONVEX_API_KEY!,
                             index: {
-                                name: "by_entity",
+                                name: "by_entity_status",
                                 params: {
                                     entityId: identity._id,
+                                    status: "active",
                                 },
                             },
+                            filters: {
+                                alertType: "license_waste"
+                            },
                             tenantId: tenantID as Id<"tenants">,
-                        }) as Doc<"entity_alerts"> | null;
+                        }) as Doc<"entity_alerts">[];
 
-                        const alertExists = existingAlert &&
-                            existingAlert.alertType === "license_waste" &&
-                            existingAlert.status === "active" &&
-                            existingAlert.metadata?.licenseSkuId === licenseSkuId;
+                        // Find alert for this specific license
+                        const existingAlert = existingAlerts.find(
+                            alert => alert.metadata?.licenseSkuId === licenseSkuId
+                        );
 
-                        if (!alertExists) {
+                        if (existingAlert) {
+                            // UPDATE existing alert with fresh metadata
+                            await client.mutation(api.helpers.orm.update_s, {
+                                tableName: "entity_alerts",
+                                secret: process.env.CONVEX_API_KEY!,
+                                data: [{
+                                    id: existingAlert._id,
+                                    updates: {
+                                        severity,
+                                        message: `License ${licenseName} assigned to ${reason} user ${identity.normalizedData.name}`,
+                                        metadata: {
+                                            email: identity.normalizedData.email,
+                                            licenseSkuId,
+                                            licenseName,
+                                            reason,
+                                            userEnabled: enabled,
+                                            userStale: isStale,
+                                        },
+                                        updatedAt: Date.now(),
+                                    },
+                                }],
+                            });
+                        } else {
+                            // INSERT new alert
                             await client.mutation(api.helpers.orm.insert_s, {
                                 tableName: "entity_alerts",
                                 secret: process.env.CONVEX_API_KEY!,
@@ -123,6 +150,7 @@ export class Microsoft365LicenseAnalyzer extends BaseWorker {
                                 data: [{
                                     tenantId: tenantID as Id<"tenants">,
                                     entityId: identity._id,
+                                    dataSourceId: dataSourceID,
                                     alertType: "license_waste",
                                     severity,
                                     message: `License ${licenseName} assigned to ${reason} user ${identity.normalizedData.name}`,
@@ -146,15 +174,16 @@ export class Microsoft365LicenseAnalyzer extends BaseWorker {
                         tableName: "entity_alerts",
                         secret: process.env.CONVEX_API_KEY!,
                         index: {
-                            name: "by_entity",
+                            name: "by_entity_status",
                             params: {
                                 entityId: identity._id,
+                                status: "active",
                             },
                         },
                         filters: {
-                            alertType: "license_waste",
-                            status: "active"
-                        }
+                            alertType: "license_waste"
+                        },
+                        tenantId: tenantID as Id<"tenants">,
                     }) as Doc<"entity_alerts">[];
 
                     for (const alert of existingAlerts) {

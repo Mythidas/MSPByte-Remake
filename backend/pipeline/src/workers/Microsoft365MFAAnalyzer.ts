@@ -210,24 +210,44 @@ export class Microsoft365MFAAnalyzer extends BaseWorker {
                     const isAdmin = identityTags.includes("Admin");
                     const severity = isAdmin ? "critical" : "high";
 
-                    // Check if alert already exists
-                    const existingAlert = await client.query(api.helpers.orm.get_s, {
+                    // Check if active alert already exists for this entity and type
+                    const existingAlerts = await client.query(api.helpers.orm.list_s, {
                         tableName: "entity_alerts",
                         secret: process.env.CONVEX_API_KEY!,
                         index: {
-                            name: "by_entity",
+                            name: "by_entity_status",
                             params: {
                                 entityId: identity._id,
+                                status: "active",
                             },
                         },
+                        filters: {
+                            alertType: "mfa_not_enforced"
+                        },
                         tenantId: tenantID as Id<"tenants">,
-                    }) as Doc<"entity_alerts"> | null;
+                    }) as Doc<"entity_alerts">[];
 
-                    const alertExists = existingAlert &&
-                        existingAlert.alertType === "mfa_not_enforced" &&
-                        existingAlert.status === "active";
-
-                    if (!alertExists) {
+                    if (existingAlerts.length > 0) {
+                        // UPDATE existing alert with fresh metadata
+                        await client.mutation(api.helpers.orm.update_s, {
+                            tableName: "entity_alerts",
+                            secret: process.env.CONVEX_API_KEY!,
+                            data: [{
+                                id: existingAlerts[0]._id,
+                                updates: {
+                                    severity,
+                                    message: `User ${identity.normalizedData.name} does not have MFA enforcement`,
+                                    metadata: {
+                                        email: identity.normalizedData.email,
+                                        isAdmin,
+                                        securityDefaultsEnabled,
+                                    },
+                                    updatedAt: Date.now(),
+                                },
+                            }],
+                        });
+                    } else {
+                        // INSERT new alert
                         await client.mutation(api.helpers.orm.insert_s, {
                             tableName: "entity_alerts",
                             secret: process.env.CONVEX_API_KEY!,
@@ -235,6 +255,7 @@ export class Microsoft365MFAAnalyzer extends BaseWorker {
                             data: [{
                                 tenantId: tenantID as Id<"tenants">,
                                 entityId: identity._id,
+                                dataSourceId: dataSourceID,
                                 alertType: "mfa_not_enforced",
                                 severity,
                                 message: `User ${identity.normalizedData.name} does not have MFA enforcement`,
@@ -250,28 +271,28 @@ export class Microsoft365MFAAnalyzer extends BaseWorker {
                     }
                 } else {
                     // Resolve any existing MFA alerts
-                    const existingAlert = await client.query(api.helpers.orm.get_s, {
+                    const existingAlerts = await client.query(api.helpers.orm.list_s, {
                         tableName: "entity_alerts",
                         secret: process.env.CONVEX_API_KEY!,
                         index: {
-                            name: "by_entity",
+                            name: "by_entity_status",
                             params: {
                                 entityId: identity._id,
+                                status: "active",
                             },
                         },
+                        filters: {
+                            alertType: "mfa_not_enforced"
+                        },
                         tenantId: tenantID as Id<"tenants">,
-                    }) as Doc<"entity_alerts"> | null;
+                    }) as Doc<"entity_alerts">[];
 
-                    if (
-                        existingAlert &&
-                        existingAlert.alertType === "mfa_not_enforced" &&
-                        existingAlert.status === "active"
-                    ) {
+                    if (existingAlerts.length > 0) {
                         await client.mutation(api.helpers.orm.update_s, {
                             tableName: "entity_alerts",
                             secret: process.env.CONVEX_API_KEY!,
                             data: [{
-                                id: existingAlert._id,
+                                id: existingAlerts[0]._id,
                                 updates: {
                                     status: "resolved",
                                     resolvedAt: Date.now(),

@@ -83,6 +83,7 @@ export default defineSchema({
     })
         .index("by_tenant", ["tenantId"])
         .index("by_status", ["status", "tenantId"])
+        .index("by_slug", ["slug", "tenantId"])
         .index("by_psa_company", ["psaCompanyId", "tenantId"])
         .index("by_integration", ["psaIntegrationId", "tenantId"]),
 
@@ -298,6 +299,7 @@ export default defineSchema({
         .index("by_data_source", ["dataSourceId", "tenantId"])
         .index("by_site", ["siteId", "tenantId"])
         .index("by_site_type", ["siteId", "entityType", "tenantId"])
+        .index("by_data_source_type", ["dataSourceId", "entityType", "tenantId"])
         .index("by_external_id", ["externalId", "tenantId"])
         .index("by_integration_type", ["integrationId", "entityType", "tenantId"]),
 
@@ -332,6 +334,8 @@ export default defineSchema({
     entity_alerts: defineTable({
         tenantId: v.id("tenants"),
         entityId: v.id("entities"),
+        dataSourceId: v.id("data_sources"),
+
         alertType: v.string(), // e.g., "mfa_not_enforced", "stale_user", "license_waste", "policy_gap"
         severity: v.union(
             v.literal("low"),
@@ -346,11 +350,12 @@ export default defineSchema({
             v.literal("resolved"),
             v.literal("suppressed")
         ),
-        resolvedAt: v.optional(v.number()),
 
+        resolvedAt: v.optional(v.number()),
         updatedAt: v.number(),
     })
         .index("by_tenant", ["tenantId"])
+        .index("by_data_source", ["dataSourceId", "tenantId"])
         .index("by_entity", ["entityId", "tenantId"])
         .index("by_type", ["alertType", "tenantId"])
         .index("by_severity", ["severity", "tenantId"])

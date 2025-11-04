@@ -228,6 +228,7 @@ export function evaluateFieldFilter<T>(
     value: T,
     filter: FieldFilter<T>
 ): boolean {
+
     // Direct value comparison
     if (value === undefined && filter === null) return true;
     if (
@@ -250,14 +251,23 @@ export function evaluateFieldFilter<T>(
     if ("ne" in operators && value === operators.ne) return false;
 
     // Array operators
-    if ("in" in operators && !operators.in.includes(value)) return false;
-    if ("nin" in operators && operators.nin.includes(value)) return false;
-    if (
-        "includes" in operators &&
-        (!Array.isArray(value) || !value.includes(operators.includes))
-    )
-        return false;
+    if ("in" in operators) {
+        if (Array.isArray(value)) {
+            // Pass if ANY element of value is in operators.in
+            if (!value.some(v => operators.in.includes(v))) return false;
+        } else {
+            if (!operators.in.includes(value)) return false;
+        }
+    }
 
+    if ("nin" in operators) {
+        if (Array.isArray(value)) {
+            // Fail if ANY element of value is in operators.nin
+            if (value.some(v => operators.nin.includes(v))) return false;
+        } else {
+            if (operators.nin.includes(value)) return false;
+        }
+    }
     // String operators
     if (typeof value === "string") {
         if (

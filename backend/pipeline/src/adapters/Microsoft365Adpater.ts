@@ -223,48 +223,95 @@ export class Microsoft365Adapter extends BaseAdapter {
     }
 
     /**
-     * Load license catalog into memory for friendly name lookups
+     * Load license catalog from Microsoft's official CSV mapping file
      * Only loads once per adapter instance
      */
-    private async loadLicenseCatalog(connector: Microsoft365Connector): Promise<void> {
+    private async loadLicenseCatalog(): Promise<void> {
         if (this.catalogLoaded) return;
 
+        const csvUrl = "https://download.microsoft.com/download/e/3/e/e3e9faf2-f28b-490a-9ada-c6089a1fc5b0/Product%20names%20and%20service%20plan%20identifiers%20for%20licensing.csv";
+
         try {
-            const { data: skus, error } = await connector.getSubscribedSkus();
-            if (error) {
-                Debug.error({
-                    module: "Microsoft365Adapter",
-                    context: "loadLicenseCatalog",
-                    message: `Failed to load license catalog: ${error.message}`,
-                });
-                return;
+            Debug.log({
+                module: "Microsoft365Adapter",
+                context: "loadLicenseCatalog",
+                message: "Downloading Microsoft license catalog CSV...",
+            });
+
+            const response = await fetch(csvUrl);
+            if (!response.ok) {
+                throw new Error(`Failed to download CSV: ${response.statusText}`);
             }
 
-            // Build catalog: SKU part number → Friendly name
-            skus.forEach((sku) => {
-                // Use the first service plan name as the friendly name
-                // Fall back to skuPartNumber if no service plans
-                const friendlyName = sku.servicePlans?.[0]?.servicePlanName || sku.skuPartNumber;
+            const csvText = await response.text();
+            const lines = csvText.split('\n');
 
-                // Map both skuPartNumber and skuId for lookups
-                this.licenseCatalog.set(sku.skuPartNumber, friendlyName);
-                this.licenseCatalog.set(sku.skuId, friendlyName);
-            });
+            // Skip header row
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+
+                // Parse CSV line (handle quoted fields)
+                const fields = this.parseCSVLine(line);
+                if (fields.length < 3) continue;
+
+                const productDisplayName = fields[0]; // Product_Display_Name
+                const stringId = fields[1]; // String_Id (skuPartNumber)
+                const guid = fields[2]; // GUID (skuId)
+
+                // Map both String_Id and GUID to the product display name
+                if (stringId) {
+                    this.licenseCatalog.set(stringId, productDisplayName);
+                }
+                if (guid) {
+                    this.licenseCatalog.set(guid, productDisplayName);
+                }
+            }
 
             this.catalogLoaded = true;
 
             Debug.log({
                 module: "Microsoft365Adapter",
                 context: "loadLicenseCatalog",
-                message: `Loaded ${this.licenseCatalog.size / 2} license SKUs into memory`, // Divide by 2 since we store each twice
+                message: `Loaded ${this.licenseCatalog.size / 2} license SKUs from Microsoft CSV`,
             });
         } catch (err) {
             Debug.error({
                 module: "Microsoft365Adapter",
                 context: "loadLicenseCatalog",
-                message: `Error loading license catalog: ${err}`,
+                message: `Error loading license catalog: ${err}. Will use SKU IDs as fallback.`,
             });
+            // Don't set catalogLoaded to true so it can retry on next sync
         }
+    }
+
+    /**
+     * Parse a CSV line handling quoted fields with commas
+     */
+    private parseCSVLine(line: string): string[] {
+        const fields: string[] = [];
+        let currentField = '';
+        let insideQuotes = false;
+
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+
+            if (char === '"') {
+                insideQuotes = !insideQuotes;
+            } else if (char === ',' && !insideQuotes) {
+                fields.push(currentField.trim());
+                currentField = '';
+            } else {
+                currentField += char;
+            }
+        }
+
+        // Add the last field
+        if (currentField) {
+            fields.push(currentField.trim());
+        }
+
+        return fields;
     }
 
     private async handleLicenseSync(dataSource: Doc<"data_sources">) {
@@ -280,8 +327,8 @@ export class Microsoft365Adapter extends BaseAdapter {
             });
         }
 
-        // Load catalog on first license sync
-        await this.loadLicenseCatalog(connector);
+        // Load catalog from Microsoft's CSV on first license sync
+        await this.loadLicenseCatalog();
 
         const { data: skus, error } = await connector.getSubscribedSkus();
         if (error) {
