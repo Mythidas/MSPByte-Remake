@@ -21,6 +21,38 @@
 			}
 		}
 	}));
+
+	// Query all assigned_role relationships for this site to count role users
+	const relationshipsQuery = useQuery(api.helpers.orm.list, () => ({
+		tableName: 'entity_relationships' as const,
+		index: {
+			name: 'by_data_source_type',
+			params: {
+				dataSourceId: dataSourceId,
+				relationshipType: 'assigned_role'
+			}
+		}
+	}));
+
+	// Create a map of role ID to user count
+	const userCounts = $derived.by(() => {
+		const relationships = relationshipsQuery.data || [];
+		const counts = new Map<string, number>();
+
+		relationships.forEach((rel: any) => {
+			const roleId = rel.parentEntityId;
+			counts.set(roleId, (counts.get(roleId) || 0) + 1);
+		});
+
+		return counts;
+	});
+
+	const tableData = $derived.by(() => {
+		return (rolesQuery.data || []).map((role) => {
+			const userCount = userCounts.get(role._id);
+			return { ...role, userCount };
+		});
+	});
 </script>
 
 {#snippet statusSnip({ row }: DataTableCell<Doc<'entities'>>)}
@@ -33,33 +65,38 @@
 	{/if}
 {/snippet}
 
+{#snippet userCountSnip({ row }: DataTableCell<Doc<'entities'>>)}
+	{@const count = (row as any).userCount || 0}
+	{@const role = row.normalizedData as Role}
+	{@const isAdmin =
+		role.name.toLowerCase().includes('admin') || role.name.toLowerCase().includes('global')}
+	{#if count === 0}
+		<Badge variant="destructive" class="text-xs">0</Badge>
+	{:else if count > 10 && isAdmin}
+		<Badge variant="secondary" class="bg-amber-500 text-xs text-white">{count}</Badge>
+	{:else}
+		<Badge class="bg-muted text-sm">{count}</Badge>
+	{/if}
+{/snippet}
+
 <DataTable
-	rows={rolesQuery.data || []}
+	rows={tableData}
 	isLoading={rolesQuery.isLoading}
 	bind:filters
-	columns={[
+	filterFields={[
 		{
+			label: 'Name',
 			key: 'normalizedData.name',
-			title: 'Name',
-			searchable: true,
-			sortable: true,
-			render: ({ row }) => (row.normalizedData as Role).name
+			config: {
+				component: 'text',
+				operators: ['contains'],
+				placeholder: 'Search name'
+			}
 		},
 		{
-			key: 'normalizedData.description',
-			title: 'Description',
-			searchable: true,
-			sortable: true,
-			render: ({ row }) => (row.normalizedData as Role).description || 'N/A'
-		},
-		{
+			label: 'Status',
 			key: 'normalizedData.status',
-			title: 'Status',
-			sortable: true,
-			cell: statusSnip,
-			width: '120px',
-			filter: {
-				label: 'Status',
+			config: {
 				component: 'select',
 				operators: ['eq', 'ne'],
 				defaultOperator: 'eq',
@@ -69,6 +106,47 @@
 				],
 				placeholder: 'Select status'
 			}
+		},
+		{
+			label: 'Description',
+			key: 'normalizedData.description',
+			config: {
+				component: 'text',
+				operators: ['contains'],
+				placeholder: 'Search description'
+			}
+		}
+	]}
+	columns={[
+		{
+			key: 'normalizedData.name',
+			title: 'Name',
+			searchable: true,
+			sortable: true,
+			render: ({ row }) => (row.normalizedData as Role).name
+		},
+
+		{
+			key: 'normalizedData.description',
+			title: 'Description',
+			searchable: true,
+			sortable: true,
+			render: ({ row }) => (row.normalizedData as Role).description || 'N/A'
+		},
+		{
+			key: 'userCount',
+			title: 'Users',
+			cell: userCountSnip,
+			sortable: true,
+			width: '100px',
+			render: ({ row }) => String(userCounts.get(row._id) || 0)
+		},
+		{
+			key: 'normalizedData.status',
+			title: 'Status',
+			sortable: true,
+			cell: statusSnip,
+			width: '120px'
 		}
 	]}
 />

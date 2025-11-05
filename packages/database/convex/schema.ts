@@ -319,6 +319,7 @@ export default defineSchema({
 
     entity_relationships: defineTable({
         tenantId: v.id("tenants"),
+        dataSourceId: v.id("data_sources"),
         parentEntityId: v.id("entities"),
         childEntityId: v.id("entities"),
         relationshipType: v.string(), // "parent", "child", "related", etc.
@@ -327,9 +328,10 @@ export default defineSchema({
         updatedAt: v.number(),
     })
         .index("by_tenant", ["tenantId"])
-        .index("by_parent", ["parentEntityId"])
-        .index("by_child", ["childEntityId"])
-        .index("by_type", ["relationshipType"]),
+        .index("by_parent", ["parentEntityId", "tenantId"])
+        .index("by_child", ["childEntityId", "tenantId"])
+        .index("by_data_source_type", ["dataSourceId", "relationshipType", "tenantId"])
+        .index("by_type", ["relationshipType", "tenantId"]),
 
     entity_alerts: defineTable({
         tenantId: v.id("tenants"),

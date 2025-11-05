@@ -143,6 +143,7 @@ export class Microsoft365Linker extends BaseLinker {
                                 data: [{
                                     tenantId: tenantID as Id<"tenants">,
                                     parentEntityId: group._id,
+                                    dataSourceId: dataSourceID,
                                     childEntityId: identity._id,
                                     relationshipType: "member_of",
                                     metadata: {},
@@ -261,6 +262,7 @@ export class Microsoft365Linker extends BaseLinker {
                                 tenantId: tenantID as Id<"tenants">,
                                 data: [{
                                     tenantId: tenantID as Id<"tenants">,
+                                    dataSourceId: dataSourceID,
                                     parentEntityId: role._id,
                                     childEntityId: identity._id,
                                     relationshipType: "assigned_role",
@@ -370,6 +372,7 @@ export class Microsoft365Linker extends BaseLinker {
                                     tenantId: tenantID as Id<"tenants">,
                                     data: [{
                                         tenantId: tenantID as Id<"tenants">,
+                                        dataSourceId: dataSourceID,
                                         parentEntityId: policy._id,
                                         childEntityId: identity._id,
                                         relationshipType: "applies_to",
@@ -421,6 +424,7 @@ export class Microsoft365Linker extends BaseLinker {
                                     tenantId: tenantID as Id<"tenants">,
                                     data: [{
                                         tenantId: tenantID as Id<"tenants">,
+                                        dataSourceId: dataSourceID,
                                         parentEntityId: policy._id,
                                         childEntityId: group._id,
                                         relationshipType: "applies_to",
@@ -516,6 +520,7 @@ export class Microsoft365Linker extends BaseLinker {
                                 tenantId: tenantID as Id<"tenants">,
                                 data: [{
                                     tenantId: tenantID as Id<"tenants">,
+                                    dataSourceId: dataSourceID,
                                     parentEntityId: license._id,
                                     childEntityId: identity._id,
                                     relationshipType: "has_license",

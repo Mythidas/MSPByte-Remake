@@ -7,11 +7,14 @@
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { type Identity } from '@workspace/database/convex/types/normalized.js';
 	import { CircleCheck, CircleX, CircleAlert, ShieldAlert, Ban, Clock, Lock, AlertCircle } from 'lucide-svelte';
+	import IdentityDetailSheet from './IdentityDetailSheet.svelte';
 
 	const { dataSourceId }: { dataSourceId: string } = $props();
 	const appState = getAppState();
 
 	let filters = $state<any>(undefined);
+	let selectedIdentity = $state<Doc<'entities'> | null>(null);
+	let sheetOpen = $state(false);
 
 	// Predefined identity views
 	const identityViews: TableView[] = [
@@ -110,6 +113,10 @@
 	isLoading={identitiesQuery.isLoading}
 	bind:filters
 	views={identityViews}
+	onRowClick={(row) => {
+		selectedIdentity = row;
+		sheetOpen = true;
+	}}
 	columns={[
 		{
 			key: 'normalizedData.state',
@@ -220,4 +227,14 @@
 			}
 		}
 	]}
+/>
+
+<!-- Identity Detail Sheet -->
+<IdentityDetailSheet
+	identity={selectedIdentity}
+	bind:open={sheetOpen}
+	onClose={() => {
+		selectedIdentity = null;
+		sheetOpen = false;
+	}}
 />
