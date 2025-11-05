@@ -25,6 +25,7 @@ import { client } from "@workspace/shared/lib/convex.js";
 export abstract class BaseWorker {
     protected entityTypes: EntityType[];
     protected debounceMs: number;
+    protected requiresFullContext: boolean = false; // Default: can work with partial data
     private debounceTimer: NodeJS.Timeout | null = null;
     private aggregatedEvents: LinkedEventPayload[] = [];
 
@@ -72,13 +73,30 @@ export abstract class BaseWorker {
     /**
      * Handles incoming linked events with debouncing
      * Aggregates events during the debounce window
+     *
+     * Pagination support: Workers with requiresFullContext=true will skip
+     * execution until the final batch is received (isFinalBatch=true)
      */
     private async handleLinkedEvent(event: LinkedEventPayload): Promise<void> {
+        const isFinalBatch = event.syncMetadata?.isFinalBatch ?? true; // Default true for non-paginated syncs
+        const syncId = event.syncMetadata?.syncId;
+        const batchNumber = event.syncMetadata?.batchNumber;
+
         Debug.log({
             module: "BaseWorker",
             context: this.constructor.name,
-            message: `Received ${event.stage}.${event.entityType} event (ID: ${event.eventID})`,
+            message: `Received ${event.stage}.${event.entityType} event (ID: ${event.eventID}, batch: ${batchNumber || 'N/A'}, final: ${isFinalBatch})`,
         });
+
+        // Skip non-final batches if worker requires full context
+        if (this.requiresFullContext && !isFinalBatch) {
+            Debug.log({
+                module: "BaseWorker",
+                context: this.constructor.name,
+                message: `Skipping batch ${batchNumber} - worker requires full context (syncId: ${syncId})`,
+            });
+            return;
+        }
 
         // Add event to aggregation buffer
         this.aggregatedEvents.push(event);

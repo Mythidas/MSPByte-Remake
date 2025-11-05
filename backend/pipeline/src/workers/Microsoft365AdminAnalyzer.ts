@@ -9,6 +9,9 @@ export class Microsoft365AdminAnalyzer extends BaseWorker {
     constructor() {
         // Declare dependencies: identities and roles
         super(["identities", "roles"]);
+
+        // Require full context: Role changes require re-analyzing ALL identities
+        this.requiresFullContext = true;
     }
 
     protected async execute(event: LinkedEventPayload): Promise<void> {

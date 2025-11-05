@@ -18,6 +18,7 @@ import { LicenseProcessor } from "@workspace/pipeline/processors/LicenseProcesso
 import { BaseResolver } from "@workspace/pipeline/resolvers/BaseResolver.js";
 import { Scheduler } from "@workspace/pipeline/scheduler/index.js";
 import { BaseWorker } from "@workspace/pipeline/workers/base.js";
+import { CleanupWorker } from "@workspace/pipeline/workers/CleanupWorker.js";
 import { Microsoft365MFAAnalyzer } from "@workspace/pipeline/workers/Microsoft365MFAAnalyzer.js";
 import { Microsoft365StaleUserAnalyzer } from "@workspace/pipeline/workers/Microsoft365StaleUserAnalyzer.js";
 import { Microsoft365LicenseAnalyzer } from "@workspace/pipeline/workers/Microsoft365LicenseAnalyzer.js";
@@ -68,6 +69,7 @@ class MSPByteBackend {
             new Microsoft365Linker(),
         ];
         this.workers = [
+            new CleanupWorker(),
             new Microsoft365MFAAnalyzer(),
             new Microsoft365StaleUserAnalyzer(),
             new Microsoft365LicenseAnalyzer(),

@@ -1,6 +1,7 @@
 import {
-  BaseAdapter,
-  RawDataProps,
+    BaseAdapter,
+    RawDataProps,
+    RawDataResult
 } from "@workspace/pipeline/adapters/BaseAdapter.js";
 import { api } from "@workspace/database/convex/_generated/api.js";
 import Debug from "@workspace/shared/lib/Debug.js";
@@ -9,232 +10,241 @@ import { APIResponse } from "@workspace/shared/types/api.js";
 import { DataFetchPayload } from "@workspace/shared/types/pipeline/events.js";
 import SophosPartnerConnector from "@workspace/shared/lib/connectors/SophosPartnerConnector.js";
 import {
-  SophosPartnerConfig,
-  SophosTenantConfig,
+    SophosPartnerConfig,
+    SophosTenantConfig,
 } from "@workspace/shared/types/integrations/sophos-partner/index.js";
 import { client } from "@workspace/shared/lib/convex.js";
 import { Doc } from "@workspace/database/convex/_generated/dataModel.js";
 
 export class SophosPartnerAdapter extends BaseAdapter {
-  constructor() {
-    super("sophos-partner", ["endpoints", "companies", "firewalls"]);
-  }
+    constructor() {
+        super("sophos-partner", ["endpoints", "companies", "firewalls"]);
+    }
 
-  protected async getRawData({
-    eventData,
-    tenantID,
-    dataSource,
-  }: RawDataProps) {
-    Debug.log({
-      module: "SophosPartnerAdapter",
-      context: "getRawData",
-      message: `Fetching data for tenant ${tenantID}, dataSource ${dataSource._id || "N/A"}`,
-    });
+    protected async getRawData({
+        eventData,
+        tenantID,
+        dataSource,
+        ...rest
+    }: RawDataProps) {
+        Debug.log({
+            module: "SophosPartnerAdapter",
+            context: "getRawData",
+            message: `Fetching data for tenant ${tenantID}, dataSource ${dataSource._id || "N/A"}`,
+        });
 
-    if (dataSource.isPrimary) {
-      switch (eventData.entityType) {
-        case "companies": {
-          return await this.handleCompanySync({
-            eventData,
-            tenantID,
-            dataSource,
-          });
+        if (dataSource.isPrimary) {
+            switch (eventData.entityType) {
+                case "companies": {
+                    return await this.handleCompanySync({
+                        eventData,
+                        tenantID,
+                        dataSource,
+                        ...rest
+                    });
+                }
+            }
         }
-      }
-    }
 
-    switch (eventData.entityType) {
-      case "endpoints": {
-        return await this.handleEndpointSync({
-          eventData,
-          tenantID,
-          dataSource,
+        switch (eventData.entityType) {
+            case "endpoints": {
+                return await this.handleEndpointSync({
+                    eventData,
+                    tenantID,
+                    dataSource,
+                    ...rest
+                });
+            }
+            case "firewalls": {
+                return await this.handleFirewallSync({
+                    eventData,
+                    tenantID,
+                    dataSource, ...rest
+                });
+            }
+        }
+
+        return Debug.error({
+            module: "SophosPartnerAdapter",
+            context: "getRawData",
+            message: `Entity type not supported: ${eventData.entityType}`,
         });
-      }
-      case "firewalls": {
-        return await this.handleFirewallSync({
-          eventData,
-          tenantID,
-          dataSource,
-        });
-      }
     }
 
-    return Debug.error({
-      module: "SophosPartnerAdapter",
-      context: "getRawData",
-      message: `Entity type not supported: ${eventData.entityType}`,
-    });
-  }
+    private async handleEndpointSync(
+        props: RawDataProps
+    ): Promise<APIResponse<RawDataResult>> {
+        const sophosSource = (await client.query(api.helpers.orm.get_s, {
+            tableName: "data_sources",
+            secret: process.env.CONVEX_API_KEY!,
+            index: {
+                name: "by_integration_primary",
+                params: {
+                    integrationId: props.eventData.integrationID,
+                    isPrimary: true,
+                },
+            },
+        })) as Doc<"data_sources">;
 
-  private async handleEndpointSync(
-    props: RawDataProps
-  ): Promise<APIResponse<DataFetchPayload[]>> {
-    const sophosSource = (await client.query(api.helpers.orm.get_s, {
-      tableName: "data_sources",
-      secret: process.env.CONVEX_API_KEY!,
-      index: {
-        name: "by_integration_primary",
-        params: {
-          integrationId: props.eventData.integrationID,
-          isPrimary: true,
-        },
-      },
-    })) as Doc<"data_sources">;
+        // Find the global data source (no siteId)
+        if (!sophosSource) {
+            return Debug.error({
+                module: "SophosPartnerAdapter",
+                context: "handleEndpointSync",
+                message: `Failed to fetch global Sophos data source`,
+            });
+        }
 
-    // Find the global data source (no siteId)
-    if (!sophosSource) {
-      return Debug.error({
-        module: "SophosPartnerAdapter",
-        context: "handleEndpointSync",
-        message: `Failed to fetch global Sophos data source`,
-      });
-    }
+        const partnerConfig = sophosSource.config as SophosPartnerConfig;
 
-    const partnerConfig = sophosSource.config as SophosPartnerConfig;
-
-    const connector = new SophosPartnerConnector(
-      partnerConfig,
-      process.env.SECRET_KEY!
-    );
-    const health = await connector.checkHealth();
-    if (!health) {
-      return Debug.error({
-        module: "SophosPartnerAdapter",
-        context: "handleEndpointSync",
-        message: `Connector failed health check: ${props.dataSource._id}`,
-      });
-    }
-
-    const { data: endpoints, error } = await connector.getEndpoints(
-      props.dataSource.config as SophosTenantConfig
-    );
-    if (error) {
-      return { error };
-    }
-
-    return {
-      data: endpoints.map((rawData) => {
-        const dataHash = Encryption.sha256(
-          JSON.stringify({
-            ...rawData,
-            lastSeenAt: undefined,
-          })
+        const connector = new SophosPartnerConnector(
+            partnerConfig,
+            process.env.SECRET_KEY!
         );
-        return {
-          externalID: rawData.id,
+        const health = await connector.checkHealth();
+        if (!health) {
+            return Debug.error({
+                module: "SophosPartnerAdapter",
+                context: "handleEndpointSync",
+                message: `Connector failed health check: ${props.dataSource._id}`,
+            });
+        }
 
-          dataHash,
-          rawData,
-          siteID: props.dataSource.siteId,
-        };
-      }),
-    };
-  }
-
-  private async handleFirewallSync(
-    props: RawDataProps
-  ): Promise<APIResponse<DataFetchPayload[]>> {
-    const sophosSource = (await client.query(api.helpers.orm.get_s, {
-      tableName: "data_sources",
-      secret: process.env.CONVEX_API_KEY!,
-      index: {
-        name: "by_integration_primary",
-        params: {
-          integrationId: props.eventData.integrationID,
-          isPrimary: true,
-        },
-      },
-    })) as Doc<"data_sources">;
-
-    // Find the global data source (no siteId)
-    if (!sophosSource) {
-      return Debug.error({
-        module: "SophosPartnerAdapter",
-        context: "handleEndpointSync",
-        message: `Failed to fetch global Sophos data source`,
-      });
-    }
-
-    const partnerConfig = sophosSource.config as SophosPartnerConfig;
-
-    const connector = new SophosPartnerConnector(
-      partnerConfig,
-      process.env.SECRET_KEY!
-    );
-    const health = await connector.checkHealth();
-    if (!health) {
-      return Debug.error({
-        module: "SophosPartnerAdapter",
-        context: "handleEndpointSync",
-        message: `Connector failed health check: ${props.dataSource._id}`,
-      });
-    }
-
-    const { data: endpoints, error } = await connector.getFirewalls(
-      props.dataSource.config as SophosTenantConfig
-    );
-    if (error) {
-      return { error };
-    }
-
-    return {
-      data: endpoints.map((rawData) => {
-        const dataHash = Encryption.sha256(
-          JSON.stringify({
-            ...rawData,
-            lastSeenAt: undefined,
-          })
+        const { data: endpoints, error } = await connector.getEndpoints(
+            props.dataSource.config as SophosTenantConfig
         );
+        if (error) {
+            return { error };
+        }
+
         return {
-          externalID: rawData.id,
+            data: {
+                data: endpoints.map((rawData) => {
+                    const dataHash = Encryption.sha256(
+                        JSON.stringify({
+                            ...rawData,
+                            lastSeenAt: undefined,
+                        })
+                    );
+                    return {
+                        externalID: rawData.id,
 
-          dataHash,
-          rawData,
-          siteID: props.dataSource.siteId,
+                        dataHash,
+                        rawData,
+                        siteID: props.dataSource.siteId,
+                    };
+                }), hasMore: false
+            }
         };
-      }),
-    };
-  }
-
-  private async handleCompanySync(
-    props: RawDataProps
-  ): Promise<APIResponse<DataFetchPayload[]>> {
-    const partnerConfig = props.dataSource.config;
-
-    const connector = new SophosPartnerConnector(
-      partnerConfig,
-      process.env.SECRET_KEY!
-    );
-    const health = await connector.checkHealth();
-    if (!health) {
-      return Debug.error({
-        module: "SophosPartnerAdapter",
-        context: "handleEndpointSync",
-        message: `Connector failed health check: ${props.dataSource._id}`,
-      });
     }
 
-    const { data: tenants, error } = await connector.getTenants();
-    if (error) {
-      return { error };
-    }
+    private async handleFirewallSync(
+        props: RawDataProps
+    ): Promise<APIResponse<RawDataResult>> {
+        const sophosSource = (await client.query(api.helpers.orm.get_s, {
+            tableName: "data_sources",
+            secret: process.env.CONVEX_API_KEY!,
+            index: {
+                name: "by_integration_primary",
+                params: {
+                    integrationId: props.eventData.integrationID,
+                    isPrimary: true,
+                },
+            },
+        })) as Doc<"data_sources">;
 
-    return {
-      data: tenants.map((rawData) => {
-        const dataHash = Encryption.sha256(
-          JSON.stringify({
-            ...rawData,
-            lastSeenAt: undefined,
-          })
+        // Find the global data source (no siteId)
+        if (!sophosSource) {
+            return Debug.error({
+                module: "SophosPartnerAdapter",
+                context: "handleEndpointSync",
+                message: `Failed to fetch global Sophos data source`,
+            });
+        }
+
+        const partnerConfig = sophosSource.config as SophosPartnerConfig;
+
+        const connector = new SophosPartnerConnector(
+            partnerConfig,
+            process.env.SECRET_KEY!
         );
-        return {
-          externalID: rawData.id,
+        const health = await connector.checkHealth();
+        if (!health) {
+            return Debug.error({
+                module: "SophosPartnerAdapter",
+                context: "handleEndpointSync",
+                message: `Connector failed health check: ${props.dataSource._id}`,
+            });
+        }
 
-          dataHash,
-          rawData,
+        const { data: endpoints, error } = await connector.getFirewalls(
+            props.dataSource.config as SophosTenantConfig
+        );
+        if (error) {
+            return { error };
+        }
+
+        return {
+            data: {
+                data: endpoints.map((rawData) => {
+                    const dataHash = Encryption.sha256(
+                        JSON.stringify({
+                            ...rawData,
+                            lastSeenAt: undefined,
+                        })
+                    );
+                    return {
+                        externalID: rawData.id,
+
+                        dataHash,
+                        rawData,
+                        siteID: props.dataSource.siteId,
+                    };
+                }), hasMore: false
+            }
         };
-      }),
-    };
-  }
+    }
+
+    private async handleCompanySync(
+        props: RawDataProps
+    ): Promise<APIResponse<RawDataResult>> {
+        const partnerConfig = props.dataSource.config;
+
+        const connector = new SophosPartnerConnector(
+            partnerConfig,
+            process.env.SECRET_KEY!
+        );
+        const health = await connector.checkHealth();
+        if (!health) {
+            return Debug.error({
+                module: "SophosPartnerAdapter",
+                context: "handleEndpointSync",
+                message: `Connector failed health check: ${props.dataSource._id}`,
+            });
+        }
+
+        const { data: tenants, error } = await connector.getTenants();
+        if (error) {
+            return { error };
+        }
+
+        return {
+            data: {
+                data: tenants.map((rawData) => {
+                    const dataHash = Encryption.sha256(
+                        JSON.stringify({
+                            ...rawData,
+                            lastSeenAt: undefined,
+                        })
+                    );
+                    return {
+                        externalID: rawData.id,
+
+                        dataHash,
+                        rawData,
+                    };
+                }), hasMore: false
+            }
+        };
+    }
 }

@@ -12,8 +12,16 @@
     "./helpers/*": "./src/helpers/*",
     "./workers/*": "./src/workers/*"
   },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
   "devDependencies": {
     "@workspace/shared": "workspace:*",
-    "@types/minimatch": "^6.0.0"
+    "@types/minimatch": "^6.0.0",
+    "@types/node": "^20.8.0",
+    "@vitest/coverage-v8": "^1.0.0",
+    "vitest": "^1.0.0"
   }
 }

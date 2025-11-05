@@ -128,6 +128,15 @@ export default defineSchema({
         credentialExpirationAt: v.number(), // When credentials expire
         lastSyncAt: v.optional(v.number()),
 
+        // Pagination tracking
+        syncStatus: v.optional(v.union(
+            v.literal("idle"),
+            v.literal("syncing_batch"),
+            v.literal("syncing_final"),
+            v.literal("error")
+        )),
+        currentSyncId: v.optional(v.string()), // UUID for current sync session
+
         updatedAt: v.number(),
         deletedAt: v.optional(v.number()),
     })
@@ -291,6 +300,11 @@ export default defineSchema({
         rawData: v.any(), // Original data from integration
         normalizedData: v.any(), // Normalized/mapped data
 
+        // Pagination & deletion tracking
+        deletedAt: v.optional(v.number()), // Soft delete timestamp (90-day retention)
+        lastSeenAt: v.optional(v.number()), // Last time entity was seen in sync
+        syncId: v.optional(v.string()), // UUID for current sync session (mark-and-sweep)
+
         updatedAt: v.number(),
     })
         .index("by_tenant", ["tenantId"])
@@ -301,7 +315,9 @@ export default defineSchema({
         .index("by_site_type", ["siteId", "entityType", "tenantId"])
         .index("by_data_source_type", ["dataSourceId", "entityType", "tenantId"])
         .index("by_external_id", ["externalId", "tenantId"])
-        .index("by_integration_type", ["integrationId", "entityType", "tenantId"]),
+        .index("by_integration_type", ["integrationId", "entityType", "tenantId"])
+        .index("by_sync_id", ["syncId", "dataSourceId"]) // For deletion detection
+        .index("by_deleted_at", ["deletedAt"]), // For 90-day cleanup
 
     global_entities: defineTable({
         integrationId: v.id("integrations"),

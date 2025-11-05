@@ -9,6 +9,9 @@ export class Microsoft365LicenseAnalyzer extends BaseWorker {
     constructor() {
         // Declare dependencies: identities and licenses
         super(["identities", "licenses"]);
+
+        // Require full context: License changes require re-analyzing ALL identities
+        this.requiresFullContext = true;
     }
 
     protected async execute(event: LinkedEventPayload): Promise<void> {

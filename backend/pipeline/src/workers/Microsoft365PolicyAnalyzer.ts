@@ -9,6 +9,9 @@ export class Microsoft365PolicyAnalyzer extends BaseWorker {
     constructor() {
         // Declare dependencies: identities and policies
         super(["identities", "policies"]);
+
+        // Require full context: Policy changes require re-analyzing ALL identities
+        this.requiresFullContext = true;
     }
 
     protected async execute(event: LinkedEventPayload): Promise<void> {

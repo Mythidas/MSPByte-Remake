@@ -20,6 +20,12 @@ export interface FetchedEventPayload extends BasePipelineEvent {
   total: number;
   hasMore?: boolean;
   nextPageToken?: string;
+  syncMetadata?: {
+    syncId: string;
+    batchNumber: number;
+    isFinalBatch: boolean;
+    cursor?: string;
+  };
 }
 
 export interface ProcessedEventPayload extends BasePipelineEvent {
@@ -29,6 +35,12 @@ export interface ProcessedEventPayload extends BasePipelineEvent {
   entitiesUpdated: number;
   entitiesSkipped: number;
   changedEntityIds?: Id<"entities">[]; // IDs of entities that were created or updated
+  syncMetadata?: {
+    syncId: string;
+    batchNumber: number;
+    isFinalBatch: boolean;
+    cursor?: string;
+  };
 }
 
 export interface ResolvedEventPayload extends BasePipelineEvent {
@@ -43,6 +55,12 @@ export interface LinkedEventPayload extends BasePipelineEvent {
   relationshipsCreated: EntityRelationship[];
   relationshipsUpdated: EntityRelationship[];
   changedEntityIds?: Id<"entities">[]; // IDs of entities affected by linking operations
+  syncMetadata?: {
+    syncId: string;
+    batchNumber: number;
+    isFinalBatch: boolean;
+    cursor?: string;
+  };
 }
 
 export interface CompletedEventPayload extends BasePipelineEvent {

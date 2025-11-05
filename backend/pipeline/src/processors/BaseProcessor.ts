@@ -98,15 +98,20 @@ export abstract class BaseProcessor<T = any> {
                 return;
             }
 
-            const changedData = this.filterChangedData(data, existingData.data.rows);
-            const normalizedData = this.normalizeData(integrationType, changedData);
+            // Normalize ALL data (not just changed) to ensure syncId updates for all entities
+            const normalizedData = this.normalizeData(integrationType, data);
+
+            // Extract syncId from fetchedEvent (use syncId for mark-and-sweep deletion)
+            const syncId = fetchedEvent.syncMetadata?.syncId;
 
             const stored = await this.storeEntities(
                 tenantID,
                 dataSourceID,
                 integrationID,
                 entityType,
-                normalizedData
+                normalizedData,
+                existingData.data.rows, // Pass existing data to compare hashes
+                syncId
             );
 
             if (stored.error) {
@@ -127,7 +132,8 @@ export abstract class BaseProcessor<T = any> {
                 await this.publishProcessedEvent(
                     fetchedEvent,
                     stored.data,
-                    normalizedData.length
+                    normalizedData.length,
+                    fetchedEvent.syncMetadata
                 );
             }
         } catch (error) {
@@ -200,7 +206,9 @@ export abstract class BaseProcessor<T = any> {
         dataSourceID: string,
         integrationID: string,
         entityType: EntityType,
-        normalized: ProcessedEntityData<T>[]
+        normalized: ProcessedEntityData<T>[],
+        existingEntities: Doc<"entities">[],
+        syncId?: string
     ): Promise<
         APIResponse<{
             ids: Id<"entities">[];
@@ -209,6 +217,7 @@ export abstract class BaseProcessor<T = any> {
         }>
     > {
         try {
+            const now = Date.now();
             const updates: {
                 id: Id<"entities">;
                 updates: {
@@ -216,6 +225,9 @@ export abstract class BaseProcessor<T = any> {
                     dataHash?: string | undefined;
                     rawData?: any;
                     normalizedData?: any;
+                    syncId?: string;
+                    lastSeenAt?: number;
+                    deletedAt?: number;
                 };
             }[] = [];
             const creates: {
@@ -227,33 +239,44 @@ export abstract class BaseProcessor<T = any> {
                 dataHash: string;
                 rawData: any;
                 normalizedData: any;
+                syncId?: string;
+                lastSeenAt?: number;
             }[] = [];
+
+            let actuallyUpdated = 0;
 
             await Promise.all(
                 normalized.map(async (row) => {
-                    // Check if entity exists using the unique constraint fields
-                    const existing = (await client.query(api.helpers.orm.get_s, {
-                        tableName: "entities",
-                        tenantId: tenantID as any,
-                        secret: process.env.CONVEX_API_KEY!,
-                        index: {
-                            name: "by_external_id",
-                            params: {
-                                externalId: row.externalID,
-                            },
-                        },
-                    })) as Doc<"entities">;
+                    // Find existing entity from in-memory list (faster than separate query)
+                    const existing = existingEntities.find(
+                        (e) => e.externalId === row.externalID
+                    );
 
                     if (existing) {
+                        // Check if data actually changed
+                        const dataChanged = existing.dataHash !== row.hash;
+
+                        // Always update sync tracking fields
+                        const updatePayload: any = {
+                            syncId: syncId,
+                            lastSeenAt: now,
+                            deletedAt: undefined, // Clear soft delete if entity is back
+                        };
+
+                        // Only update data fields if hash changed
+                        if (dataChanged) {
+                            updatePayload.dataHash = row.hash;
+                            updatePayload.normalizedData = row.normalized as any;
+                            updatePayload.rawData = row.raw;
+                            actuallyUpdated++;
+                        }
+
                         updates.push({
                             id: existing._id,
-                            updates: {
-                                dataHash: row.hash,
-                                normalizedData: row.normalized as any,
-                                rawData: row.raw,
-                            },
+                            updates: updatePayload,
                         });
                     } else {
+                        // New entity - create with all fields
                         creates.push({
                             integrationId: integrationID as any,
                             dataSourceId: dataSourceID as any,
@@ -263,6 +286,8 @@ export abstract class BaseProcessor<T = any> {
                             dataHash: row.hash,
                             normalizedData: row.normalized as any,
                             rawData: row.raw,
+                            syncId: syncId,
+                            lastSeenAt: now,
                         });
                     }
                 })
@@ -293,7 +318,7 @@ export abstract class BaseProcessor<T = any> {
                         ...(createResult as Id<"entities">[]),
                     ],
                     created: createResult.length,
-                    updated: updateResult.length,
+                    updated: actuallyUpdated, // Use count of entities with data changes, not all updates
                 },
             };
         } catch (error) {
@@ -316,7 +341,13 @@ export abstract class BaseProcessor<T = any> {
             created: number;
             updated: number;
         },
-        totalProcessed: number
+        totalProcessed: number,
+        syncMetadata?: {
+            syncId: string;
+            batchNumber: number;
+            isFinalBatch: boolean;
+            cursor?: string;
+        }
     ): Promise<void> {
         const processedEvent: ProcessedEventPayload = {
             eventID: originalEvent.eventID,
@@ -334,6 +365,7 @@ export abstract class BaseProcessor<T = any> {
             entitiesUpdated: storedEntities.updated,
             entitiesSkipped: originalEvent.total - totalProcessed,
             changedEntityIds: storedEntities.ids, // Track changed entities for incremental processing
+            syncMetadata, // Forward syncMetadata for pagination tracking
         };
 
         const eventName = buildEventName("processed", originalEvent.entityType);

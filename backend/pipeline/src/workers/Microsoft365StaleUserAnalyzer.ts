@@ -12,6 +12,9 @@ export class Microsoft365StaleUserAnalyzer extends BaseWorker {
     constructor() {
         // Declare dependencies: only identities
         super(["identities"]);
+
+        // Can work with partial data: Identities can be analyzed incrementally per batch
+        this.requiresFullContext = false;
     }
 
     protected async execute(event: LinkedEventPayload): Promise<void> {

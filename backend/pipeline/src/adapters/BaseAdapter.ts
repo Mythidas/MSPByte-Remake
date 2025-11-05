@@ -18,11 +18,21 @@ import {
     flowResolver,
     buildEventName,
 } from "@workspace/shared/types/pipeline/resolver.js";
+import { generateUUID } from "@workspace/shared/lib/utils.server.js";
 
 export type RawDataProps = {
     eventData: SyncEventPayload;
     tenantID: string;
     dataSource: Doc<"data_sources">;
+    cursor?: string;
+    syncId: string;
+    batchNumber: number;
+};
+
+export type RawDataResult = {
+    data: DataFetchPayload[];
+    nextCursor?: string;
+    hasMore: boolean;
 };
 
 export abstract class BaseAdapter {
@@ -42,7 +52,6 @@ export abstract class BaseAdapter {
         });
     }
 
-    // TODO: Make adapters handle 100 records and cursor the rest
     private async handleJob(syncEvent: SyncEventPayload): Promise<void> {
         const { entityType, job, tenantID } = syncEvent;
 
@@ -59,13 +68,19 @@ export abstract class BaseAdapter {
             );
             return;
         }
+
+        // Extract pagination metadata from job
+        const jobMetadata = job.payload as any;
+        const cursor = jobMetadata?.cursor;
+        const syncId = jobMetadata?.syncId || generateUUID();
+        const batchNumber = (jobMetadata?.batchNumber || 0) + 1;
+        const previousTotal = jobMetadata?.totalProcessed || 0;
+
         Debug.log({
             module: "BaseAdapter",
             context: "handleJob",
-            message: `Processing job: ${job._id}`,
+            message: `Processing job: ${job._id} (batch ${batchNumber}, syncId: ${syncId})`,
         });
-
-        const rawData: DataFetchPayload[] = [];
 
         const dataSource = (await client.query(api.helpers.orm.get_s, {
             id: syncEvent.dataSourceID as any,
@@ -77,18 +92,48 @@ export abstract class BaseAdapter {
             return;
         }
 
+        // Update data source sync status
+        if (batchNumber === 1) {
+            await client.mutation(api.helpers.orm.update_s, {
+                tableName: "data_sources",
+                data: [{
+                    id: dataSource._id,
+                    updates: {
+                        syncStatus: "syncing_batch",
+                        currentSyncId: syncId,
+                    },
+                }],
+                secret: process.env.CONVEX_API_KEY!,
+            });
+        }
+
         const result = await this.getRawData({
             eventData: syncEvent,
             tenantID,
             dataSource,
+            cursor,
+            syncId,
+            batchNumber,
         });
         if (result.error) {
             await Scheduler.failJob(job, result.error.message);
+            // Reset data source sync status on error
+            await client.mutation(api.helpers.orm.update_s, {
+                tableName: "data_sources",
+                data: [{
+                    id: dataSource._id,
+                    updates: {
+                        syncStatus: "error",
+                    },
+                }],
+                secret: process.env.CONVEX_API_KEY!,
+            });
             return;
-        } else {
-            rawData.push(...result.data);
-            await Scheduler.completeJob(job, dataSource, `sync.${entityType}`);
         }
+
+        const { data: rawData, nextCursor, hasMore } = result.data;
+        const totalProcessed = previousTotal + rawData.length;
+        const isFinalBatch = !hasMore;
 
         // Determine the next stage in the pipeline
         const nextStage = flowResolver.getNextStage(
@@ -105,6 +150,7 @@ export abstract class BaseAdapter {
             return;
         }
 
+        // Publish fetched event with pagination metadata
         const eventName = buildEventName(nextStage, entityType);
         const fetchedEvent: FetchedEventPayload = {
             eventID: syncEvent.eventID,
@@ -119,7 +165,13 @@ export abstract class BaseAdapter {
 
             data: rawData,
             total: rawData.length,
-            hasMore: false,
+            hasMore: !isFinalBatch,
+            syncMetadata: {
+                syncId,
+                batchNumber,
+                isFinalBatch,
+                cursor: nextCursor,
+            },
         };
 
         try {
@@ -128,7 +180,7 @@ export abstract class BaseAdapter {
             Debug.log({
                 module: "BaseAdapter",
                 context: "handleJob",
-                message: `Published ${eventName} event with ${rawData.length} entities`,
+                message: `Published ${eventName} event with ${rawData.length} entities (batch ${batchNumber}, total: ${totalProcessed})`,
             });
         } catch (err) {
             Debug.error({
@@ -136,10 +188,49 @@ export abstract class BaseAdapter {
                 context: "handleJob",
                 message: `Failed to publish: ${err}`,
             });
+            return;
+        }
+
+        // Handle pagination
+        if (hasMore && nextCursor) {
+            // Schedule next batch
+            await Scheduler.scheduleNextBatch(
+                job,
+                nextCursor,
+                syncId,
+                batchNumber,
+                totalProcessed
+            );
+            await Scheduler.completeJob(job); // Complete current batch
+            Debug.log({
+                module: "BaseAdapter",
+                context: "handleJob",
+                message: `Scheduled next batch ${batchNumber + 1} (syncId: ${syncId})`,
+            });
+        } else {
+            // Final batch - complete job and update data source
+            // Note: Cleanup now handled by CleanupWorker after linked stage
+            await Scheduler.completeJob(job, dataSource, `sync.${entityType}`);
+            await client.mutation(api.helpers.orm.update_s, {
+                tableName: "data_sources",
+                data: [{
+                    id: dataSource._id,
+                    updates: {
+                        syncStatus: "idle",
+                        currentSyncId: undefined,
+                    },
+                }],
+                secret: process.env.CONVEX_API_KEY!,
+            });
+            Debug.log({
+                module: "BaseAdapter",
+                context: "handleJob",
+                message: `Sync completed: ${totalProcessed} total entities processed (syncId: ${syncId})`,
+            });
         }
     }
 
     protected abstract getRawData(
         props: RawDataProps
-    ): Promise<APIResponse<DataFetchPayload[]>>;
+    ): Promise<APIResponse<RawDataResult>>;
 }

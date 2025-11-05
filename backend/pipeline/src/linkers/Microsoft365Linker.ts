@@ -17,6 +17,13 @@ export class Microsoft365Linker extends BaseLinker {
         super();
     }
 
+    /**
+     * Helper method to filter out soft-deleted entities
+     */
+    private filterActiveEntities<T extends Doc<"entities">>(entities: T[]): T[] {
+        return entities.filter((entity) => !entity.deletedAt);
+    }
+
     async start(): Promise<void> {
         // Subscribe to processed events for entities that need linking
         await natsClient.subscribe(
@@ -72,8 +79,8 @@ export class Microsoft365Linker extends BaseLinker {
             const config = dataSource.config as Microsoft365DataSourceConfig;
             const connector = new Microsoft365Connector(config);
 
-            // Get all group entities for this data source
-            const groups = await client.query(api.helpers.orm.list_s, {
+            // Get all group entities for this data source (excluding soft-deleted)
+            const allGroups = await client.query(api.helpers.orm.list_s, {
                 tableName: "entities",
                 secret: process.env.CONVEX_API_KEY!,
                 index: {
@@ -87,6 +94,7 @@ export class Microsoft365Linker extends BaseLinker {
                     entityType: "groups"
                 }
             }) as Doc<"entities">[];
+            const groups = this.filterActiveEntities(allGroups);
 
             // For each group, fetch members and create relationships
             for (const group of groups) {
@@ -117,7 +125,8 @@ export class Microsoft365Linker extends BaseLinker {
                         tenantId: tenantID as Id<"tenants">,
                     }) as Doc<"entities">;
 
-                    if (identity && identity.entityType === "identities") {
+                    // Skip soft-deleted identities
+                    if (identity && identity.entityType === "identities" && !identity.deletedAt) {
                         // Check if relationship already exists
                         const existingRelationships = await client.query(api.helpers.orm.list_s, {
                             tableName: "entity_relationships",
@@ -194,8 +203,8 @@ export class Microsoft365Linker extends BaseLinker {
             const config = dataSource.config as Microsoft365DataSourceConfig;
             const connector = new Microsoft365Connector(config);
 
-            // Get all role entities for this data source
-            const roles = await client.query(api.helpers.orm.list_s, {
+            // Get all role entities for this data source (excluding soft-deleted)
+            const allRoles = await client.query(api.helpers.orm.list_s, {
                 tableName: "entities",
                 secret: process.env.CONVEX_API_KEY!,
                 index: {
@@ -209,6 +218,7 @@ export class Microsoft365Linker extends BaseLinker {
                     entityType: "roles"
                 }
             }) as Doc<"entities">[];
+            const roles = this.filterActiveEntities(allRoles);
 
             // For each role, fetch members and create relationships
             for (const role of roles) {
@@ -237,7 +247,8 @@ export class Microsoft365Linker extends BaseLinker {
                         tenantId: tenantID as Id<"tenants">,
                     }) as Doc<"entities"> | null;
 
-                    if (identity && identity.entityType === "identities") {
+                    // Skip soft-deleted identities
+                    if (identity && identity.entityType === "identities" && !identity.deletedAt) {
                         // Check if relationship already exists
                         const existingRelationships = await client.query(api.helpers.orm.list_s, {
                             tableName: "entity_relationships",
@@ -300,8 +311,8 @@ export class Microsoft365Linker extends BaseLinker {
         });
 
         try {
-            // Get all policy entities for this data source
-            const policies = await client.query(api.helpers.orm.list_s, {
+            // Get all policy entities for this data source (excluding soft-deleted)
+            const allPolicies = await client.query(api.helpers.orm.list_s, {
                 tableName: "entities",
                 secret: process.env.CONVEX_API_KEY!,
                 index: {
@@ -315,6 +326,7 @@ export class Microsoft365Linker extends BaseLinker {
                     entityType: "policies"
                 }
             }) as Doc<"entities">[];
+            const policies = this.filterActiveEntities(allPolicies);
 
             for (const policy of policies) {
                 // Skip security-defaults special entity
@@ -348,7 +360,8 @@ export class Microsoft365Linker extends BaseLinker {
                             tenantId: tenantID as Id<"tenants">,
                         }) as Doc<"entities"> | null;
 
-                        if (identity && identity.entityType === "identities") {
+                        // Skip soft-deleted identities
+                        if (identity && identity.entityType === "identities" && !identity.deletedAt) {
                             // Check if relationship already exists
                             const existingRelationships = await client.query(api.helpers.orm.list_s, {
                                 tableName: "entity_relationships",
@@ -400,7 +413,8 @@ export class Microsoft365Linker extends BaseLinker {
                             tenantId: tenantID as Id<"tenants">,
                         }) as Doc<"entities"> | null;
 
-                        if (group && group.entityType === "groups") {
+                        // Skip soft-deleted groups
+                        if (group && group.entityType === "groups" && !group.deletedAt) {
                             // Check if relationship already exists
                             const existingRelationships = await client.query(api.helpers.orm.list_s, {
                                 tableName: "entity_relationships",
@@ -463,8 +477,8 @@ export class Microsoft365Linker extends BaseLinker {
         });
 
         try {
-            // Get all identity entities for this data source
-            const identities = await client.query(api.helpers.orm.list_s, {
+            // Get all identity entities for this data source (excluding soft-deleted)
+            const allIdentities = await client.query(api.helpers.orm.list_s, {
                 tableName: "entities",
                 secret: process.env.CONVEX_API_KEY!,
                 index: {
@@ -478,6 +492,7 @@ export class Microsoft365Linker extends BaseLinker {
                     entityType: "identities"
                 }
             }) as Doc<"entities">[];
+            const identities = this.filterActiveEntities(allIdentities);
 
             for (const identity of identities) {
                 const licenses = identity.normalizedData.licenses || [];
@@ -496,7 +511,8 @@ export class Microsoft365Linker extends BaseLinker {
                         tenantId: tenantID as Id<"tenants">,
                     }) as Doc<"entities"> | null;
 
-                    if (license && license.entityType === "licenses") {
+                    // Skip soft-deleted licenses
+                    if (license && license.entityType === "licenses" && !license.deletedAt) {
                         // Check if relationship already exists
                         const existingRelationships = await client.query(api.helpers.orm.list_s, {
                             tableName: "entity_relationships",
@@ -559,6 +575,7 @@ export class Microsoft365Linker extends BaseLinker {
             relationshipsCreated: [],
             relationshipsUpdated: [],
             changedEntityIds: processedEvent.changedEntityIds, // Forward changedEntityIds from processed event
+            syncMetadata: processedEvent.syncMetadata, // Forward syncMetadata for pagination tracking
         };
 
         const topic = buildEventName("linked", processedEvent.entityType);
