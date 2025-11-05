@@ -3,15 +3,61 @@
 	import { useQuery } from 'convex-svelte';
 	import { getAppState } from '$lib/state/Application.svelte.js';
 	import DataTable from '$lib/components/table/DataTable.svelte';
-	import { type DataTableCell } from '$lib/components/table/types.js';
+	import { type DataTableCell, type TableView } from '$lib/components/table/types.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { type Identity } from '@workspace/database/convex/types/normalized.js';
-	import { CircleCheck, CircleX, CircleAlert } from 'lucide-svelte';
+	import { CircleCheck, CircleX, CircleAlert, ShieldAlert, Ban, Clock, Lock, AlertCircle } from 'lucide-svelte';
 
 	const { dataSourceId }: { dataSourceId: string } = $props();
 	const appState = getAppState();
 
 	let filters = $state<any>(undefined);
+
+	// Predefined identity views
+	const identityViews: TableView[] = [
+		{
+			name: 'no-mfa',
+			label: 'Users without MFA',
+			description: 'Members without Multi-Factor Authentication enabled',
+			icon: ShieldAlert,
+			filters: [
+				{ field: 'normalizedData.tags', operator: 'nin', value: ['MFA'] },
+				{ field: 'normalizedData.type', operator: 'eq', value: 'member' },
+				{ field: 'normalizedData.enabled', operator: 'eq', value: true }
+			]
+		},
+		{
+			name: 'admins',
+			label: 'Admin Users',
+			description: 'Users with administrative privileges',
+			icon: Lock,
+			filters: [{ field: 'normalizedData.tags', operator: 'in', value: ['Admin'] }]
+		},
+		{
+			name: 'stale',
+			label: 'Stale Accounts',
+			description: 'Users with inactive accounts not accessed recently',
+			icon: Clock,
+			filters: [
+				{ field: 'normalizedData.tags', operator: 'in', value: ['Stale'] },
+				{ field: 'normalizedData.enabled', operator: 'eq', value: true }
+			]
+		},
+		{
+			name: 'disabled',
+			label: 'Disabled Accounts',
+			description: 'Inactive user accounts',
+			icon: Ban,
+			filters: [{ field: 'normalizedData.enabled', operator: 'eq', value: false }]
+		},
+		{
+			name: 'critical',
+			label: 'Critical State',
+			description: 'Users with critical security issues requiring attention',
+			icon: AlertCircle,
+			filters: [{ field: 'normalizedData.state', operator: 'eq', value: 'critical' }]
+		}
+	];
 
 	const identitiesQuery = useQuery(api.helpers.orm.list, () => ({
 		tableName: 'entities' as const,
@@ -24,32 +70,15 @@
 			}
 		}
 	}));
-
-	const alertsQuery = useQuery(api.helpers.orm.list, {
-		tableName: 'entity_alerts',
-		index: {
-			name: 'by_data_source',
-			params: {
-				dataSourceId: dataSourceId
-			}
-		}
-	});
-	const alerts = $derived((alertsQuery.data || []) as Doc<'entity_alerts'>[]);
-
-	$inspect(alerts);
 </script>
 
-{#snippet enabledSnip({ row }: DataTableCell<Doc<'entities'>>)}
-	{@const warnings = alerts.filter(
-		(alert) => row._id === alert.entityId && alert.severity === 'medium'
-	).length}
-	{@const errors = alerts.filter(
-		(alert) =>
-			row._id === alert.entityId && (alert.severity === 'high' || alert.severity === 'critical')
-	).length}
-	{#if !warnings && !errors}
+{#snippet stateSnip({ row }: DataTableCell<Doc<'entities'>>)}
+	{@const identity = row.normalizedData as Identity}
+	{@const state = identity.state || 'normal'}
+
+	{#if state === 'normal'}
 		<CircleCheck class="text-chart-1 h-4 w-4" />
-	{:else if !!errors}
+	{:else if state === 'critical'}
 		<CircleX class="text-destructive h-4 w-4" />
 	{:else}
 		<CircleAlert class="h-4 w-4 text-amber-500" />
@@ -80,23 +109,25 @@
 	rows={identitiesQuery.data || []}
 	isLoading={identitiesQuery.isLoading}
 	bind:filters
+	views={identityViews}
 	columns={[
 		{
-			key: 'normalizedData.enabled',
+			key: 'normalizedData.state',
 			title: '',
 			sortable: true,
-			cell: enabledSnip,
+			cell: stateSnip,
 			width: '48px',
 			filter: {
-				label: 'Status',
+				label: 'State',
 				component: 'select',
 				operators: ['eq', 'ne'],
 				defaultOperator: 'eq',
 				options: [
-					{ label: 'Enabled', value: true },
-					{ label: 'Disabled', value: false }
+					{ label: 'Normal', value: 'normal' },
+					{ label: 'Warning', value: 'warn' },
+					{ label: 'Critical', value: 'critical' }
 				],
-				placeholder: 'Select status'
+				placeholder: 'Filter by state'
 			}
 		},
 		{
@@ -112,6 +143,23 @@
 			searchable: true,
 			sortable: true,
 			render: ({ row }) => (row.normalizedData as Identity).email
+		},
+		{
+			key: 'normalizedData.enabled',
+			title: 'Active',
+			render: ({ row }) => ((row.normalizedData as Identity).enabled ? 'Active' : 'Inactive'),
+			sortable: true,
+			filter: {
+				label: 'Active',
+				component: 'select',
+				operators: ['eq', 'ne'],
+				defaultOperator: 'eq',
+				options: [
+					{ label: 'Active', value: 'true' },
+					{ label: 'Inactive', value: 'false' }
+				],
+				placeholder: 'Select active'
+			}
 		},
 		{
 			key: 'normalizedData.type',

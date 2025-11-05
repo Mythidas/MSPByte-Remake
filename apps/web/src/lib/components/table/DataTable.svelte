@@ -19,6 +19,7 @@
 		views?: TableView[];
 		filterFields?: FilterField[]; // Optional: standalone filter definitions
 		filters?: any;
+		onRowClick?: (row: any) => void;
 	};
 
 	let {
@@ -27,7 +28,8 @@
 		views = [],
 		filterFields,
 		filters = $bindable(),
-		isLoading
+		isLoading,
+		onRowClick
 	}: Props = $props();
 	const tableState = setTableState();
 	tableState.columns.configs = columns;
@@ -90,7 +92,10 @@
 				</Table.Row>
 			{/if}
 			{#each tableState.getRows() as row}
-				<Table.Row>
+				<Table.Row
+					onclick={() => onRowClick?.(row)}
+					class={cn(onRowClick && 'cursor-pointer hover:bg-muted/50')}
+				>
 					{#each tableState.columns.visibleColumns() as col}
 						{#if col.cell}
 							<Table.Cell style={`width: ${col.width || ''}`}>

@@ -31,6 +31,7 @@ export type Identity = {
     aliases: string[];
     type: "member" | "guest";
     enabled: boolean;
+    state: "normal" | "warn" | "critical"; // Security posture based on active alert severity
     tags: string[]; // e.g., "MFA", "Deleted", "Locked", "Admin", "Guest", "Service", "Stale"
 
     licenses: string[];

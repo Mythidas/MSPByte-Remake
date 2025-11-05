@@ -5,6 +5,7 @@
 	import { type DataTableCell } from '$lib/components/table/types.js';
 	import { Progress } from '$lib/components/ui/progress/index.js';
 	import { type License } from '@workspace/database/convex/types/normalized.js';
+	import { prettyText } from '@workspace/shared/lib/utils.js';
 
 	const { dataSourceId }: { dataSourceId: string } = $props();
 
@@ -57,32 +58,30 @@
 			render: ({ row }) => (row.normalizedData as License).name
 		},
 		{
-			key: 'normalizedData.skuPartNumber',
-			title: 'SKU',
+			key: 'rawData.accountName',
+			title: 'Account',
 			searchable: true,
 			sortable: true,
-			render: ({ row }) => (row.normalizedData as License).skuPartNumber
+			render: ({ row }) => prettyText((row.rawData as any).accountName)
 		},
 		{
 			key: 'normalizedData.totalUnits',
 			title: 'Total',
 			sortable: true,
-			render: ({ row }) => (row.normalizedData as License).totalUnits?.toString() || '0',
-			width: '100px'
+			render: ({ row }) => (row.normalizedData as License).totalUnits?.toString() || '0'
 		},
 		{
 			key: 'normalizedData.consumedUnits',
 			title: 'Consumed',
 			sortable: true,
-			render: ({ row }) => (row.normalizedData as License).consumedUnits?.toString() || '0',
-			width: '120px'
+			render: ({ row }) => (row.normalizedData as License).consumedUnits?.toString() || '0'
 		},
 		{
 			key: 'utilization',
 			title: 'Utilization',
 			sortable: true,
 			cell: utilizationSnip,
-			width: '180px'
+			width: '200px'
 		}
 	]}
 />

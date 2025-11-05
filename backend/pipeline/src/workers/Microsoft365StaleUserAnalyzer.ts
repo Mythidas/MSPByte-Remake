@@ -175,6 +175,7 @@ export class Microsoft365StaleUserAnalyzer extends BaseWorker {
                                 tenantId: tenantID as Id<"tenants">,
                                 entityId: identity._id,
                                 dataSourceId: dataSourceID,
+                                siteId: identity.siteId,
                                 alertType: "stale_user",
                                 severity,
                                 message: `User ${identity.normalizedData.name} has been inactive for ${Math.floor(daysSinceLogin)} days`,
@@ -223,6 +224,10 @@ export class Microsoft365StaleUserAnalyzer extends BaseWorker {
                         });
                     }
                 }
+
+                // Recalculate identity state after alert operations
+                const newState = await this.calculateIdentityState(identity._id, tenantID as Id<"tenants">);
+                await this.updateIdentityState(identity, newState);
             }
 
             Debug.log({

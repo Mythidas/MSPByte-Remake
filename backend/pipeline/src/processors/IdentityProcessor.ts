@@ -44,14 +44,6 @@ export class IdentityProcessor extends BaseProcessor {
             const tags: string[] = [];
             const userType = rawData.userType?.toLowerCase() || "member";
 
-            if (userType === "guest") {
-                tags.push("Guest");
-            }
-
-            if (!rawData.accountEnabled) {
-                tags.push("Disabled");
-            }
-
             // Check for service account patterns
             const email = rawData.userPrincipalName.toLowerCase();
             if (
@@ -83,6 +75,7 @@ export class IdentityProcessor extends BaseProcessor {
                             ) || [],
                     type: userType,
                     enabled: rawData.accountEnabled,
+                    state: "normal", // Default state, will be updated by analyzers based on alerts
                     tags, // Initial tags (MFA, Admin, Stale will be added by analyzers/linkers)
 
                     licenses: rawData.assignedLicenses?.map((lic) => lic.skuId) || [],

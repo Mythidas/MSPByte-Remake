@@ -76,7 +76,7 @@ export class Microsoft365Adapter extends BaseAdapter {
             });
         }
 
-        const { data, error } = await connector.getIdentities({});
+        const { data, error } = await connector.getIdentities({ domains: config.domainMappings.map((d) => d.domain) });
         if (error) {
             return { error };
         }

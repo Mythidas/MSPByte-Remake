@@ -5,6 +5,9 @@ import {
     buildEventName,
     EntityType,
 } from "@workspace/shared/types/pipeline/index.js";
+import { api } from "@workspace/database/convex/_generated/api.js";
+import type { Doc, Id } from "@workspace/database/convex/_generated/dataModel.js";
+import { client } from "@workspace/shared/lib/convex.js";
 
 /**
  * BaseWorker - Abstract base class for all pipeline workers
@@ -164,4 +167,104 @@ export abstract class BaseWorker {
      * @param event - Aggregated event containing combined changedEntityIds
      */
     protected abstract execute(event: LinkedEventPayload): Promise<void>;
+
+    /**
+     * Calculate identity state based on active alerts
+     *
+     * @param entityId - ID of the identity entity
+     * @param tenantID - Tenant ID for filtering
+     * @returns "critical" | "warn" | "normal"
+     */
+    protected async calculateIdentityState(
+        entityId: Id<"entities">,
+        tenantID: Id<"tenants">
+    ): Promise<"normal" | "warn" | "critical"> {
+        try {
+            // Query all active alerts for this entity
+            const alerts = await client.query(api.helpers.orm.list_s, {
+                tableName: "entity_alerts",
+                secret: process.env.CONVEX_API_KEY!,
+                index: {
+                    name: "by_entity_status",
+                    params: {
+                        entityId,
+                        status: "active",
+                    },
+                },
+                tenantId: tenantID,
+            }) as Doc<"entity_alerts">[];
+
+            // Check for critical or high severity alerts
+            const hasCriticalOrHigh = alerts.some(
+                alert => alert.severity === "critical" || alert.severity === "high"
+            );
+            if (hasCriticalOrHigh) {
+                return "critical";
+            }
+
+            // Check for medium severity alerts
+            const hasMedium = alerts.some(alert => alert.severity === "medium");
+            if (hasMedium) {
+                return "warn";
+            }
+
+            // No critical/high/medium alerts = normal state
+            return "normal";
+        } catch (error) {
+            Debug.error({
+                module: "BaseWorker",
+                context: "calculateIdentityState",
+                message: `Failed to calculate state: ${error}`,
+            });
+            // Default to normal on error to avoid blocking
+            return "normal";
+        }
+    }
+
+    /**
+     * Update identity state if it has changed
+     *
+     * @param identity - The identity entity to update
+     * @param newState - The new state to set
+     */
+    protected async updateIdentityState(
+        identity: Doc<"entities">,
+        newState: "normal" | "warn" | "critical"
+    ): Promise<void> {
+        const currentState = (identity.normalizedData as any).state;
+
+        // Only update if state has changed
+        if (currentState === newState) {
+            return;
+        }
+
+        try {
+            await client.mutation(api.helpers.orm.update_s, {
+                tableName: "entities",
+                secret: process.env.CONVEX_API_KEY!,
+                data: [{
+                    id: identity._id,
+                    updates: {
+                        normalizedData: {
+                            ...identity.normalizedData,
+                            state: newState,
+                        },
+                        updatedAt: Date.now(),
+                    },
+                }],
+            });
+
+            Debug.log({
+                module: "BaseWorker",
+                context: "updateIdentityState",
+                message: `Updated identity ${identity._id} state: ${currentState || 'undefined'} → ${newState}`,
+            });
+        } catch (error) {
+            Debug.error({
+                module: "BaseWorker",
+                context: "updateIdentityState",
+                message: `Failed to update state: ${error}`,
+            });
+        }
+    }
 }

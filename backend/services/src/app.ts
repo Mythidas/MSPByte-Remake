@@ -22,6 +22,7 @@ import { Microsoft365MFAAnalyzer } from "@workspace/pipeline/workers/Microsoft36
 import { Microsoft365StaleUserAnalyzer } from "@workspace/pipeline/workers/Microsoft365StaleUserAnalyzer.js";
 import { Microsoft365LicenseAnalyzer } from "@workspace/pipeline/workers/Microsoft365LicenseAnalyzer.js";
 import { Microsoft365PolicyAnalyzer } from "@workspace/pipeline/workers/Microsoft365PolicyAnalyzer.js";
+import { Microsoft365AdminAnalyzer } from "@workspace/pipeline/workers/Microsoft365AdminAnalyzer.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import { IntegrationType } from "@workspace/shared/types/pipeline/core.js";
 import { dirname, join } from "path";
@@ -71,6 +72,7 @@ class MSPByteBackend {
             new Microsoft365StaleUserAnalyzer(),
             new Microsoft365LicenseAnalyzer(),
             new Microsoft365PolicyAnalyzer(),
+            new Microsoft365AdminAnalyzer(),
         ];
     }
 

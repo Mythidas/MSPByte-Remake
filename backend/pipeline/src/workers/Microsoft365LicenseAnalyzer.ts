@@ -151,6 +151,7 @@ export class Microsoft365LicenseAnalyzer extends BaseWorker {
                                     tenantId: tenantID as Id<"tenants">,
                                     entityId: identity._id,
                                     dataSourceId: dataSourceID,
+                                    siteId: identity.siteId,
                                     alertType: "license_waste",
                                     severity,
                                     message: `License ${licenseName} assigned to ${reason} user ${identity.normalizedData.name}`,
@@ -201,6 +202,10 @@ export class Microsoft365LicenseAnalyzer extends BaseWorker {
                         });
                     }
                 }
+
+                // Recalculate identity state after alert operations
+                const newState = await this.calculateIdentityState(identity._id, tenantID as Id<"tenants">);
+                await this.updateIdentityState(identity, newState);
             }
 
             Debug.log({

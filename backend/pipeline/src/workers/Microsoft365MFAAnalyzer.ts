@@ -256,6 +256,7 @@ export class Microsoft365MFAAnalyzer extends BaseWorker {
                                 tenantId: tenantID as Id<"tenants">,
                                 entityId: identity._id,
                                 dataSourceId: dataSourceID,
+                                siteId: identity.siteId,
                                 alertType: "mfa_not_enforced",
                                 severity,
                                 message: `User ${identity.normalizedData.name} does not have MFA enforcement`,
@@ -302,6 +303,10 @@ export class Microsoft365MFAAnalyzer extends BaseWorker {
                         });
                     }
                 }
+
+                // Recalculate identity state after alert operations
+                const newState = await this.calculateIdentityState(identity._id, tenantID as Id<"tenants">);
+                await this.updateIdentityState(identity, newState);
             }
 
             Debug.log({

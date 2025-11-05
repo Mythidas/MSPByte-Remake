@@ -269,26 +269,6 @@ export class Microsoft365Linker extends BaseLinker {
                                 }],
                             });
                         }
-
-                        // Add "Admin" tag to the identity
-                        const currentTags = identity.normalizedData.tags || [];
-                        if (!currentTags.includes("Admin")) {
-                            currentTags.push("Admin");
-                            await client.mutation(api.helpers.orm.update_s, {
-                                tableName: "entities",
-                                secret: process.env.CONVEX_API_KEY!,
-                                data: [{
-                                    id: identity._id,
-                                    updates: {
-                                        normalizedData: {
-                                            ...identity.normalizedData,
-                                            tags: currentTags,
-                                        },
-                                        updatedAt: Date.now(),
-                                    },
-                                }],
-                            });
-                        }
                     }
                 }
             }

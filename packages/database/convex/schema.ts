@@ -335,6 +335,7 @@ export default defineSchema({
         tenantId: v.id("tenants"),
         entityId: v.id("entities"),
         dataSourceId: v.id("data_sources"),
+        siteId: v.optional(v.id("sites")),
 
         alertType: v.string(), // e.g., "mfa_not_enforced", "stale_user", "license_waste", "policy_gap"
         severity: v.union(
@@ -352,9 +353,14 @@ export default defineSchema({
         ),
 
         resolvedAt: v.optional(v.number()),
+        suppressedBy: v.optional(v.id("users")),
+        suppressedAt: v.optional(v.number()),
+        suppressionReason: v.optional(v.string()),
+        suppressedUntil: v.optional(v.number()),
         updatedAt: v.number(),
     })
         .index("by_tenant", ["tenantId"])
+        .index("by_site", ["siteId", "tenantId"])
         .index("by_data_source", ["dataSourceId", "tenantId"])
         .index("by_entity", ["entityId", "tenantId"])
         .index("by_type", ["alertType", "tenantId"])

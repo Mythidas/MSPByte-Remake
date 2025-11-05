@@ -217,6 +217,7 @@ export class Microsoft365PolicyAnalyzer extends BaseWorker {
                                 tenantId: tenantID as Id<"tenants">,
                                 entityId: identity._id,
                                 dataSourceId: dataSourceID,
+                                siteId: identity.siteId,
                                 alertType: "policy_gap",
                                 severity,
                                 message: `User ${identity.normalizedData.name} is not covered by any security policy`,
@@ -264,6 +265,10 @@ export class Microsoft365PolicyAnalyzer extends BaseWorker {
                         });
                     }
                 }
+
+                // Recalculate identity state after alert operations
+                const newState = await this.calculateIdentityState(identity._id, tenantID as Id<"tenants">);
+                await this.updateIdentityState(identity, newState);
             }
 
             Debug.log({

@@ -3,23 +3,65 @@
 	import { useQuery } from 'convex-svelte';
 	import { getAppState } from '$lib/state/Application.svelte.js';
 	import DataTable from '$lib/components/table/DataTable.svelte';
-	import { type DataTableCell } from '$lib/components/table/types.js';
+	import { type DataTableCell, type TableView } from '$lib/components/table/types.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { type Identity, type License } from '@workspace/database/convex/types/normalized.js';
-	import { AlertTriangle, ShieldAlert, Users, Key } from 'lucide-svelte';
+	import { type License } from '@workspace/database/convex/types/normalized.js';
+	import { AlertTriangle, ShieldAlert, Users, Key, CheckCircle, PauseCircle } from 'lucide-svelte';
+	import AlertDetailSheet from './AlertDetailSheet.svelte';
 
 	const { dataSourceId }: { dataSourceId: string } = $props();
 
 	const appState = getAppState();
 
-	let filters = $state<any>(undefined);
+	let filters = $state<any>({ status: 'active' }); // Show only active alerts by default
+	let selectedAlert = $state<Doc<'entity_alerts'> | null>(null);
+	let sheetOpen = $state(false);
+
+	// Predefined alert views
+	const alertViews: TableView[] = [
+		{
+			name: 'active',
+			label: 'Active Alerts',
+			description: 'Currently active and unresolved alerts',
+			icon: AlertTriangle,
+			filters: [{ field: 'status', operator: 'eq', value: 'active' }]
+		},
+		{
+			name: 'suppressed',
+			label: 'Suppressed Alerts',
+			description: 'Alerts that have been suppressed or snoozed',
+			icon: PauseCircle,
+			filters: [{ field: 'status', operator: 'eq', value: 'suppressed' }]
+		},
+		{
+			name: 'resolved',
+			label: 'Resolved Alerts',
+			description: 'Alerts that have been resolved or addressed',
+			icon: CheckCircle,
+			filters: [{ field: 'status', operator: 'eq', value: 'resolved' }]
+		},
+		{
+			name: 'critical',
+			label: 'Critical Issues',
+			description: 'All critical severity alerts regardless of status',
+			icon: AlertTriangle,
+			filters: [{ field: 'severity', operator: 'eq', value: 'critical' }]
+		}
+	];
 
 	// Query alerts
 	const alertsQuery = useQuery(api.helpers.orm.list, () => ({
 		tableName: 'entity_alerts' as const,
-		filters: filters
+		filters: filters,
+		index: {
+			name: 'by_site',
+			params: {
+				siteId: appState.getSite()?._id
+			}
+		}
 	}));
+	const alerts = $derived((alertsQuery.data || []) as Doc<'entity_alerts'>[]);
 
 	// Query identities for stats (site-level)
 	const identitiesQuery = useQuery(api.helpers.orm.list, () => ({
@@ -44,23 +86,22 @@
 			}
 		}
 	}));
+	const licenses = $derived((licensesQuery.data || []) as Doc<'entities'>[]);
 
 	// Calculate stats
 	const stats = $derived({
 		totalIdentities: identitiesQuery.data?.length || 0,
-		activeAlerts: alertsQuery.data?.filter((a) => a.status === 'active').length || 0,
+		activeAlerts: alerts.filter((a) => a.status === 'active').length || 0,
 		criticalAlerts:
-			alertsQuery.data?.filter((a) => a.status === 'active' && a.severity === 'critical').length ||
-			0,
-		highAlerts:
-			alertsQuery.data?.filter((a) => a.status === 'active' && a.severity === 'high').length || 0,
+			alerts.filter((a) => a.status === 'active' && a.severity === 'critical').length || 0,
+		highAlerts: alerts.filter((a) => a.status === 'active' && a.severity === 'high').length || 0,
 		totalLicenses:
-			licensesQuery.data?.reduce((acc, l) => {
+			licenses.reduce((acc, l) => {
 				const license = l.normalizedData as License;
 				return acc + (license.totalUnits || 0);
 			}, 0) || 0,
 		consumedLicenses:
-			licensesQuery.data?.reduce((acc, l) => {
+			licenses.reduce((acc, l) => {
 				const license = l.normalizedData as License;
 				return acc + (license.consumedUnits || 0);
 			}, 0) || 0
@@ -153,6 +194,11 @@
 			rows={alertsQuery.data || []}
 			{isLoading}
 			bind:filters
+			views={alertViews}
+			onRowClick={(alert) => {
+				selectedAlert = alert;
+				sheetOpen = true;
+			}}
 			columns={[
 				{
 					key: 'severity',
@@ -227,4 +273,14 @@
 			]}
 		/>
 	</div>
+
+	<!-- Alert Detail Sheet -->
+	<AlertDetailSheet
+		alert={selectedAlert}
+		bind:open={sheetOpen}
+		onClose={() => {
+			selectedAlert = null;
+			sheetOpen = false;
+		}}
+	/>
 </div>

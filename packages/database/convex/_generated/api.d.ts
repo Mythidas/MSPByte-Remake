@@ -16,6 +16,8 @@ import type {
 import type * as agents_mutate_s from "../agents/mutate_s.js";
 import type * as datasources_mutate from "../datasources/mutate.js";
 import type * as entities_query from "../entities/query.js";
+import type * as entity_alerts_mutations from "../entity_alerts/mutations.js";
+import type * as helpers_audit from "../helpers/audit.js";
 import type * as helpers_crud_get from "../helpers/crud/get.js";
 import type * as helpers_crud_insert from "../helpers/crud/insert.js";
 import type * as helpers_crud_list from "../helpers/crud/list.js";
@@ -48,6 +50,8 @@ declare const fullApi: ApiFromModules<{
   "agents/mutate_s": typeof agents_mutate_s;
   "datasources/mutate": typeof datasources_mutate;
   "entities/query": typeof entities_query;
+  "entity_alerts/mutations": typeof entity_alerts_mutations;
+  "helpers/audit": typeof helpers_audit;
   "helpers/crud/get": typeof helpers_crud_get;
   "helpers/crud/insert": typeof helpers_crud_insert;
   "helpers/crud/list": typeof helpers_crud_list;
