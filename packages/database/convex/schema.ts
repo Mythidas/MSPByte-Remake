@@ -23,6 +23,7 @@ export default defineSchema({
         ),
 
         metadata: v.optional(v.any()),
+        concurrentJobLimit: v.optional(v.number()), // Max concurrent jobs per tenant (default 5)
 
         updatedAt: v.number(),
         deletedAt: v.optional(v.number()),
@@ -97,6 +98,8 @@ export default defineSchema({
             v.object({
                 type: entityTypeValidator,
                 isGlobal: v.boolean(),
+                priority: v.optional(v.number()), // Higher number = higher priority (default 5)
+                rateMinutes: v.optional(v.number()), // How often to sync in minutes (default 60)
             })
         ), // e.g., ["sites", "devices", "tickets"]
         iconUrl: v.optional(v.string()),
@@ -207,7 +210,8 @@ export default defineSchema({
         .index("by_data_source", ["dataSourceId", "tenantId"])
         .index("by_data_source_status", ["dataSourceId", "status", "tenantId"])
         .index("by_status", ["status", "tenantId"])
-        .index("by_scheduled_at", ["scheduledAt", "tenantId"]),
+        .index("by_scheduled_at", ["scheduledAt", "tenantId"])
+        .index("by_priority_and_scheduled_at", ["status", "priority", "scheduledAt"]),
 
     // ============================================================================
     // LOGGING & MONITORING

@@ -39,7 +39,7 @@ export class Scheduler {
 
     private async pollJobs(): Promise<void> {
         try {
-            // Query for due jobs that haven't exceeded retry count
+            // Query for pending jobs (will be sorted by priority in-memory)
             const jobs = (await client.query(api.helpers.orm.list_s, {
                 tableName: "scheduled_jobs",
                 secret: process.env.CONVEX_API_KEY!,
@@ -64,15 +64,79 @@ export class Scheduler {
                 return;
             }
 
+            // Sort by priority (DESC) then scheduledAt (ASC)
+            // Higher priority numbers run first, ties broken by earliest scheduled time
+            dueJobs.sort((a, b) => {
+                const priorityA = a.priority || 5;
+                const priorityB = b.priority || 5;
+                if (priorityA !== priorityB) {
+                    return priorityB - priorityA; // Higher priority first
+                }
+                return a.scheduledAt - b.scheduledAt; // Earlier scheduled first
+            });
+
+            // Get running jobs to check concurrency limits
+            const runningJobs = (await client.query(api.helpers.orm.list_s, {
+                tableName: "scheduled_jobs",
+                secret: process.env.CONVEX_API_KEY!,
+                index: {
+                    name: "by_status",
+                    params: { status: "running" },
+                },
+            })) as Doc<"scheduled_jobs">[];
+
+            // Count running jobs per tenant
+            const runningJobsByTenant = new Map<string, number>();
+            for (const job of runningJobs) {
+                const count = runningJobsByTenant.get(job.tenantId) || 0;
+                runningJobsByTenant.set(job.tenantId, count + 1);
+            }
+
+            // Get tenant limits
+            const tenantLimits = new Map<string, number>();
+            const uniqueTenantIds = [...new Set(dueJobs.map(j => j.tenantId))];
+            for (const tenantId of uniqueTenantIds) {
+                const tenant = await client.query(api.tenants.query.get_s, {
+                    id: tenantId,
+                    secret: process.env.CONVEX_API_KEY!,
+                });
+                tenantLimits.set(tenantId, (tenant as any)?.concurrentJobLimit || 5);
+            }
+
             Debug.log({
                 module: "Scheduler",
                 context: "pollJobs",
-                message: `Polling for Jobs: ${dueJobs.length} jobs found`,
+                message: `Polling for Jobs: ${dueJobs.length} due jobs, ${runningJobs.length} running`,
             });
 
-            // Process each job
+            // Process jobs respecting per-tenant concurrency limits
+            let processedCount = 0;
             for (const job of dueJobs) {
+                const runningCount = runningJobsByTenant.get(job.tenantId) || 0;
+                const limit = tenantLimits.get(job.tenantId) || 5;
+
+                if (runningCount >= limit) {
+                    Debug.log({
+                        module: "Scheduler",
+                        context: "pollJobs",
+                        message: `Tenant ${job.tenantId} at limit (${runningCount}/${limit}), skipping job ${job._id}`,
+                    });
+                    continue;
+                }
+
                 await this.processJob(job);
+
+                // Update running count for this tenant
+                runningJobsByTenant.set(job.tenantId, runningCount + 1);
+                processedCount++;
+            }
+
+            if (processedCount > 0) {
+                Debug.log({
+                    module: "Scheduler",
+                    context: "pollJobs",
+                    message: `Processed ${processedCount} jobs`,
+                });
             }
         } catch (error) {
             Debug.error({
@@ -168,6 +232,8 @@ export class Scheduler {
         dataSource?: Doc<"data_sources">,
         action?: string
     ) {
+        const completionTime = Date.now();
+
         await client.mutation(api.helpers.orm.update_s, {
             tableName: "scheduled_jobs",
             data: [
@@ -182,20 +248,137 @@ export class Scheduler {
         });
 
         if (dataSource && action) {
+            // Update data source metadata with last sync time
             await client.mutation(api.helpers.orm.update_s, {
-                tableName: "scheduled_jobs",
+                tableName: "data_sources",
                 data: [
                     {
                         id: dataSource._id,
                         updates: {
                             metadata: {
                                 ...(dataSource.metadata as any),
-                                [action]: Date.now(),
+                                [action]: completionTime,
                             },
                         },
                     },
                 ],
                 secret: process.env.CONVEX_API_KEY!,
+            });
+
+            // Automatically schedule the next iteration based on rate limit
+            await Scheduler.scheduleNextIteration(job, dataSource, action, completionTime);
+        }
+    }
+
+    /**
+     * Schedules the next iteration of a job based on rate limiting configuration
+     * Only called after a job (or final batch) completes successfully
+     */
+    private static async scheduleNextIteration(
+        job: Doc<"scheduled_jobs">,
+        dataSource: Doc<"data_sources">,
+        action: string,
+        lastSyncTime: number
+    ) {
+        try {
+            // Get integration to fetch rate and priority config
+            const integration = (await client.query(api.helpers.orm.get_s, {
+                tableName: "integrations",
+                id: job.integrationId,
+                secret: process.env.CONVEX_API_KEY!,
+            })) as any;
+
+            if (!integration) {
+                Debug.error({
+                    module: "Scheduler",
+                    context: "scheduleNextIteration",
+                    message: `Integration not found: ${job.integrationId}`,
+                });
+                return;
+            }
+
+            // Extract entity type from action (e.g., "sync.identities" -> "identities")
+            const entityType = action.replace("sync.", "");
+
+            // Find the matching supportedType configuration
+            const typeConfig = integration.supportedTypes.find(
+                (t: any) => t.type === entityType
+            );
+
+            if (!typeConfig) {
+                Debug.error({
+                    module: "Scheduler",
+                    context: "scheduleNextIteration",
+                    message: `Type config not found for ${entityType}`,
+                });
+                return;
+            }
+
+            const priority = typeConfig.priority ?? 5;
+            const rateMinutes = typeConfig.rateMinutes ?? 60;
+            const rateMs = rateMinutes * 60 * 1000;
+
+            // Calculate next scheduled time based on rate limit
+            const nextScheduledAt = lastSyncTime + rateMs;
+
+            // Check if a pending job already exists for this action
+            const existingJobs = (await client.query(api.helpers.orm.list_s, {
+                tableName: "scheduled_jobs",
+                secret: process.env.CONVEX_API_KEY!,
+                index: {
+                    name: "by_data_source_status",
+                    params: {
+                        dataSourceId: dataSource._id,
+                        status: "pending",
+                    },
+                },
+            })) as Doc<"scheduled_jobs">[];
+
+            const existingPendingJob = existingJobs.find((j) => j.action === action);
+
+            if (existingPendingJob) {
+                Debug.log({
+                    module: "Scheduler",
+                    context: "scheduleNextIteration",
+                    message: `Skipping ${action}: pending job already exists`,
+                });
+                return;
+            }
+
+            // Create the next scheduled job
+            await client.mutation(api.helpers.orm.insert_s, {
+                tableName: "scheduled_jobs",
+                secret: process.env.CONVEX_API_KEY!,
+                tenantId: job.tenantId,
+                data: [
+                    {
+                        integrationId: job.integrationId,
+                        integrationSlug: job.integrationSlug,
+                        dataSourceId: dataSource._id,
+                        action,
+                        payload: {},
+                        priority,
+                        status: "pending",
+                        attempts: 0,
+                        attemptsMax: job.attemptsMax || 3,
+                        scheduledAt: nextScheduledAt,
+                        createdBy: "auto-schedule",
+                        updatedAt: Date.now(),
+                    },
+                ],
+            });
+
+            const nextRunIn = Math.round((nextScheduledAt - Date.now()) / 60000);
+            Debug.log({
+                module: "Scheduler",
+                context: "scheduleNextIteration",
+                message: `Scheduled next ${action} in ${nextRunIn} minutes (priority: ${priority})`,
+            });
+        } catch (error) {
+            Debug.error({
+                module: "Scheduler",
+                context: "scheduleNextIteration",
+                message: `Failed to schedule next iteration: ${error}`,
             });
         }
     }
@@ -207,6 +390,10 @@ export class Scheduler {
         batchNumber: number,
         totalProcessed: number
     ) {
+        // Boost priority for pagination batches to complete in-progress syncs faster
+        const basePriority = currentJob.priority || 5;
+        const boostedPriority = basePriority + 10;
+
         await client.mutation(api.helpers.orm.insert_s, {
             tableName: "scheduled_jobs",
             secret: process.env.CONVEX_API_KEY!,
@@ -217,7 +404,7 @@ export class Scheduler {
                     integrationSlug: currentJob.integrationSlug,
                     dataSourceId: currentJob.dataSourceId,
                     action: currentJob.action,
-                    priority: currentJob.priority,
+                    priority: boostedPriority, // Boost priority for continuation batches
                     status: "pending",
                     attempts: 0,
                     attemptsMax: currentJob.attemptsMax,
@@ -238,7 +425,7 @@ export class Scheduler {
         Debug.log({
             module: "Scheduler",
             context: "scheduleNextBatch",
-            message: `Scheduled batch ${batchNumber} for job ${currentJob._id} (syncId: ${syncId})`,
+            message: `Scheduled batch ${batchNumber} with priority ${boostedPriority} (boosted from ${basePriority}) for job ${currentJob._id} (syncId: ${syncId})`,
         });
     }
 }

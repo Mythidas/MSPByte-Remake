@@ -131,6 +131,7 @@ export type TableView = {
     description?: string;
     icon?: any;
     filters: TableFilter[];
+    isDefault?: boolean;
 };
 
 // ============================================================================

@@ -25,7 +25,8 @@
 			label: 'Active Alerts',
 			description: 'Currently active and unresolved alerts',
 			icon: AlertTriangle,
-			filters: [{ field: 'status', operator: 'eq', value: 'active' }]
+			filters: [{ field: 'status', operator: 'eq', value: 'active' }],
+			isDefault: true
 		},
 		{
 			name: 'suppressed',
