@@ -27,6 +27,13 @@
 	let isSaving = $state(false);
 	let searchTerm = $state('');
 
+	const isMappingsChanged = $derived.by(() => {
+		if (!selectedConnection) return false;
+
+		const existing = selectedConnection.config as Microsoft365DataSourceConfig;
+		return JSON.stringify(existing.domainMappings) === JSON.stringify(domainMappings);
+	});
+
 	// Queries
 	const dataSourcesQuery = useQuery(api.helpers.orm.list, {
 		tableName: 'data_sources',
@@ -128,6 +135,11 @@
 			await appState.convex.mutation(api.datasources.mutate.updateM365DomainMappings, {
 				dataSourceId: selectedConnection._id,
 				domainMappings
+			});
+
+			await appState.convex.mutation(api.scheduledjobs.mutate.scheduleJobsByIntegration, {
+				integrationId: selectedConnection.integrationId,
+				dataSourceId: selectedConnection._id
 			});
 
 			toast.success('Domain mappings saved successfully!');
@@ -235,7 +247,7 @@
 					<span class="text-muted-foreground text-sm">
 						{domainMappings.length} of {config.availableDomains?.length || 0} domains mapped
 					</span>
-					<Button onclick={saveChanges} disabled={isSaving} class="gap-2">
+					<Button onclick={saveChanges} disabled={isSaving || isMappingsChanged} class="gap-2">
 						<Save class="h-4 w-4" />
 						{isSaving ? 'Saving...' : 'Save Changes'}
 					</Button>

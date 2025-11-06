@@ -5,6 +5,7 @@
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { type DataTableCell } from '$lib/components/table/types.js';
 	import { type Role } from '@workspace/database/convex/types/normalized.js';
+	import { clipText } from '@workspace/shared/lib/utils.js';
 
 	const { dataSourceId }: { dataSourceId: string } = $props();
 
@@ -131,7 +132,7 @@
 			title: 'Description',
 			searchable: true,
 			sortable: true,
-			render: ({ row }) => (row.normalizedData as Role).description || 'N/A'
+			render: ({ row }) => clipText((row.normalizedData as Role)?.description || 'N/A', 100)
 		},
 		{
 			key: 'userCount',

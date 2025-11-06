@@ -8,12 +8,15 @@
 	import { m365ConnectionSchema } from '../integration/schemas.js';
 	import { Plus } from 'lucide-svelte';
 	import { buttonVariants } from '$lib/components/ui/button/button.svelte';
-	import { goto } from '$app/navigation';
 	import { PUBLIC_MICROSOFT_CLIENT_ID, PUBLIC_ORIGIN } from '$env/static/public';
 	import type { M365ConsentCallback } from '$lib/types/callbacks.js';
 	import { getAppState } from '$lib/state/Application.svelte.js';
+	import { getIntegration } from '../integration/state.svelte.js';
+	import { toast } from 'svelte-sonner';
 
 	const appState = getAppState();
+	const integration = getIntegration();
+
 	let isSubmitting = $state(false);
 
 	const form = superForm(defaults(zod4(m365ConnectionSchema)), {
@@ -24,12 +27,19 @@
 			// Prevent the default action POST
 			cancel();
 
+			if (!integration.dataSource) {
+				isSubmitting = false;
+				toast.info('Invalid DataSource, cannot create connection');
+				return;
+			}
+
 			const params = new URLSearchParams({
 				client_id: PUBLIC_MICROSOFT_CLIENT_ID,
 				redirect_uri: `${PUBLIC_ORIGIN}/api/v1.0/callbacks/microsoft-365/consent`,
 				state: JSON.stringify({
 					action: 'initial',
 					tenantId: appState.user.tenantId,
+					dataSourceId: integration.dataSource._id,
 					name: formData.get('name'),
 					timestamp: Date.now()
 				} as M365ConsentCallback)
@@ -76,7 +86,7 @@
 			</FormField>
 
 			<AlertDialog.Footer>
-				<AlertDialog.Cancel type="button">Cancel</AlertDialog.Cancel>
+				<AlertDialog.Cancel type="button" disabled={isSubmitting}>Cancel</AlertDialog.Cancel>
 				<SubmitButton isLoading={isSubmitting}>Create Connection</SubmitButton>
 			</AlertDialog.Footer>
 		</form>

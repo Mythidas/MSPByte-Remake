@@ -87,6 +87,7 @@ export abstract class BaseProcessor<T = any> {
             const existingData = await this.getExistingData(
                 integrationID,
                 tenantID,
+                dataSourceID,
                 entityType
             );
             if (existingData.error) {
@@ -160,6 +161,7 @@ export abstract class BaseProcessor<T = any> {
     private async getExistingData(
         integrationID: string,
         tenantID: string,
+        dataSourceId: string,
         type: EntityType
     ): Promise<APIResponse<{ rows: Doc<"entities">[] }>> {
         try {
@@ -174,6 +176,9 @@ export abstract class BaseProcessor<T = any> {
                         entityType: type,
                     },
                 },
+                filters: {
+                    dataSourceId: dataSourceId as any
+                }
             })) as Doc<"entities">[];
             return { data: { rows: entities } };
         } catch (error) {

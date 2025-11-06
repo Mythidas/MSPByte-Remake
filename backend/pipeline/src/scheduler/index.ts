@@ -37,6 +37,156 @@ export class Scheduler {
         });
     }
 
+    /**
+     * Bootstrap function that runs once at startup
+     * Ensures all active data sources have their initial jobs scheduled
+     */
+    private async bootstrap(): Promise<void> {
+        try {
+            Debug.log({
+                module: "Scheduler",
+                context: "bootstrap",
+                message: "Starting bootstrap: scanning for active data sources",
+            });
+
+            // Query all data sources across all tenants
+            const allDataSources = (await client.query(api.helpers.orm.list_s, {
+                tableName: "data_sources",
+                secret: process.env.CONVEX_API_KEY!,
+                includeSoftDeleted: false,
+            })) as Doc<"data_sources">[];
+
+            // Filter for active data sources
+            const activeDataSources = allDataSources.filter(
+                (ds) => ds.status === "active" && !ds.deletedAt
+            );
+
+            if (activeDataSources.length === 0) {
+                Debug.log({
+                    module: "Scheduler",
+                    context: "bootstrap",
+                    message: "No active data sources found",
+                });
+                return;
+            }
+
+            Debug.log({
+                module: "Scheduler",
+                context: "bootstrap",
+                message: `Found ${activeDataSources.length} active data sources`,
+            });
+
+            let jobsScheduled = 0;
+            let dataSourcesProcessed = 0;
+            const tenantIds = new Set<string>();
+
+            // Process each data source
+            for (const dataSource of activeDataSources) {
+                try {
+                    // Fetch integration config
+                    const integration = (await client.query(api.helpers.orm.get_s, {
+                        tableName: "integrations",
+                        id: dataSource.integrationId,
+                        secret: process.env.CONVEX_API_KEY!,
+                    })) as any;
+
+                    if (!integration) {
+                        Debug.log({
+                            module: "Scheduler",
+                            context: "bootstrap",
+                            message: `Integration not found for data source ${dataSource._id}`,
+                        });
+                        continue;
+                    }
+
+                    tenantIds.add(dataSource.tenantId);
+                    const currentTime = Date.now();
+                    const metadata = (dataSource.metadata as Record<string, any>) || {};
+
+                    // Schedule jobs for each global type
+                    for (const type of integration.supportedTypes) {
+                        if (!type.isGlobal) continue;
+
+                        const action = `sync.${type.type}`;
+                        const priority = type.priority ?? 5;
+                        const rateMinutes = type.rateMinutes ?? 60;
+                        const rateMs = rateMinutes * 60 * 1000;
+
+                        // Check last sync time from metadata
+                        const lastSyncAt = metadata[action] || 0;
+                        const nextAllowedTime = lastSyncAt + rateMs;
+                        const scheduledAt =
+                            currentTime >= nextAllowedTime ? currentTime : nextAllowedTime;
+
+                        // Check if a pending job already exists
+                        const existingJobs = (await client.query(api.helpers.orm.list_s, {
+                            tableName: "scheduled_jobs",
+                            secret: process.env.CONVEX_API_KEY!,
+                            index: {
+                                name: "by_data_source_status",
+                                params: {
+                                    dataSourceId: dataSource._id,
+                                    status: "pending",
+                                },
+                            },
+                        })) as Doc<"scheduled_jobs">[];
+
+                        const existingPendingJob = existingJobs.find((j) => j.action === action);
+
+                        if (existingPendingJob) {
+                            continue; // Skip if job already exists
+                        }
+
+                        // Create the job
+                        await client.mutation(api.helpers.orm.insert_s, {
+                            tableName: "scheduled_jobs",
+                            secret: process.env.CONVEX_API_KEY!,
+                            tenantId: dataSource.tenantId,
+                            data: [
+                                {
+                                    integrationId: dataSource.integrationId,
+                                    integrationSlug: integration.slug,
+                                    dataSourceId: dataSource._id,
+                                    action,
+                                    payload: {},
+                                    priority,
+                                    status: "pending",
+                                    attempts: 0,
+                                    attemptsMax: 3,
+                                    scheduledAt,
+                                    createdBy: "bootstrap",
+                                    updatedAt: currentTime,
+                                },
+                            ],
+                        });
+
+                        jobsScheduled++;
+                    }
+
+                    dataSourcesProcessed++;
+                } catch (error) {
+                    Debug.error({
+                        module: "Scheduler",
+                        context: "bootstrap",
+                        message: `Error processing data source ${dataSource._id}: ${error}`,
+                    });
+                }
+            }
+
+            Debug.log({
+                module: "Scheduler",
+                context: "bootstrap",
+                message: `Bootstrap completed: ${jobsScheduled} jobs scheduled for ${dataSourcesProcessed} data sources across ${tenantIds.size} tenants`,
+            });
+        } catch (error) {
+            Debug.error({
+                module: "Scheduler",
+                context: "bootstrap",
+                message: `Bootstrap failed: ${error}`,
+            });
+        }
+    }
+
     private async pollJobs(): Promise<void> {
         try {
             // Query for pending jobs (will be sorted by priority in-memory)

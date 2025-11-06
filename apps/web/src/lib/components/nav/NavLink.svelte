@@ -16,7 +16,9 @@
 
 	const navState = getNavState();
 	const groupName = hasContext('nav-group-name') ? getContext<string>('nav-group-name') : undefined;
-	const nestingLevel = hasContext('nav-nesting-level') ? getContext<number>('nav-nesting-level') : 0;
+	const nestingLevel = hasContext('nav-nesting-level')
+		? getContext<number>('nav-nesting-level')
+		: 0;
 	navState.registerRoute(href, groupName);
 
 	const isActive = $derived(navState.isRouteActive(href, exact));
@@ -25,16 +27,16 @@
 	const paddingLeft = nestingLevel > 0 ? `${nestingLevel * 1.5}rem` : undefined;
 </script>
 
-<Button variant="ghost" class={cn('flex w-full px-0 !py-0', isActive && 'bg-secondary')}>
+<Button variant="ghost" class={cn('flex w-full !py-0 px-0', isActive && 'bg-secondary')}>
 	<a
 		{href}
-		class="flex size-full items-center justify-start gap-2 px-3"
+		class="flex size-full items-center justify-start gap-2 px-3 text-xs"
 		style={paddingLeft ? `padding-left: ${paddingLeft}` : undefined}
 	>
 		{#if icon}
 			<!-- svelte-ignore svelte_component_deprecated -->
 			<svelte:component this={icon} class="w-4" />
 		{/if}
-		<span class="text-sm">{label}</span>
+		<span class="text-xs">{label}</span>
 	</a>
 </Button>

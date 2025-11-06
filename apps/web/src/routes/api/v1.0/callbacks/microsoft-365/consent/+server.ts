@@ -110,6 +110,12 @@ export const GET: RequestHandler = async ({ locals, url }) => {
         });
         if (!dataSource) throw 'Failed to create data source';
 
+        await locals.client.mutation(api.helpers.orm.update_s, {
+            tableName: 'data_sources',
+            secret: CONVEX_API_KEY,
+            data: [{ id: stateData.dataSourceId as any, updates: { config: { permissionVersion: 0 } } }]
+        })
+
         redirect(308, `${redUrl}?success=true&tenant=${encodeURIComponent(tenantInfo.displayName)}`);
     } catch (error) {
         console.log(error);
