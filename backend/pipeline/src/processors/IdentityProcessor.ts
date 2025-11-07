@@ -44,18 +44,6 @@ export class IdentityProcessor extends BaseProcessor {
             const tags: string[] = [];
             const userType = rawData.userType?.toLowerCase() || "member";
 
-            // Check for service account patterns
-            const email = rawData.userPrincipalName.toLowerCase();
-            if (
-                email.includes("service") ||
-                email.includes("svc") ||
-                email.startsWith("system") ||
-                email.includes("no-reply") ||
-                email.includes("noreply")
-            ) {
-                tags.push("Service");
-            }
-
             return {
                 externalID: String(rawData.id),
                 raw: rawData,
