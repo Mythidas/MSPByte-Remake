@@ -122,6 +122,7 @@ class TableStateClass implements TableState {
 
             // Sync filters from URL with column type information
             this.filters = deserializeFilters(this.params.filters, this.columns.configs);
+            this.globalSearch = this.params.globalSearch
 
             // Sync active view from URL
             if (this.params.view) {
