@@ -56,7 +56,7 @@
 				key: 'lastActivityAt',
 				title: 'Last Active',
 				render: ({ row }) =>
-					row.last_last_activity_at ? new Date(row.last_activity_at).toDateString() : 'Never',
+					row.lastActivityAt ? new Date(row.lastActivityAt).toDateString() : 'Never',
 				hideable: true
 			}
 		]}
