@@ -108,7 +108,7 @@ export class Microsoft365MFAAnalyzer extends BaseWorker {
                 let hasMFA = false;
 
                 // If security defaults enabled, all users have MFA
-                if (securityDefaultsEnabled) {
+                if (securityDefaultsEnabled && identityTags.includes("Admin")) {
                     hasMFA = true;
                 }
 
