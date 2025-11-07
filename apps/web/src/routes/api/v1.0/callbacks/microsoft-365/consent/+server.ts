@@ -38,6 +38,8 @@ export const GET: RequestHandler = async ({ locals, url }) => {
     }
 
     try {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
         const stateData: M365ConsentCallback = JSON.parse(state);
         const tokenResponse = await fetch(
             `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
