@@ -9,7 +9,8 @@
 		Bolt,
 		Earth,
 		ArrowBigRight,
-		HatGlasses
+		HatGlasses,
+		TriangleAlert
 	} from 'lucide-svelte';
 	import Navbar from '$lib/components/nav/Navbar.svelte';
 	import NavLink from '$lib/components/nav/NavLink.svelte';
@@ -40,13 +41,19 @@
 			<!--Nav-->
 			<Navbar>
 				<NavLink href="/home" label="Dashboard" exact icon={LayoutDashboard} />
+				<NavLink href="/alerts" label="Alerts" params="view=active" exact icon={TriangleAlert} />
 
 				{#if appState.getSite()}
 					{@const site = appState.getSite()!}
 					<NavGroup name="Sites" icon={Building}>
 						<NavLink href="/sites" label="All Sites" exact icon={Earth} />
 						<NavLink href={`/sites/${site.slug}`} label={site.name!} icon={ArrowBigRight} exact />
-
+						<NavLink
+							href={`/sites/${site.slug}/alerts`}
+							params="view=active"
+							label="Alerts"
+							icon={TriangleAlert}
+						/>
 						{#if data.mspagent && data.mspagent.config.psaIntegrationId === site.psaIntegrationId}
 							<NavLink
 								href={`/sites/${site.slug}/integrations/msp-agent`}

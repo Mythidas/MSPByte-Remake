@@ -9,10 +9,11 @@
 		href: string;
 		label: string;
 		exact?: boolean;
+		params?: string;
 		icon?: ComponentType;
 	}
 
-	let { href, label, exact, icon }: Props = $props();
+	let { href, label, exact, params, icon }: Props = $props();
 
 	const navState = getNavState();
 	const groupName = hasContext('nav-group-name') ? getContext<string>('nav-group-name') : undefined;
@@ -29,7 +30,7 @@
 
 <Button variant="ghost" class={cn('flex w-full !py-0 px-0', isActive && 'bg-secondary')}>
 	<a
-		{href}
+		href={`${href}${params ? '?' + params : ''}`}
 		class="flex size-full items-center justify-start gap-2 px-3 text-xs"
 		style={paddingLeft ? `padding-left: ${paddingLeft}` : undefined}
 	>

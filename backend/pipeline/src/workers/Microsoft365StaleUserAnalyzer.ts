@@ -49,8 +49,29 @@ export class Microsoft365StaleUserAnalyzer extends BaseWorker {
                     tenantId: tenantID as Id<"tenants">,
                 }) as Doc<"entities">[];
             } else {
-                // Incremental: Only analyze changed identities
-                identitiesToAnalyze = [];
+                // Hybrid incremental: Analyze changed identities + potentially stale users
+                const staleThresholdDate = new Date(Date.now() - STALE_THRESHOLD_DAYS * MS_PER_DAY).toISOString();
+
+                // Get potentially stale enabled users (includes users with 1970 dates who never logged in)
+                const potentiallyStaleUsers = await client.query(api.helpers.orm.list_s, {
+                    tableName: "entities",
+                    secret: process.env.CONVEX_API_KEY!,
+                    index: {
+                        name: "by_data_source_type",
+                        params: {
+                            dataSourceId: dataSourceID as Id<"data_sources">,
+                            entityType: "identities",
+                        },
+                    },
+                    filters: {
+                        "normalizedData.enabled": true,
+                        "normalizedData.last_login_at": { lt: staleThresholdDate }
+                    } as any, // Type assertion needed for nested field paths
+                    tenantId: tenantID as Id<"tenants">,
+                }) as Doc<"entities">[];
+
+                // Fetch changed identities
+                const changedIdentities: Doc<"entities">[] = [];
                 for (const entityId of changedEntityIds) {
                     const identity = await client.query(api.helpers.orm.get_s, {
                         tableName: "entities",
@@ -59,6 +80,24 @@ export class Microsoft365StaleUserAnalyzer extends BaseWorker {
                     }) as Doc<"entities"> | null;
 
                     if (identity && identity.entityType === "identities") {
+                        changedIdentities.push(identity);
+                    }
+                }
+
+                // Deduplicate: combine changed + stale users without duplicates
+                const processedIds = new Set<string>();
+                identitiesToAnalyze = [];
+
+                // Add changed identities first
+                for (const identity of changedIdentities) {
+                    processedIds.add(identity._id);
+                    identitiesToAnalyze.push(identity);
+                }
+
+                // Add potentially stale users that weren't already changed
+                for (const identity of potentiallyStaleUsers) {
+                    if (!processedIds.has(identity._id)) {
+                        processedIds.add(identity._id);
                         identitiesToAnalyze.push(identity);
                     }
                 }
@@ -77,7 +116,7 @@ export class Microsoft365StaleUserAnalyzer extends BaseWorker {
                 const lastLoginDate = new Date(lastLoginStr).getTime();
                 const daysSinceLogin = (now - lastLoginDate) / MS_PER_DAY;
 
-                const isStale = daysSinceLogin >= STALE_THRESHOLD_DAYS && lastLoginDate > 0;
+                const isStale = daysSinceLogin >= STALE_THRESHOLD_DAYS;
                 const identityTags = identity.normalizedData.tags || [];
                 const enabled = identity.normalizedData.enabled;
 
@@ -178,6 +217,8 @@ export class Microsoft365StaleUserAnalyzer extends BaseWorker {
                                 tenantId: tenantID as Id<"tenants">,
                                 entityId: identity._id,
                                 dataSourceId: dataSourceID,
+                                integrationId: integrationID,
+                                integrationSlug: integrationType,
                                 siteId: identity.siteId,
                                 alertType: "stale_user",
                                 severity,

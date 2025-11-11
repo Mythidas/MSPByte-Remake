@@ -19,11 +19,10 @@ import { BaseResolver } from "@workspace/pipeline/resolvers/BaseResolver.js";
 import { Scheduler } from "@workspace/pipeline/scheduler/index.js";
 import { BaseWorker } from "@workspace/pipeline/workers/base.js";
 import { CleanupWorker } from "@workspace/pipeline/workers/CleanupWorker.js";
-import { Microsoft365MFAAnalyzer } from "@workspace/pipeline/workers/Microsoft365MFAAnalyzer.js";
+import { Microsoft365IdentitySecurityAnalyzer } from "@workspace/pipeline/workers/Microsoft365IdentitySecurityAnalyzer.js";
 import { Microsoft365StaleUserAnalyzer } from "@workspace/pipeline/workers/Microsoft365StaleUserAnalyzer.js";
 import { Microsoft365LicenseAnalyzer } from "@workspace/pipeline/workers/Microsoft365LicenseAnalyzer.js";
 import { Microsoft365PolicyAnalyzer } from "@workspace/pipeline/workers/Microsoft365PolicyAnalyzer.js";
-import { Microsoft365AdminAnalyzer } from "@workspace/pipeline/workers/Microsoft365AdminAnalyzer.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import { IntegrationType } from "@workspace/shared/types/pipeline/core.js";
 import { dirname, join } from "path";
@@ -70,11 +69,10 @@ class MSPByteBackend {
         ];
         this.workers = [
             new CleanupWorker(),
-            new Microsoft365MFAAnalyzer(),
+            new Microsoft365IdentitySecurityAnalyzer(), // Combines Admin + MFA analysis
             new Microsoft365StaleUserAnalyzer(),
             new Microsoft365LicenseAnalyzer(),
             new Microsoft365PolicyAnalyzer(),
-            new Microsoft365AdminAnalyzer(),
         ];
     }
 

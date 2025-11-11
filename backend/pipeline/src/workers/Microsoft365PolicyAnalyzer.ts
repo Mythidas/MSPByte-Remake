@@ -220,6 +220,8 @@ export class Microsoft365PolicyAnalyzer extends BaseWorker {
                                 tenantId: tenantID as Id<"tenants">,
                                 entityId: identity._id,
                                 dataSourceId: dataSourceID,
+                                integrationId: integrationID,
+                                integrationSlug: integrationType,
                                 siteId: identity.siteId,
                                 alertType: "policy_gap",
                                 severity,

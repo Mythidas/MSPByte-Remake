@@ -357,6 +357,8 @@ export default defineSchema({
         tenantId: v.id("tenants"),
         entityId: v.id("entities"),
         dataSourceId: v.id("data_sources"),
+        integrationId: v.id("integrations"),
+        integrationSlug: v.string(),
         siteId: v.optional(v.id("sites")),
 
         alertType: v.string(), // e.g., "mfa_not_enforced", "stale_user", "license_waste", "policy_gap"

@@ -253,7 +253,7 @@
 				<!-- View Entity Link -->
 				{#if entityLink()}
 					<div>
-						<Button variant="outline" href={entityLink()} target="_blank" class="w-full" size="sm">
+						<Button variant="ghost" href={entityLink()} target="_blank" class="w-full" size="sm">
 							<ExternalLink class="mr-2 h-4 w-4" />
 							View Affected Identity
 						</Button>
@@ -313,7 +313,7 @@
 			<Sheet.Footer class="mt-6">
 				{#if alert.status === 'active'}
 					<Button
-						variant="outline"
+						variant="destructive"
 						onclick={() => {
 							suppressDialogOpen = true;
 						}}

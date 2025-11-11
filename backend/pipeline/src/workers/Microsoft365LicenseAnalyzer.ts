@@ -154,6 +154,8 @@ export class Microsoft365LicenseAnalyzer extends BaseWorker {
                                     tenantId: tenantID as Id<"tenants">,
                                     entityId: identity._id,
                                     dataSourceId: dataSourceID,
+                                    integrationId: integrationID,
+                                    integrationSlug: integrationType,
                                     siteId: identity.siteId,
                                     alertType: "license_waste",
                                     severity,
