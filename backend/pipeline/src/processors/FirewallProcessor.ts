@@ -52,6 +52,7 @@ export class FirewallProcessor extends BaseProcessor {
           hostname: rawData.hostname,
           status: rawData.status.connected ? "online" : "offline",
           firmware: rawData.firmware?.firmwareVersion,
+          firmwareUpgradeAvailable: rawData.firmware?.upgradeToVersion && rawData.firmware.upgradeToVersion.length > 0,
           model: rawData.model,
 
           extAddress: rawData.externalIpv4Addresses?.[0] || "",

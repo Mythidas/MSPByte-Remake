@@ -18,7 +18,7 @@ import { Doc } from "@workspace/database/convex/_generated/dataModel.js";
 
 export class SophosPartnerAdapter extends BaseAdapter {
     constructor() {
-        super("sophos-partner", ["endpoints", "companies", "firewalls"]);
+        super("sophos-partner", ["endpoints", "companies", "firewalls", "licenses"]);
     }
 
     protected async getRawData({
@@ -60,6 +60,14 @@ export class SophosPartnerAdapter extends BaseAdapter {
                     eventData,
                     tenantID,
                     dataSource, ...rest
+                });
+            }
+            case "licenses": {
+                return await this.handleLicenseSync({
+                    eventData,
+                    tenantID,
+                    dataSource,
+                    ...rest
                 });
             }
         }
@@ -244,6 +252,99 @@ export class SophosPartnerAdapter extends BaseAdapter {
                         rawData,
                     };
                 }), hasMore: false
+            }
+        };
+    }
+
+    private async handleLicenseSync(
+        props: RawDataProps
+    ): Promise<APIResponse<RawDataResult>> {
+        const sophosSource = (await client.query(api.helpers.orm.get_s, {
+            tableName: "data_sources",
+            secret: process.env.CONVEX_API_KEY!,
+            index: {
+                name: "by_integration_primary",
+                params: {
+                    integrationId: props.eventData.integrationID,
+                    isPrimary: true,
+                },
+            },
+        })) as Doc<"data_sources">;
+
+        // Find the global data source (no siteId)
+        if (!sophosSource) {
+            return Debug.error({
+                module: "SophosPartnerAdapter",
+                context: "handleLicenseSync",
+                message: `Failed to fetch global Sophos data source`,
+            });
+        }
+
+        const partnerConfig = sophosSource.config as SophosPartnerConfig;
+
+        const connector = new SophosPartnerConnector(
+            partnerConfig,
+            process.env.SECRET_KEY!
+        );
+        const health = await connector.checkHealth();
+        if (!health) {
+            return Debug.error({
+                module: "SophosPartnerAdapter",
+                context: "handleLicenseSync",
+                message: `Connector failed health check: ${props.dataSource._id}`,
+            });
+        }
+
+        // Call both license methods with tenant config
+        const tenantConfig = props.dataSource.config as SophosTenantConfig;
+        const [generalLicensesResult, firewallLicensesResult] = await Promise.all([
+            connector.getLicenses(tenantConfig),
+            connector.getFirewallLicenses(tenantConfig)
+        ]);
+
+        // Check for errors
+        if (generalLicensesResult.error) {
+            return { error: generalLicensesResult.error };
+        }
+        if (firewallLicensesResult.error) {
+            return { error: firewallLicensesResult.error };
+        }
+
+        console.log(generalLicensesResult)
+
+        return {
+            data: {
+                data: [...generalLicensesResult.data.licenses.map((rawData) => {
+                    const dataHash = Encryption.sha256(
+                        JSON.stringify({
+                            ...rawData,
+                            lastSeenAt: undefined,
+                        })
+                    );
+
+                    return {
+                        externalID: rawData.id,
+                        dataHash,
+                        rawData,
+                        siteID: props.dataSource.siteId,
+                    } as DataFetchPayload;
+                }),
+                ...firewallLicensesResult.data.map((rawData) => {
+                    const dataHash = Encryption.sha256(
+                        JSON.stringify({
+                            ...rawData,
+                            lastSeenAt: undefined
+                        })
+                    );
+
+                    return {
+                        externalID: rawData.serialNumber,
+                        dataHash,
+                        rawData,
+                        siteID: props.dataSource.siteId
+                    } as DataFetchPayload;
+                })],
+                hasMore: false
             }
         };
     }

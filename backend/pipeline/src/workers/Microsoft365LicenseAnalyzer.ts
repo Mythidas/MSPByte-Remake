@@ -4,6 +4,8 @@ import type { Doc, Id } from "@workspace/database/convex/_generated/dataModel.js
 import { client } from "@workspace/shared/lib/convex.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import { LinkedEventPayload } from "@workspace/shared/types/pipeline/index.js";
+import { isLicenseOverused, getLicenseOverage } from "@workspace/shared/lib/licenses.js";
+import type { License } from "@workspace/database/convex/types/normalized.js";
 
 export class Microsoft365LicenseAnalyzer extends BaseWorker {
     constructor() {
@@ -213,10 +215,115 @@ export class Microsoft365LicenseAnalyzer extends BaseWorker {
                 await this.updateIdentityState(identity, newState);
             }
 
+            // Check for overused licenses (consumed > total)
+            const allLicenses = await client.query(api.helpers.orm.list_s, {
+                tableName: "entities",
+                secret: process.env.CONVEX_API_KEY!,
+                index: {
+                    name: "by_data_source_type",
+                    params: {
+                        dataSourceId: dataSourceID,
+                        entityType: "licenses",
+                    },
+                },
+                tenantId: tenantID as Id<"tenants">,
+            }) as Doc<"entities">[];
+
+            for (const licenseEntity of allLicenses) {
+                const license = licenseEntity.normalizedData as License;
+
+                if (isLicenseOverused(license)) {
+                    const overage = getLicenseOverage(license);
+
+                    // Check if alert already exists
+                    const existingAlert = await client.query(api.helpers.orm.get_s, {
+                        tableName: "entity_alerts",
+                        secret: process.env.CONVEX_API_KEY!,
+                        index: {
+                            name: "by_entity_type",
+                            params: {
+                                entityId: licenseEntity._id,
+                                alertType: "license_overuse",
+                            },
+                        },
+                        filters: {
+                            status: "active"
+                        },
+                        tenantId: tenantID as Id<"tenants">,
+                    }) as Doc<"entity_alerts"> | null;
+
+                    if (!existingAlert) {
+                        // Create new overuse alert
+                        await client.mutation(api.helpers.orm.insert_s, {
+                            tableName: "entity_alerts",
+                            secret: process.env.CONVEX_API_KEY!,
+                            data: [{
+                                tenantId: tenantID,
+                                entityId: licenseEntity._id,
+                                siteId: licenseEntity.siteId,
+                                integrationId: integrationID,
+                                integrationSlug: integrationType,
+                                alertType: "license_overuse",
+                                severity: "high",
+                                status: "active",
+                                message: `License ${license.name} is overused: ${license.consumedUnits} consumed / ${license.totalUnits} available`,
+                                metadata: {
+                                    licenseName: license.name,
+                                    licenseSkuId: license.externalId,
+                                    consumedUnits: license.consumedUnits,
+                                    totalUnits: license.totalUnits,
+                                    overage,
+                                },
+                                createdAt: Date.now(),
+                                updatedAt: Date.now(),
+                            }],
+                        });
+
+                        Debug.log({
+                            module: "Microsoft365LicenseAnalyzer",
+                            context: "execute",
+                            message: `Created license_overuse alert for ${license.name} (overage: ${overage})`,
+                        });
+                    }
+                } else {
+                    // Resolve any existing overuse alerts for this license
+                    const existingAlerts = await client.query(api.helpers.orm.list_s, {
+                        tableName: "entity_alerts",
+                        secret: process.env.CONVEX_API_KEY!,
+                        index: {
+                            name: "by_entity_status",
+                            params: {
+                                entityId: licenseEntity._id,
+                                status: "active",
+                            },
+                        },
+                        filters: {
+                            alertType: "license_overuse"
+                        },
+                        tenantId: tenantID as Id<"tenants">,
+                    }) as Doc<"entity_alerts">[];
+
+                    for (const alert of existingAlerts) {
+                        await client.mutation(api.helpers.orm.update_s, {
+                            tableName: "entity_alerts",
+                            secret: process.env.CONVEX_API_KEY!,
+                            data: [{
+                                id: alert._id,
+                                updates: {
+                                    status: "resolved",
+                                    resolvedAt: Date.now(),
+                                    updatedAt: Date.now(),
+                                },
+                            }],
+                        });
+                    }
+                }
+            }
+
             Debug.log({
                 module: "Microsoft365LicenseAnalyzer",
                 context: "execute",
-                message: `Completed license optimization analysis for ${identitiesToAnalyze.length} identities`,
+                message: `Completed license optimization analysis for ${identitiesToAnalyze.length} identities and ${allLicenses.length} licenses`,
             });
         } catch (error) {
             Debug.error({

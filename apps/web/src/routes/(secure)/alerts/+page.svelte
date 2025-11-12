@@ -162,17 +162,6 @@
 					}
 				},
 				{
-					key: 'message',
-					title: 'Message',
-					sortable: false,
-					searchable: true,
-					filter: {
-						component: 'text',
-						operators: ['contains'],
-						defaultOperator: 'contains'
-					}
-				},
-				{
 					key: 'alertType',
 					title: 'Type',
 					sortable: true,
@@ -180,6 +169,17 @@
 					filter: {
 						component: 'text',
 						operators: ['eq', 'ne', 'contains'],
+						defaultOperator: 'contains'
+					}
+				},
+				{
+					key: 'message',
+					title: 'Message',
+					sortable: false,
+					searchable: true,
+					filter: {
+						component: 'text',
+						operators: ['contains'],
 						defaultOperator: 'contains'
 					}
 				},

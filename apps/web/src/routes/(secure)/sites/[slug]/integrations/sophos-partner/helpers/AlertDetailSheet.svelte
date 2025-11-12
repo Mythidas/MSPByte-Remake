@@ -16,7 +16,6 @@
 		TrendingUp,
 		Package
 	} from 'lucide-svelte';
-	import AlertSuppressionDialog from './AlertSuppressionDialog.svelte';
 	import { page } from '$app/stores';
 	import { ALERT_DESCRIPTIONS, type AlertDescriptionConfig } from '@workspace/shared/config/alerts.js';
 
@@ -29,8 +28,6 @@
 		open?: boolean;
 		onClose?: () => void;
 	} = $props();
-
-	let suppressDialogOpen = $state(false);
 
 	// Icon mapping
 	const ICON_MAP: Record<string, any> = {
@@ -108,21 +105,9 @@
 
 	const content = $derived(alert ? getAlertContent(alert) : null);
 
-	// Build link to affected entity
-	const entityLink = $derived(() => {
-		if (!alert?.metadata?.email) return null;
-		const siteSlug = $page.params.slug;
-		return `/sites/${siteSlug}/integrations/microsoft-365?tab=identities&globalSearch=${encodeURIComponent(alert.metadata.email)}`;
-	});
-
 	function handleClose() {
 		open = false;
 		onClose?.();
-	}
-
-	function handleSuppressionSuccess() {
-		// Close the sheet and notify parent
-		handleClose();
 	}
 </script>
 
@@ -184,16 +169,6 @@
 					<Separator />
 				{/if}
 
-				<!-- View Entity Link -->
-				{#if entityLink()}
-					<div>
-						<Button variant="ghost" href={entityLink()} target="_blank" class="w-full" size="sm">
-							<ExternalLink class="mr-2 h-4 w-4" />
-							View Affected Identity
-						</Button>
-					</div>
-				{/if}
-
 				<!-- Future Actions (Disabled for now) -->
 				{#if content.futureActions.length > 0}
 					<div class="space-y-2">
@@ -207,66 +182,16 @@
 						</div>
 					</div>
 				{/if}
-
-				<Separator />
-
-				<!-- Alert Status -->
-				<div class="space-y-3">
-					<h3 class="font-semibold">Alert Status</h3>
-					<div class="space-y-2">
-						<div class="flex items-center justify-between py-2">
-							<span class="text-muted-foreground text-sm">Status:</span>
-							<Badge variant="outline">{alert.status.toUpperCase()}</Badge>
-						</div>
-						<div class="flex items-center justify-between py-2">
-							<span class="text-muted-foreground text-sm">Last Updated:</span>
-							<span class="text-sm">{new Date(alert.updatedAt).toLocaleString()}</span>
-						</div>
-						{#if alert.status === 'suppressed' && alert.suppressionReason}
-							<div class="bg-muted space-y-2 rounded-md p-3">
-								<div>
-									<span class="text-sm font-medium">Suppression Reason:</span>
-									<p class="text-muted-foreground mt-1 text-sm">{alert.suppressionReason}</p>
-								</div>
-								{#if alert.suppressedAt}
-									<div class="text-muted-foreground text-xs">
-										Suppressed on {new Date(alert.suppressedAt).toLocaleString()}
-									</div>
-								{/if}
-								{#if alert.suppressedUntil}
-									<div class="text-muted-foreground text-xs">
-										Expires on {new Date(alert.suppressedUntil).toLocaleString()}
-									</div>
-								{/if}
-							</div>
-						{/if}
-					</div>
-				</div>
 			</div>
 
-			<Sheet.Footer class="mt-6">
-				{#if alert.status === 'active'}
-					<Button
-						variant="destructive"
-						onclick={() => {
-							suppressDialogOpen = true;
-						}}
-						class="w-full"
-					>
-						Suppress Alert
-					</Button>
-				{/if}
-				<Button onclick={handleClose} variant="default" class="w-full">Close</Button>
+			<Sheet.Footer class="mt-4">
+				<div class="text-muted-foreground text-xs">
+					Created: {new Date(alert.createdAt).toLocaleString()}
+					{#if alert.updatedAt && alert.updatedAt !== alert.createdAt}
+						• Updated: {new Date(alert.updatedAt).toLocaleString()}
+					{/if}
+				</div>
 			</Sheet.Footer>
 		</Sheet.Content>
 	</Sheet.Root>
-
-	<!-- Suppression Dialog -->
-	{#if alert}
-		<AlertSuppressionDialog
-			{alert}
-			bind:open={suppressDialogOpen}
-			onSuccess={handleSuppressionSuccess}
-		/>
-	{/if}
 {/if}

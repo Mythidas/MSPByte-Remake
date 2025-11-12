@@ -2,10 +2,11 @@
 	import { api, type Doc } from '$lib/convex';
 	import { useQuery } from 'convex-svelte';
 	import DataTable from '$lib/components/table/DataTable.svelte';
-	import { type DataTableCell } from '$lib/components/table/types.js';
+	import { type DataTableCell, type TableView } from '$lib/components/table/types.js';
 	import { Progress } from '$lib/components/ui/progress/index.js';
 	import { type License } from '@workspace/database/convex/types/normalized.js';
 	import { prettyText } from '@workspace/shared/lib/utils.js';
+	import { Package, Sparkles, ListFilter } from 'lucide-svelte';
 
 	const { dataSourceId }: { dataSourceId: string } = $props();
 
@@ -22,6 +23,32 @@
 			}
 		}
 	}));
+
+	// Predefined license views
+	const licenseViews: TableView[] = [
+		{
+			name: 'productive',
+			label: 'Productive Licenses',
+			description: 'Paid licenses excluding free/trial licenses',
+			icon: Package,
+			filters: [{ field: 'normalizedData.tags', operator: 'nin', value: ['bloat'] }],
+			isDefault: true
+		},
+		{
+			name: 'all',
+			label: 'All Licenses',
+			description: 'All licenses including free and trial',
+			icon: ListFilter,
+			filters: []
+		},
+		{
+			name: 'bloat',
+			label: 'Free/Trial Licenses',
+			description: 'Free, trial, and high-volume licenses excluded from metrics',
+			icon: Sparkles,
+			filters: [{ field: 'normalizedData.tags', operator: 'in', value: ['bloat'] }]
+		}
+	];
 </script>
 
 {#snippet utilizationSnip({ row }: DataTableCell<Doc<'entities'>>)}
@@ -49,6 +76,7 @@
 	rows={licensesQuery.data || []}
 	isLoading={licensesQuery.isLoading}
 	bind:filters
+	views={licenseViews}
 	columns={[
 		{
 			key: 'normalizedData.name',

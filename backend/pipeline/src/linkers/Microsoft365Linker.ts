@@ -42,6 +42,10 @@ export class Microsoft365Linker extends BaseLinker {
             buildEventName("processed", "identities"),
             this.handleIdentityLicenseLinking.bind(this)
         );
+        await natsClient.subscribe(
+            buildEventName("processed", "licenses"),
+            this.handleLicenses.bind(this)
+        );
 
         Debug.log({
             module: "Microsoft365Linker",
@@ -555,6 +559,29 @@ export class Microsoft365Linker extends BaseLinker {
                 module: "Microsoft365Linker",
                 context: "handleIdentityLicenseLinking",
                 message: `Failed to link identity licenses: ${error}`,
+            });
+        }
+    }
+
+    /**
+     * Handle licenses - pass through without linking since licenses don't have relationships
+     */
+    private async handleLicenses(processedEvent: ProcessedEventPayload): Promise<void> {
+        Debug.log({
+            module: "Microsoft365Linker",
+            context: "handleLicenses",
+            message: `Processing licenses for event ${processedEvent.eventID}`,
+        });
+
+        try {
+            // Licenses don't require any relationship linking
+            // Simply pass through to linked stage so workers can analyze them
+            await this.publishLinkedEvent(processedEvent);
+        } catch (error) {
+            Debug.error({
+                module: "Microsoft365Linker",
+                context: "handleLicenses",
+                message: `Failed to process licenses: ${error}`,
             });
         }
     }

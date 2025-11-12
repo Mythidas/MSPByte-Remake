@@ -1,5 +1,7 @@
 <script lang="ts">
-	import type { Doc } from '$lib/convex';
+	import { api, type Doc } from '$lib/convex';
+	import { useQuery } from 'convex-svelte';
+	import { getAppState } from '$lib/state/Application.svelte.js';
 	import DataTable from '$lib/components/table/DataTable.svelte';
 	import { type DataTableCell } from '$lib/components/table/types.js';
 	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
@@ -7,13 +9,26 @@
 	import { prettyText } from '@workspace/shared/lib/utils.js';
 	import { CircleArrowUp } from 'lucide-svelte';
 
-	interface Props {
-		data: Doc<'entities'>[] | undefined;
-		isLoading: boolean;
-		filters: any;
-	}
+	const { dataSourceId }: { dataSourceId: string } = $props();
+	const appState = getAppState();
 
-	let { data, isLoading, filters = $bindable() }: Props = $props();
+	let filters = $state<any>(undefined);
+
+	// Query endpoints with dynamic filters from table
+	const endpointsQuery = useQuery(api.helpers.orm.list, () => ({
+		tableName: 'entities' as const,
+		filters: filters,
+		index: {
+			name: 'by_site_type',
+			params: {
+				siteId: appState.getSite()?._id!,
+				entityType: 'endpoints'
+			}
+		}
+	}));
+
+	const data = $derived((endpointsQuery.data || []) as Doc<'entities'>[]);
+	const isLoading = $derived(endpointsQuery.isLoading);
 </script>
 
 {#snippet statusSnip({ row }: DataTableCell<Doc<'entities'>>)}

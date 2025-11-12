@@ -97,15 +97,25 @@
 			alerts.filter((a) => a.status === 'active' && a.severity === 'critical').length || 0,
 		highAlerts: alerts.filter((a) => a.status === 'active' && a.severity === 'high').length || 0,
 		totalLicenses:
-			licenses.reduce((acc, l) => {
-				const license = l.normalizedData as License;
-				return acc + (license.totalUnits || 0);
-			}, 0) || 0,
+			licenses
+				.filter((l) => {
+					const tags = l.normalizedData?.tags || [];
+					return !tags.includes('bloat');
+				})
+				.reduce((acc, l) => {
+					const license = l.normalizedData as License;
+					return acc + (license.totalUnits || 0);
+				}, 0) || 0,
 		consumedLicenses:
-			licenses.reduce((acc, l) => {
-				const license = l.normalizedData as License;
-				return acc + (license.consumedUnits || 0);
-			}, 0) || 0
+			licenses
+				.filter((l) => {
+					const tags = l.normalizedData?.tags || [];
+					return !tags.includes('bloat');
+				})
+				.reduce((acc, l) => {
+					const license = l.normalizedData as License;
+					return acc + (license.consumedUnits || 0);
+				}, 0) || 0
 	});
 
 	const isLoading = $derived(

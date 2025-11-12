@@ -7,6 +7,8 @@
 	$effect(() => {
 		if (data.site) {
 			appState.setSite(data.site);
+			// Update linkedIntegrations to reflect the current site's integrations
+			appState.siteLinkedIntegrations = data.site.linkedIntegrations || [];
 		}
 	});
 </script>

@@ -6,6 +6,7 @@ import { HaloPSAAdapter } from "@workspace/pipeline/adapters/HaloPSAAdapter.js";
 import { natsClient } from "@workspace/pipeline/helpers/nats.js";
 import { BaseLinker } from "@workspace/pipeline/linkers/BaseLinker.js";
 import { Microsoft365Linker } from "@workspace/pipeline/linkers/Microsoft365Linker.js";
+import { SophosPartnerLinker } from "@workspace/pipeline/linkers/SophosPartnerLinker.js";
 import { BaseProcessor } from "@workspace/pipeline/processors/BaseProcessor.js";
 import { CompanyProcessor } from "@workspace/pipeline/processors/CompanyProcessor.js";
 import { EndpointProcessor } from "@workspace/pipeline/processors/EndpointProcessor.js";
@@ -66,6 +67,7 @@ class MSPByteBackend {
         this.resolvers = [];
         this.linkers = [
             new Microsoft365Linker(),
+            new SophosPartnerLinker(),
         ];
         this.workers = [
             new CleanupWorker(),

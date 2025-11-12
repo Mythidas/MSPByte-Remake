@@ -154,11 +154,10 @@
 				rows={alerts}
 				columns={[
 					{
-						key: 'siteName',
-						title: 'Site',
+						key: 'alertType',
+						title: 'Type',
 						sortable: true,
-						searchable: true,
-						cell: siteSnip,
+						cell: alertTypeSnip,
 						filter: {
 							component: 'text',
 							operators: ['eq', 'ne', 'contains'],
@@ -173,17 +172,6 @@
 						filter: {
 							component: 'text',
 							operators: ['contains'],
-							defaultOperator: 'contains'
-						}
-					},
-					{
-						key: 'alertType',
-						title: 'Type',
-						sortable: true,
-						cell: alertTypeSnip,
-						filter: {
-							component: 'text',
-							operators: ['eq', 'ne', 'contains'],
 							defaultOperator: 'contains'
 						}
 					},

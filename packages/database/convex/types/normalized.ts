@@ -21,6 +21,7 @@ export type Endpoint = {
     mac_address: string;
 
     last_check_in: string;
+    protectionUpgradable?: boolean;
 };
 
 export type Identity = {
@@ -56,6 +57,7 @@ export type Firewall = {
     hostname: string;
     status: "online" | "offline";
     firmware: string;
+    firmwareUpgradeAvailable?: boolean;
     model: string;
 
     extAddress: string;
@@ -84,7 +86,8 @@ export type License = {
     externalId: string;
 
     name: string;
-    skuPartNumber: string;
-    totalUnits: number;
-    consumedUnits: number;
+    skuPartNumber?: string;
+    totalUnits?: number;
+    consumedUnits?: number;
+    tags?: string[]; // e.g., ["bloat"], ["overused"]
 }
