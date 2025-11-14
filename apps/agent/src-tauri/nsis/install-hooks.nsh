@@ -26,6 +26,8 @@ ${StrStr}
 
 ; Global variables
 Var SiteSecret
+Var ShowAgent
+Var ShowAgent
 Var ApiHost
 Var InstallTimestamp
 Var LogFile
@@ -270,6 +272,7 @@ Function ParseInstallParameters
 
     ; Parse /secret parameter
     ${GetOptions} $R0 "/secret=" $SiteSecret
+    ${GetOptions} $R0 "/visible=" $ShowAgent
 
     ; Validate that secret was provided
     ${If} $SiteSecret == ""
@@ -278,6 +281,10 @@ Function ParseInstallParameters
 
         SetErrorLevel 1
         Abort
+    ${EndIf}
+
+    ${If} $ShowAgent == ""
+        StrCpy $ShowAgent "false"
     ${EndIf}
 
     StrCpy $R9 "Site secret parameter found"
@@ -592,7 +599,7 @@ Function CreateSiteConfig
     FileWrite $8 '{$\r$\n'
     FileWrite $8 '  "site_id": "$SiteSecret",$\r$\n'
     FileWrite $8 '  "api_host": "$ApiHost",$\r$\n'
-    FileWrite $8 '  "show_tray": false,$\r$\n'
+    FileWrite $8 '  "show_tray": $ShowAgent,$\r$\n'
     FileWrite $8 '  "installed_at": "$InstallTimestamp"$\r$\n'
     FileWrite $8 '}'
     FileClose $8

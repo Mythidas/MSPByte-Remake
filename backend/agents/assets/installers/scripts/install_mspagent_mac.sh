@@ -70,6 +70,7 @@ log "Config directory (global): ${CONFIG_DIR}"
 log "=== STEP 1: Parsing Installation Parameters ==="
 
 SITE_SECRET=""
+SHOW_AGENT=false
 DMG_URL="https://agent.mspbyte.pro/downloads/macos/app"
 
 # Method 1: Command line arguments
@@ -79,8 +80,8 @@ if [ -n "$1" ]; then
 fi
 
 if [ -n "$2" ]; then
-    DMG_URL="$2"
-    log "DMG URL provided as argument 2"
+    SHOW_AGENT=$2
+    log "ShowAgent provided as argument 2"
 fi
 
 # Method 2: Environment variables (override command line)
@@ -334,7 +335,7 @@ if [ "${SHOULD_CREATE_SETTINGS}" = true ]; then
 {
   "site_id": "${SITE_SECRET}",
   "api_host": "${API_HOST}",
-  "show_tray": false,
+  "show_tray": ${SHOW_AGENT},
   "installed_at": "${INSTALL_TIMESTAMP}"
 }
 EOF
