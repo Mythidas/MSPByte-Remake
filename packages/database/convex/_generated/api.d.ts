@@ -8,14 +8,9 @@
  * @module
  */
 
-import type {
-  ApiFromModules,
-  FilterApi,
-  FunctionReference,
-} from "convex/server";
 import type * as agents_mutate_s from "../agents/mutate_s.js";
 import type * as datasources_mutate from "../datasources/mutate.js";
-import type * as entities_query from "../entities/query.js";
+import type * as datasources_query from "../datasources/query.js";
 import type * as entity_alerts_mutations from "../entity_alerts/mutations.js";
 import type * as entity_alerts_query from "../entity_alerts/query.js";
 import type * as helpers_audit from "../helpers/audit.js";
@@ -41,18 +36,16 @@ import type * as types_normalized from "../types/normalized.js";
 import type * as users_mutate from "../users/mutate.js";
 import type * as users_query from "../users/query.js";
 
-/**
- * A utility for referencing Convex functions in your app's API.
- *
- * Usage:
- * ```js
- * const myFunctionReference = api.myModule.myFunction;
- * ```
- */
+import type {
+  ApiFromModules,
+  FilterApi,
+  FunctionReference,
+} from "convex/server";
+
 declare const fullApi: ApiFromModules<{
   "agents/mutate_s": typeof agents_mutate_s;
   "datasources/mutate": typeof datasources_mutate;
-  "entities/query": typeof entities_query;
+  "datasources/query": typeof datasources_query;
   "entity_alerts/mutations": typeof entity_alerts_mutations;
   "entity_alerts/query": typeof entity_alerts_query;
   "helpers/audit": typeof helpers_audit;
@@ -78,11 +71,31 @@ declare const fullApi: ApiFromModules<{
   "users/mutate": typeof users_mutate;
   "users/query": typeof users_query;
 }>;
+
+/**
+ * A utility for referencing Convex functions in your app's public API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = api.myModule.myFunction;
+ * ```
+ */
 export declare const api: FilterApi<
   typeof fullApi,
   FunctionReference<any, "public">
 >;
+
+/**
+ * A utility for referencing Convex functions in your app's internal API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = internal.myModule.myFunction;
+ * ```
+ */
 export declare const internal: FilterApi<
   typeof fullApi,
   FunctionReference<any, "internal">
 >;
+
+export declare const components: {};

@@ -43,6 +43,7 @@ export default defineSchema({
         ),
         metadata: v.object({
             currentSite: v.optional(v.id("sites")),
+            currentMode: v.optional(v.string())
         }),
         lastActivityAt: v.optional(v.number()),
 

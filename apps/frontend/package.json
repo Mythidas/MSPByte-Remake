@@ -10,10 +10,12 @@
     },
     "dependencies": {
         "@convex-dev/workos": "^0.0.1",
+        "@tanstack/react-table": "^8.21.3",
         "@workos-inc/authkit-nextjs": "^2.11.0",
         "@workos-inc/authkit-react": "^0.13.0",
         "@workspace/database": "workspace:*",
         "@workspace/ui": "workspace:*",
+        "@workspace/shared": "workspace:*",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "convex": "^1.29.0",
@@ -26,7 +28,6 @@
         "zustand": "^5.0.8"
     },
     "devDependencies": {
-        "@workspace/shared": "workspace:*",
         "@tailwindcss/postcss": "^4",
         "@types/node": "^20",
         "@types/react": "^19",

@@ -26,8 +26,23 @@
             "@/*": [
                 "./*"
             ],
-            "@workspace/shared/*": [
-                "../../packages/shared/src/*"
+            "@/components/*": [
+                "./components/*"
+            ],
+            "@workspace/shared/types/*": [
+                "../../packages/shared/src/types/*"
+            ],
+            "@workspace/shared/lib/*": [
+                "../../packages/shared/src/lib/*"
+            ],
+            "@workspace/ui/lib/*": [
+                "../../packages/ui/src/lib/*"
+            ],
+            "@workspace/ui/components/*": [
+                "../../packages/ui/src/components/*"
+            ],
+            "@workspace/ui/hooks/*": [
+                "../../packages/ui/src/hooks/*"
             ]
         }
     },

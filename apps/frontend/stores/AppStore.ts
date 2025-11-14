@@ -1,45 +1,41 @@
+import { Doc } from "@/lib/api";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { Site, ModeConfig } from "@/lib/types";
 
-interface WardStore {
+type Site = Doc<'sites'>;
+type Mode = Doc<'integrations'>;
+
+interface AppStore {
     // Current state
     currentSite: Site | null;
-    currentMode: string | null; // 'home' | integration slug
-
-    // Available options
-    sites: Site[];
-    availableModes: ModeConfig[];
+    currentMode: Mode | null; // 'home' | integration slug
+    availableModes: Mode[];
 
     // Actions
     setSite: (site: Site | null) => void;
-    setMode: (mode: string | null) => void;
-    setSites: (sites: Site[]) => void;
-    setAvailableModes: (modes: ModeConfig[]) => void;
+    setMode: (mode: Mode | null) => void;
+    setAvailableModes: (modes: Mode[]) => void;
     reset: () => void;
 }
 
-export const useWardStore = create<WardStore>()(
+export const useAppStore = create<AppStore>()(
     persist(
         (set) => ({
             currentSite: null,
             currentMode: null,
-            sites: [],
             availableModes: [],
 
             setSite: (site) => set({ currentSite: site }),
             setMode: (mode) => set({ currentMode: mode }),
-            setSites: (sites) => set({ sites }),
             setAvailableModes: (modes) => set({ availableModes: modes }),
             reset: () => set({
                 currentSite: null,
                 currentMode: null,
-                sites: [],
                 availableModes: [],
             }),
         }),
         {
-            name: "ward-storage",
+            name: "app-storage",
             partialize: (state) => ({
                 // Only persist current site/mode, not the lists
                 currentSite: state.currentSite,
