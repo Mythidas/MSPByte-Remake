@@ -1,6 +1,5 @@
 "use client";
 
-import { Card, CardContent } from "@workspace/ui/components/card";
 import { useQuery } from "convex/react";
 import { Trash2, Archive, Download } from "lucide-react";
 import { DataTable, DataTableColumn, TableView, RowAction } from "@/components/DataTable";
@@ -16,7 +15,7 @@ type Site = Doc<"sites"> & {
 
 export default function SitesPage() {
     const router = useRouter();
-    const sites = useQuery(api.sites.query.list);
+    const sites = useQuery(api.helpers.orm.list, { tableName: 'sites' });
 
     // Define columns
     const columns: DataTableColumn<Site>[] = [
@@ -139,7 +138,7 @@ export default function SitesPage() {
             label: "With PSA",
             filters: [
                 {
-                    field: "psaIntegrationName",
+                    field: "psaCompanyId",
                     operator: "ne",
                     value: null,
                 },
@@ -189,7 +188,7 @@ export default function SitesPage() {
         <div className="flex flex-col size-full gap-2 mx-auto">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">Sites</h1>
-                <p className="text-muted-foreground">Manage your client sites and integrations</p>
+                <p className="text-muted-foreground">Manage your client sites</p>
             </div>
             {!!sites ?
                 (<DataTable

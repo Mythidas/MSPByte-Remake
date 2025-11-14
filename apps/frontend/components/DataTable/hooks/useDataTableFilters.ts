@@ -62,6 +62,7 @@ export function useDataTableFilters({ views = [], initialFilters = [] }: UseData
         filters,
         setFilters,
         activeView,
+        setActiveView,
         combinedFilters,
         addFilter,
         removeFilter,
