@@ -11,7 +11,7 @@ use std::sync::Arc;
 use tauri::{
     AppHandle, Emitter, EventTarget, Manager, WebviewUrl, WebviewWindowBuilder,
     tray::TrayIconBuilder,
-    menu::{Menu, MenuItem}, ActivationPolicy
+    menu::{Menu, MenuItem}
 };
 use tauri_plugin_screenshots::{get_monitor_screenshot, get_screenshotable_monitors};
 
@@ -118,6 +118,7 @@ pub fn run() {
 
             #[cfg(target_os = "macos")]
             {
+                use tauri::ActivationPolicy;
                 app.set_activation_policy(ActivationPolicy::Accessory);
             }
 

@@ -257,8 +257,8 @@ export class Microsoft365LicenseAnalyzer extends BaseWorker {
                         await client.mutation(api.helpers.orm.insert_s, {
                             tableName: "entity_alerts",
                             secret: process.env.CONVEX_API_KEY!,
+                            tenantId: tenantID,
                             data: [{
-                                tenantId: tenantID,
                                 entityId: licenseEntity._id,
                                 siteId: licenseEntity.siteId,
                                 integrationId: integrationID,
@@ -274,7 +274,6 @@ export class Microsoft365LicenseAnalyzer extends BaseWorker {
                                     totalUnits: license.totalUnits,
                                     overage,
                                 },
-                                createdAt: Date.now(),
                                 updatedAt: Date.now(),
                             }],
                         });
