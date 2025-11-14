@@ -1,74 +1,79 @@
 {
-  "$schema": "https://schema.tauri.app/config/2",
-  "productName": "MSPAgent",
-  "version": "0.1.14",
-  "identifier": "com.MSPByte",
-  "build": {
-    "beforeDevCommand": "bun run dev:frontend",
-    "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "bun run build:app",
-    "frontendDist": "../dist"
-  },
-  "app": {
-    "windows": [
-      {
-        "title": "MSPAgent",
-        "width": 1000,
-        "height": 800,
-        "label": "support",
-        "url": "index.html",
-        "visible": false
-      },
-      {
-        "title": "MSPAgent",
-        "width": 300,
-        "height": 300,
-        "label": "about",
-        "url": "about.html",
-        "visible": false
-      }
-    ],
-    "security": {
-      "csp": null
-    }
-  },
-  "bundle": {
-    "active": true,
-    "targets": ["nsis", "dmg"],
-    "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
-    ],
-    "windows": {
-      "allowDowngrades": true,
-      "certificateThumbprint": null,
-      "digestAlgorithm": null,
-      "nsis": {
-        "installerHooks": "nsis/install-hooks.nsh",
-        "installMode": "perMachine",
-        "languages": ["English"],
-        "displayLanguageSelector": false,
-        "compression": "lzma",
-        "installerIcon": "icons/icon.ico"
-      },
-      "signCommand": null,
-      "timestampUrl": null,
-      "tsp": false,
-      "webviewInstallMode": {
-        "type": "embedBootstrapper",
-        "silent": true
-      }
+    "$schema": "https://schema.tauri.app/config/2",
+    "productName": "MSPAgent",
+    "version": "0.1.14",
+    "identifier": "com.MSPByte",
+    "build": {
+        "beforeDevCommand": "bun run dev:frontend",
+        "devUrl": "http://localhost:1420",
+        "beforeBuildCommand": "bun run build:app",
+        "frontendDist": "../dist"
     },
-    "macOS": {
-        "dmg": {
-            "windowSize": {
-                "width": 800,
-                "height": 600
+    "app": {
+        "windows": [
+            {
+                "title": "MSPAgent",
+                "width": 1000,
+                "height": 800,
+                "label": "support",
+                "url": "index.html",
+                "visible": false
+            },
+            {
+                "title": "MSPAgent About",
+                "width": 300,
+                "height": 300,
+                "label": "about",
+                "url": "about.html",
+                "visible": false
+            }
+        ],
+        "security": {
+            "csp": null
+        }
+    },
+    "bundle": {
+        "active": true,
+        "targets": [
+            "nsis",
+            "dmg"
+        ],
+        "icon": [
+            "icons/32x32.png",
+            "icons/128x128.png",
+            "icons/128x128@2x.png",
+            "icons/icon.icns",
+            "icons/icon.ico"
+        ],
+        "windows": {
+            "allowDowngrades": true,
+            "certificateThumbprint": null,
+            "digestAlgorithm": null,
+            "nsis": {
+                "installerHooks": "nsis/install-hooks.nsh",
+                "installMode": "perMachine",
+                "languages": [
+                    "English"
+                ],
+                "displayLanguageSelector": false,
+                "compression": "lzma",
+                "installerIcon": "icons/icon.ico"
+            },
+            "signCommand": null,
+            "timestampUrl": null,
+            "tsp": false,
+            "webviewInstallMode": {
+                "type": "embedBootstrapper",
+                "silent": true
+            }
+        },
+        "macOS": {
+            "dmg": {
+                "windowSize": {
+                    "width": 800,
+                    "height": 600
+                }
             }
         }
     }
-  }
 }
