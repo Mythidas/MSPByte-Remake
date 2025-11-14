@@ -4,7 +4,6 @@ import {
     Users,
     Shield,
     Plug,
-    ScrollText,
     UserCog,
     UsersRound,
     ShieldCheck,
@@ -18,6 +17,7 @@ const defaultModeConfig: ModeNavConfig = {
         {
             label: "Dashboard",
             href: "/secure/default",
+            isExact: true,
             icon: LayoutDashboard,
         },
         {
@@ -40,12 +40,12 @@ const defaultModeConfig: ModeNavConfig = {
                     href: "/secure/default/roles",
                     icon: UserCog,
                 },
+                {
+                    label: "Integrations",
+                    href: "/secure/default/integrations",
+                    icon: Plug,
+                },
             ],
-        },
-        {
-            label: "Integrations",
-            href: "/secure/default/integrations",
-            icon: Plug,
         },
     ],
 };

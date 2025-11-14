@@ -1,7 +1,6 @@
 "use client";
 
 import { Card, CardContent } from "@workspace/ui/components/card";
-import { useState } from "react";
 import { useQuery } from "convex/react";
 import { Trash2, Archive, Download } from "lucide-react";
 import { DataTable, DataTableColumn, TableView, RowAction } from "@/components/DataTable";
@@ -9,14 +8,15 @@ import { api } from "@/lib/api";
 import type { Doc } from "@workspace/database/convex/_generated/dataModel";
 import Loader from "@workspace/ui/components/Loader";
 import { prettyText } from "@workspace/shared/lib/utils";
+import { useRouter } from "next/navigation";
 
 type Site = Doc<"sites"> & {
     psaIntegrationName?: string;
 };
 
 export default function SitesPage() {
+    const router = useRouter();
     const sites = useQuery(api.sites.query.list);
-    const [selectedSites, setSelectedSites] = useState<Site[]>([]);
 
     // Define columns
     const columns: DataTableColumn<Site>[] = [
@@ -135,17 +135,6 @@ export default function SitesPage() {
             ],
         },
         {
-            id: "archived",
-            label: "Archived",
-            filters: [
-                {
-                    field: "status",
-                    operator: "eq",
-                    value: "archived",
-                },
-            ],
-        },
-        {
             id: "with-psa",
             label: "With PSA",
             filters: [
@@ -193,37 +182,31 @@ export default function SitesPage() {
 
     const handleRowClick = (site: Site) => {
         console.log("Navigate to site:", site);
-        // TODO: Navigate to site detail page
-        // router.push(`/secure/sites/${site.slug}`);
+        router.push(`/secure/default/sites/${site.slug}`);
     };
 
     return (
         <div className="flex flex-col size-full gap-2 mx-auto">
-            <Card className="!bg-card/60 h-full">
-                <CardContent className="flex flex-col size-full gap-2">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Sites</h1>
-                        <p className="text-muted-foreground">Manage your client sites and integrations</p>
-                    </div>
-                    {!!sites ?
-                        (<DataTable
-                            data={sites}
-                            columns={columns}
-                            views={views}
-                            rowActions={rowActions}
-                            enableRowSelection={true}
-                            enableGlobalSearch={true}
-                            enableFilters={true}
-                            enablePagination={true}
-                            enableColumnToggle={true}
-                            enableURLState={true}
-                            onRowClick={handleRowClick}
-                            onSelectionChange={setSelectedSites}
-                        />) : (
-                            <Loader />
-                        )}
-                </CardContent>
-            </Card>
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight">Sites</h1>
+                <p className="text-muted-foreground">Manage your client sites and integrations</p>
+            </div>
+            {!!sites ?
+                (<DataTable
+                    data={sites}
+                    columns={columns}
+                    views={views}
+                    rowActions={rowActions}
+                    enableRowSelection={true}
+                    enableGlobalSearch={true}
+                    enableFilters={true}
+                    enablePagination={true}
+                    enableColumnToggle={true}
+                    enableURLState={true}
+                    onRowClick={handleRowClick}
+                />) : (
+                    <Loader />
+                )}
         </div>
     );
 }

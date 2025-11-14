@@ -3,6 +3,7 @@ import { LucideIcon } from "lucide-react";
 export type NavItem = {
     label: string;
     href: string;
+    isExact?: boolean;
     icon?: LucideIcon;
     badge?: string;
     children?: NavItem[];

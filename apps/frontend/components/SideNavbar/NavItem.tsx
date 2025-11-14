@@ -12,7 +12,7 @@ interface NavItemProps {
 
 export function NavItem({ item, isNested = false }: NavItemProps) {
     const pathname = usePathname();
-    const isActive = pathname === item.href;
+    const isActive = item.isExact ? pathname === item.href : pathname.includes(item.href);
     const Icon = item.icon;
 
     return (

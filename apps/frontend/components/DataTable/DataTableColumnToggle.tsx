@@ -20,7 +20,7 @@ export function DataTableColumnToggle<TData>({ table }: DataTableColumnTogglePro
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 gap-2">
+                <Button variant="secondary" size="sm" className="h-8 gap-2 !bg-accent !text-accent-foreground">
                     <Settings2 className="h-4 w-4" />
                     View
                 </Button>

@@ -11,7 +11,7 @@ interface NavGroupProps {
 }
 
 export function NavGroup({ item }: NavGroupProps) {
-    const [isExpanded, setIsExpanded] = useState(true);
+    const [isExpanded, setIsExpanded] = useState(false);
     const Icon = item.icon;
 
     return (

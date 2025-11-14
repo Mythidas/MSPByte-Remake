@@ -97,7 +97,7 @@ export function DataTableFilterBuilder<TData>({ columns, onAddFilter }: DataTabl
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 gap-2">
+                <Button variant="secondary" size="sm" className="h-8 gap-2 !bg-accent !text-accent-foreground">
                     <Plus className="h-4 w-4" />
                     Add Filter
                 </Button>

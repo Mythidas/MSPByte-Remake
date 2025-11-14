@@ -18,7 +18,7 @@ export default function CoreLayout({ children }: { children: ReactNode }) {
             </div>
 
             <TopNavbar />
-            <div className="flex gap-2 size-full overflow-hidden">
+            <div className="flex gap-4 size-full overflow-hidden">
                 <SideNavbar />
                 <div className="flex flex-col size-full overflow-hidden pt-2">
                     {children}

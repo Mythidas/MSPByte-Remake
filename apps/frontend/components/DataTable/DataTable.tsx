@@ -49,7 +49,6 @@ export function DataTable<TData>({
         data,
         columns,
         enableRowSelection,
-        enableGlobalSearch,
         enableFilters,
         enablePagination,
         enableURLState,

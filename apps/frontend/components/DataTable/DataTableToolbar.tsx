@@ -52,7 +52,7 @@ export function DataTableToolbar<TData>({
                             placeholder="Search..."
                             value={globalSearch}
                             onChange={(e) => onGlobalSearchChange(e.target.value)}
-                            className="pl-9"
+                            className="pl-9 !bg-input"
                         />
                     </div>
                 )}
