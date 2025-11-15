@@ -19,8 +19,8 @@ export function NavItem({ item, isNested = false }: NavItemProps) {
         <Link
             href={item.href}
             className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
-                isNested && "pl-10",
+                "flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors",
+                isNested && "pl-6",
                 isActive
                     ? "bg-primary/10 text-primary font-medium"
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"

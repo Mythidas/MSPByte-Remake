@@ -23,7 +23,7 @@ export function useFetchModes() {
     const integrations = useQuery(api.integrations.query.listActiveWithDataSource, {});
 
     useEffect(() => {
-        const modes = integrations?.filter((i) => validModes.includes(i.slug)) || [];
+        const modes = integrations?.filter((i) => i.dataSourceStatus !== 'inactive' && validModes.includes(i.slug)) || [];
         if (JSON.stringify(availableModes) === JSON.stringify(modes)) {
             return;
         }

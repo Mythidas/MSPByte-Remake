@@ -8,6 +8,7 @@ import type { Doc } from "@workspace/database/convex/_generated/dataModel";
 import Loader from "@workspace/ui/components/Loader";
 import { prettyText } from "@workspace/shared/lib/utils";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 type Site = Doc<"sites"> & {
     psaIntegrationName?: string;
@@ -24,6 +25,7 @@ export default function SitesPage() {
             title: "Name",
             sortable: true,
             searchable: true,
+            cell: ({ row }) => <Link href={`/secure/default/sites/${row.slug}`}>{row.name}</Link>,
             filter: {
                 type: "text",
                 operators: ["eq", "ne", "contains", "startsWith", "endsWith"],
@@ -179,11 +181,6 @@ export default function SitesPage() {
         },
     ];
 
-    const handleRowClick = (site: Site) => {
-        console.log("Navigate to site:", site);
-        router.push(`/secure/default/sites/${site.slug}`);
-    };
-
     return (
         <div className="flex flex-col size-full gap-2 mx-auto">
             <div>
@@ -202,7 +199,6 @@ export default function SitesPage() {
                     enablePagination={true}
                     enableColumnToggle={true}
                     enableURLState={true}
-                    onRowClick={handleRowClick}
                 />) : (
                     <Loader />
                 )}

@@ -1,6 +1,6 @@
-import Debug from "@workspace/shared/lib/Debug.js";
-import Encryption from "@workspace/shared/lib/Encryption.js";
-import { APIResponse } from "@workspace/shared/types/api.js";
+import Debug from "@workspace/shared/lib/Debug";
+import Encryption from "@workspace/shared/lib/Encryption";
+import { APIResponse } from "@workspace/shared/types/api";
 import { HaloPSAAsset } from "@workspace/shared/types/integrations/halopsa/assets.js";
 import {
     HaloPSAConfig,

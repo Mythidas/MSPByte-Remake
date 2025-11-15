@@ -5,14 +5,17 @@ import { ChevronDown } from "lucide-react";
 import { NavItem as NavItemType } from "@/types/navigation";
 import { NavItem } from "./NavItem";
 import { cn } from "@/lib/utils";
+import { usePathname } from "next/navigation";
 
 interface NavGroupProps {
     item: NavItemType;
 }
 
 export function NavGroup({ item }: NavGroupProps) {
-    const [isExpanded, setIsExpanded] = useState(false);
+    const pathname = usePathname()
     const Icon = item.icon;
+    const isChildActive = (item.children || []).some((i) => i.isExact ? pathname === i.href : pathname.includes(i.href));
+    const [isExpanded, setIsExpanded] = useState(isChildActive);
 
     return (
         <div>

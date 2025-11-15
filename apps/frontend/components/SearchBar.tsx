@@ -20,6 +20,7 @@ export default function SearchBar({
     lead,
     placeholder,
     leadClass,
+    className,
     ...props
 }: Props) {
     const [query, setQuery] = useState('');
@@ -30,21 +31,16 @@ export default function SearchBar({
     }, [debouncedQuery]); // ← this is key
 
     return (
-        <div className="flex w-full">
+        <div className={cn("relative flex w-full")}>
             {lead && (
-                <div
-                    className={cn(
-                        leadClass,
-                        'flex flex-col bg-input rounded rounded-r-none w-fit px-2 py-1 items-center justify-center text-sm'
-                    )}
-                >
+                <div className={cn(leadClass, "absolute left-2.5 top-1.5 h-4 w-4 text-muted-foreground")}>
                     {lead}
                 </div>
             )}
             <Input
                 type="search"
                 placeholder={placeholder || 'Search...'}
-                className={cn(props.className, lead && 'rounded-l-none')}
+                className={cn(className, !!lead && 'pl-10', "rounded")}
                 onChange={(e) => setQuery(e.target.value)}
                 {...props}
             />

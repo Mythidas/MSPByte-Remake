@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation } from "../_generated/server.js";
 import { isAuthenticated, isValidTenant } from "../helpers/validators.js";
+import { api } from "../_generated/api.js";
 
 // Replaced by datasources/crud.ts::update
 // export const updateConfig = ...
@@ -64,6 +65,60 @@ export const createPrimaryForIntegration = mutation({
         });
 
         return await ctx.db.get(newDataSource);
+    },
+});
+
+export const createOrUpdate = mutation({
+    args: {
+        integrationId: v.id("integrations"),
+        config: v.any(),
+        credentialExpirationAt: v.optional(v.number()),
+    },
+    handler: async (ctx, args) => {
+        const identity = await isAuthenticated(ctx);
+        const integration = await ctx.db.get(args.integrationId);
+        if (!integration) throw new Error("Integration not found");
+
+        // Check if a primary data source already exists for this integration and tenant
+        const existingDataSource = await ctx.db
+            .query("data_sources")
+            .withIndex("by_integration_primary", (q) =>
+                q.eq("integrationId", args.integrationId).eq("isPrimary", true)
+            )
+            .filter((q) => q.eq(q.field("tenantId"), identity.tenantId))
+            .first();
+
+        let dataSourceId;
+
+        if (existingDataSource) {
+            // Update existing data source
+            await ctx.db.patch(existingDataSource._id, {
+                config: args.config,
+                credentialExpirationAt: args.credentialExpirationAt ?? existingDataSource.credentialExpirationAt,
+                status: "active",
+                updatedAt: new Date().getTime(),
+            });
+            dataSourceId = existingDataSource._id;
+        } else {
+            // Create new primary data source
+            dataSourceId = await ctx.db.insert("data_sources", {
+                tenantId: identity.tenantId,
+                integrationId: args.integrationId,
+                status: "active",
+                config: args.config,
+                credentialExpirationAt: args.credentialExpirationAt ?? Number.MAX_SAFE_INTEGER,
+                isPrimary: true,
+                updatedAt: new Date().getTime(),
+            });
+        }
+
+        // Automatically schedule sync jobs for all supportedTypes
+        await ctx.runMutation(api.scheduledjobs.mutate.scheduleJobsByIntegration, {
+            integrationId: args.integrationId,
+            dataSourceId: dataSourceId,
+        });
+
+        return await ctx.db.get(dataSourceId);
     },
 });
 
