@@ -21,7 +21,7 @@ export default async function HaloPSALayout({ children }: Props) {
             href: '/secure/default/integrations/halopsa/setup',
         },
         {
-            label: 'Sync Management',
+            label: 'Sync',
             href: '/secure/default/integrations/halopsa/sync',
         },
         {

@@ -2,7 +2,6 @@
 
 import { api, Doc } from "@/lib/api";
 import { useQuery } from "convex/react";
-import { SyncControlPanel } from "@/components/integrations/SyncControlPanel";
 import { IntegrationStatusBadge } from "@/components/integrations/IntegrationStatusBadge";
 import { prettyText } from "@workspace/shared/lib/utils";
 import Loader from "@workspace/ui/components/Loader";
@@ -56,19 +55,7 @@ export default function HaloPSASync() {
         );
     }
 
-    const primaryDataSource = dataSource;
-
     // Handler functions
-    const handlePauseSync = async () => {
-        // TODO: Implement via Convex mutation
-        await new Promise(resolve => setTimeout(resolve, 500));
-    };
-
-    const handleResumeSync = async () => {
-        // TODO: Implement via Convex mutation
-        await new Promise(resolve => setTimeout(resolve, 500));
-    };
-
     const handleRetryJobs = async (jobs: ScheduledJob[]) => {
         // TODO: Implement via Convex mutation
         toast.success(`${jobs.length} job(s) scheduled for retry`);
@@ -178,33 +165,14 @@ export default function HaloPSASync() {
         }
     ];
 
-    // Row actions (bulk operations)
-    const rowActions: RowAction<ScheduledJob>[] = [
-        {
-            label: "Retry Selected",
-            icon: <RotateCcw className="h-4 w-4" />,
-            variant: "outline",
-            onClick: handleRetryJobs,
-            disabled: (rows) => !rows.every(r => r.status === 'failed')
-        }
-    ];
-
     return (
         <div className="flex flex-col gap-4 size-full">
             <div>
                 <h1 className="text-2xl font-semibold">Sync Management</h1>
                 <p className="text-muted-foreground">
-                    Monitor and control data synchronization with HaloPSA
+                    Monitor data synchronization with HaloPSA
                 </p>
             </div>
-
-            {/* Control Panel */}
-            <SyncControlPanel
-                dataSource={primaryDataSource}
-                integration={integration}
-                onPauseSync={handlePauseSync}
-                onResumeSync={handleResumeSync}
-            />
 
             {/* Sync History */}
             {allJobs ? (
@@ -212,8 +180,6 @@ export default function HaloPSASync() {
                     data={allJobs}
                     columns={columns}
                     views={views}
-                    rowActions={rowActions}
-                    enableRowSelection={true}
                     enableGlobalSearch={true}
                     enableFilters={true}
                     enablePagination={true}

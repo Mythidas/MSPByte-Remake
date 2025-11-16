@@ -189,15 +189,27 @@ export class Scheduler {
 
     private async pollJobs(): Promise<void> {
         try {
-            // Query for pending jobs (will be sorted by priority in-memory)
-            const jobs = (await client.query(api.helpers.orm.list_s, {
-                tableName: "scheduled_jobs",
-                secret: process.env.CONVEX_API_KEY!,
-                index: {
-                    name: "by_status",
-                    params: { status: "pending" },
-                },
-            })) as Doc<"scheduled_jobs">[];
+            // Query for both pending and failed jobs (failed jobs will retry)
+            const [pendingJobs, failedJobs] = await Promise.all([
+                client.query(api.helpers.orm.list_s, {
+                    tableName: "scheduled_jobs",
+                    secret: process.env.CONVEX_API_KEY!,
+                    index: {
+                        name: "by_status",
+                        params: { status: "pending" },
+                    },
+                }) as Promise<Doc<"scheduled_jobs">[]>,
+                client.query(api.helpers.orm.list_s, {
+                    tableName: "scheduled_jobs",
+                    secret: process.env.CONVEX_API_KEY!,
+                    index: {
+                        name: "by_status",
+                        params: { status: "failed" },
+                    },
+                }) as Promise<Doc<"scheduled_jobs">[]>,
+            ]);
+
+            const jobs = [...(pendingJobs || []), ...(failedJobs || [])];
 
             if (!jobs || jobs.length === 0) {
                 return;
@@ -358,23 +370,43 @@ export class Scheduler {
     public static async failJob(job: Doc<"scheduled_jobs">, error: string) {
         const attempts = job.attempts || 0;
         const attemptsMax = job.attemptsMax || 3;
-        const invalid = attempts >= attemptsMax;
+        const canRetry = attempts + 1 < attemptsMax;
 
-        await client.mutation(api.helpers.orm.update_s, {
-            tableName: "scheduled_jobs",
-            data: [
-                {
-                    id: job._id,
-                    updates: {
-                        status: invalid ? "failed" : "failed",
-                        error,
-                        attempts: attempts + 1,
-                        nextRetryAt: Date.now() + 60000,
+        if (canRetry) {
+            // Retry logic: keep as "failed" and reschedule for 5 minutes later
+            await client.mutation(api.helpers.orm.update_s, {
+                tableName: "scheduled_jobs",
+                data: [
+                    {
+                        id: job._id,
+                        updates: {
+                            status: "failed",
+                            scheduledAt: Date.now() + 300000, // 5 minutes from now
+                            attempts: attempts + 1,
+                            error,
+                            nextRetryAt: Date.now() + 300000,
+                        },
                     },
-                },
-            ],
-            secret: process.env.CONVEX_API_KEY!,
-        });
+                ],
+                secret: process.env.CONVEX_API_KEY!,
+            });
+        } else {
+            // Max retries exceeded: mark as broken (permanently failed)
+            await client.mutation(api.helpers.orm.update_s, {
+                tableName: "scheduled_jobs",
+                data: [
+                    {
+                        id: job._id,
+                        updates: {
+                            status: "broken",
+                            error,
+                            attempts: attempts + 1,
+                        },
+                    },
+                ],
+                secret: process.env.CONVEX_API_KEY!,
+            });
+        }
     }
 
     public static async completeJob(

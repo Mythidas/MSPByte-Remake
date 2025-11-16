@@ -37,13 +37,14 @@ export const list = query({
         ),
         filters: v.optional(v.any()), // Any object shape for filters
         includeSoftDeleted: v.optional(v.boolean()),
+        limit: v.optional(v.number()),
     },
     handler: async <T extends keyof DataModel>(
         ctx: any,
         args: ListArgs<T>
     ): Promise<ListResult<T>> => {
         const identity = await isAuthenticated(ctx);
-        const { tableName, index, filters, includeSoftDeleted = false } = args;
+        const { tableName, index, filters, includeSoftDeleted = false, limit } = args;
 
         // Step 1: Start with index query
         let queryBuilder: any;
@@ -75,13 +76,16 @@ export const list = query({
         }
 
         // Step 2: Apply filters and collect results
-        const results = await filter(queryBuilder, (record: any) => {
+        const allResults = await filter(queryBuilder, (record: any) => {
             if (!includeSoftDeleted && record.deletedAt) {
                 return false;
             }
 
             return evaluateFilter(record, filters);
         }).collect();
+
+        // Apply limit if provided
+        const results = limit ? allResults.slice(0, limit) : allResults;
 
         return results;
     },
@@ -111,6 +115,7 @@ export const list_s = query({
         ),
         filters: v.optional(v.any()),
         includeSoftDeleted: v.optional(v.boolean()),
+        limit: v.optional(v.number()),
     },
     handler: async <T extends keyof DataModel>(
         ctx: any,
@@ -124,6 +129,7 @@ export const list_s = query({
             filters,
             includeSoftDeleted = false,
             tenantId,
+            limit,
         } = args;
 
         // Step 1: Start with index query
@@ -155,13 +161,16 @@ export const list_s = query({
         }
 
         // Step 2: Apply filters and collect results
-        const results = await filter(queryBuilder, (record: any) => {
+        const allResults = await filter(queryBuilder, (record: any) => {
             if (!includeSoftDeleted && record.deletedAt) {
                 return false;
             }
 
             return evaluateFilter(record, filters);
         }).collect();
+
+        // Apply limit if provided
+        const results = limit ? allResults.slice(0, limit) : allResults;
 
         return results;
     },

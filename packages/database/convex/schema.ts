@@ -193,7 +193,8 @@ export default defineSchema({
             v.literal("pending"),
             v.literal("running"),
             v.literal("completed"),
-            v.literal("failed")
+            v.literal("failed"),
+            v.literal("broken")
         ),
         attempts: v.optional(v.number()),
         attemptsMax: v.optional(v.number()),

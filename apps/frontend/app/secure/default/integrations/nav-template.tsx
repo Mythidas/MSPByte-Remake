@@ -23,11 +23,11 @@ export default function NavTemplate({ integration, items, children }: Props) {
                 <BreadcrumbBuilder root="integrations" />
             </div>
             <Separator />
-            <div className="flex gap-2 size-full">
+            <div className="flex gap-2 size-full overflow-hidden">
                 <div className="flex flex-col p-2 gap-1 w-46 bg-card/50 shadow rounded border h-full">
                     <SidenavBuilder items={items} />
                 </div>
-                <div className="flex size-full">
+                <div className="flex size-full overflow-hidden">
                     {children}
                 </div>
             </div>

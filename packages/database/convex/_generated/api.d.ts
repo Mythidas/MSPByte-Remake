@@ -29,6 +29,7 @@ import type * as landing_query from "../landing/query.js";
 import type * as roles_query from "../roles/query.js";
 import type * as scheduledjobs_mutate from "../scheduledjobs/mutate.js";
 import type * as scheduledjobs_query from "../scheduledjobs/query.js";
+import type * as sites_mutate from "../sites/mutate.js";
 import type * as sites_query from "../sites/query.js";
 import type * as tenants_query from "../tenants/query.js";
 import type * as types_index from "../types/index.js";
@@ -64,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   "roles/query": typeof roles_query;
   "scheduledjobs/mutate": typeof scheduledjobs_mutate;
   "scheduledjobs/query": typeof scheduledjobs_query;
+  "sites/mutate": typeof sites_mutate;
   "sites/query": typeof sites_query;
   "tenants/query": typeof tenants_query;
   "types/index": typeof types_index;

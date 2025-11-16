@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { api } from "@/lib/api";
-import { useQuery } from "convex/react";
+import { api, Doc } from "@/lib/api";
+import { useQuery, useMutation } from "convex/react";
 import { CompanyMappingCard } from "@/components/integrations/CompanyMappingCard";
 import { SiteLinker } from "@/components/integrations/SiteLinker";
 import SearchBar from "@/components/SearchBar";
-import { Badge } from "@workspace/ui/components/badge";
 import {
     Select,
     SelectContent,
@@ -15,7 +14,7 @@ import {
     SelectValue,
 } from "@workspace/ui/components/select";
 import Loader from "@workspace/ui/components/Loader";
-import { Search, AlertCircle, Filter } from "lucide-react";
+import { Search, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useIntegration } from "../integration-provider";
 
@@ -35,7 +34,7 @@ export default function HaloPSACompanies() {
                 isPrimary: true
             }
         }
-    );
+    ) as Doc<'data_sources'> | undefined;
 
     const companies = useQuery(
         api.helpers.orm.list,
@@ -51,7 +50,7 @@ export default function HaloPSACompanies() {
                 entityType: 'companies'
             }
         } : 'skip'
-    );
+    ) as Doc<'entities'>[] | undefined;
 
     const allSites = useQuery(
         api.helpers.orm.list,
@@ -63,6 +62,11 @@ export default function HaloPSACompanies() {
     const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [linkFilter, setLinkFilter] = useState<'all' | 'linked' | 'unlinked'>('all');
+
+    // Mutation hooks
+    const linkSite = useMutation(api.sites.mutate.linkToPSACompany);
+    const unlinkSite = useMutation(api.sites.mutate.unlinkFromPSACompany);
+    const createSite = useMutation(api.sites.mutate.createFromPSACompany);
 
     // Transform companies data to include link information (must be before conditional return)
     const transformedCompanies = useMemo(() => {
@@ -133,21 +137,62 @@ export default function HaloPSACompanies() {
     }
 
     const handleLink = async (companyId: string, siteId: string) => {
-        // TODO: Implement via Convex mutation
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        toast.success('Company linked to site');
+        const company = companies.find((c: any) => c._id === companyId);
+        if (!company) {
+            toast.error('Company not found');
+            return;
+        }
+
+        try {
+            await linkSite({
+                siteId: siteId as any,
+                integrationId: integration._id,
+                companyExternalId: company.externalId,
+                companyExternalParentId: company.normalizedData?.externalParentId || company.rawData?.parent_id,
+                integrationName: integration.name,
+            });
+            toast.success(`Linked ${company.normalizedData?.name || company.rawData?.name} to site`);
+        } catch (error: any) {
+            toast.error('Failed to link: ' + error.message);
+        }
     };
 
     const handleUnlink = async (companyId: string) => {
-        // TODO: Implement via Convex mutation
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        toast.success('Company unlinked from site');
+        const company = transformedCompanies.find((c: any) => c._id === companyId);
+        if (!company || !company.linkedId) {
+            toast.error('Company not linked');
+            return;
+        }
+
+        try {
+            await unlinkSite({
+                siteId: company.linkedId as any,
+            });
+            toast.success(`Unlinked ${company.name} from site`);
+        } catch (error: any) {
+            toast.error('Failed to unlink: ' + error.message);
+        }
     };
 
     const handleCreate = async (companyId: string, siteName: string) => {
-        // TODO: Implement via Convex mutation
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        toast.success('Site created and linked');
+        const company = companies.find((c: any) => c._id === companyId);
+        if (!company) {
+            toast.error('Company not found');
+            return;
+        }
+
+        try {
+            await createSite({
+                name: siteName,
+                integrationId: integration._id,
+                companyExternalId: company.externalId,
+                companyExternalParentId: company.normalizedData?.externalParentId || company.rawData?.parent_id,
+                integrationName: integration.name,
+            });
+            toast.success(`Created site "${siteName}" and linked to ${company.normalizedData?.name || company.rawData?.name}`);
+        } catch (error: any) {
+            toast.error('Failed to create site: ' + error.message);
+        }
     };
 
     return (
@@ -204,7 +249,7 @@ export default function HaloPSACompanies() {
                     </div>
 
                     {/* Company List */}
-                    <div className="bg-card/50 border rounded shadow flex-1 overflow-auto">
+                    <div className="bg-card/50 border rounded shadow flex-1 overflow-y-auto overflow-x-hidden">
                         {!companies || !allSites ? (
                             <div className="flex items-center justify-center h-full">
                                 <Loader />
@@ -235,7 +280,7 @@ export default function HaloPSACompanies() {
 
                     {/* Results Count */}
                     {filteredCompanies.length > 0 && (
-                        <div className="px-3 py-2 text-sm text-muted-foreground">
+                        <div className="px-3 text-sm">
                             Showing {filteredCompanies.length} of {transformedCompanies.length} companies
                         </div>
                     )}
@@ -243,15 +288,13 @@ export default function HaloPSACompanies() {
 
                 {/* Site Linker Panel */}
                 <div className="flex-1 bg-card/50 border rounded shadow overflow-auto">
-                    <div className="h-full p-4">
-                        <SiteLinker
-                            company={selectedCompany || null}
-                            availableSites={availableSites}
-                            onLink={handleLink}
-                            onUnlink={handleUnlink}
-                            onCreate={handleCreate}
-                        />
-                    </div>
+                    <SiteLinker
+                        company={selectedCompany || null}
+                        availableSites={availableSites}
+                        onLink={handleLink}
+                        onUnlink={handleUnlink}
+                        onCreate={handleCreate}
+                    />
                 </div>
             </div>
         </div>

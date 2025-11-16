@@ -1,4 +1,4 @@
-/**
+/**typestypes
  * Example usage documentation for the new dynamic CRUD system.
  * Uses TypeScript filtering to bypass Convex's limited database filters.
  *
@@ -356,6 +356,7 @@ export type DynamicListArgs<TableName extends keyof DataModel> = {
     index?: IndexConfig;
     filters?: DynamicFilter<Doc<TableName>>;
     includeSoftDeleted?: boolean;
+    limit?: number;
 };
 
 // ============================================================================
@@ -421,6 +422,7 @@ export type ListArgs<TableName extends keyof DataModel> = {
     index?: IndexConfig;
     filters?: DynamicFilter<Doc<TableName>>;
     includeSoftDeleted?: boolean;
+    limit?: number;
 };
 
 /**

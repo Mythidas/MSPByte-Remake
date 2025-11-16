@@ -27,3 +27,14 @@ export function clipText(input: string | null | undefined, length: number) {
 
     return input;
 }
+
+export function genSUUID(length = 8) {
+    const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const bytes = new Uint8Array(length);
+    crypto.getRandomValues(bytes);
+    let out = '';
+    for (let i = 0; i < length; i++) {
+        out += chars[bytes[i] % chars.length];
+    }
+    return out;
+}

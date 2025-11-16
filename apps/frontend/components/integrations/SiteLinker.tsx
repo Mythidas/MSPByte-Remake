@@ -162,7 +162,7 @@ export function SiteLinker({
                                 <div>
                                     <p className="font-semibold">{company.linkedName}</p>
                                     <p className="text-sm text-muted-foreground">
-                                        /{company.linkedSlug}
+                                        Slug: {company.linkedSlug} ID: {company.linkedId}
                                     </p>
                                 </div>
                                 {company.linkedSlug && (
