@@ -61,7 +61,7 @@ export function DataTable<TData>({
     const hasSelectedRows = selectedRows.length > 0;
 
     return (
-        <div className={cn(className, "flex flex-col size-full")}>
+        <div className={cn(className, "flex flex-col size-full overflow-hidden")}>
             {/* Toolbar */}
             <div className="mb-4">
                 <DataTableToolbar
@@ -104,7 +104,7 @@ export function DataTable<TData>({
             )}
 
             {/* Table */}
-            <div className="flex size-full rounded-md border">
+            <div className="flex size-full rounded-md border overflow-hidden">
                 <Table>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (

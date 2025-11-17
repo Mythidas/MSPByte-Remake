@@ -16,7 +16,7 @@ type Site = Doc<"sites"> & {
 
 export default function SitesPage() {
     const router = useRouter();
-    const sites = useQuery(api.helpers.orm.list, { tableName: 'sites' });
+    const sites = useQuery(api.helpers.orm.list, { tableName: 'sites' }) as Site[] | undefined;
 
     // Define columns
     const columns: DataTableColumn<Site>[] = [
@@ -25,7 +25,7 @@ export default function SitesPage() {
             title: "Name",
             sortable: true,
             searchable: true,
-            cell: ({ row }) => <Link href={`/secure/default/sites/${row.slug}`}>{row.name}</Link>,
+            cell: ({ row }) => <Link href={`/secure/sites/${row.slug}`}>{row.name}</Link>,
             filter: {
                 type: "text",
                 operators: ["eq", "ne", "contains", "startsWith", "endsWith"],

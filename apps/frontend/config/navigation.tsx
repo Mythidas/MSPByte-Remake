@@ -7,7 +7,8 @@ import {
     UserCog,
     UsersRound,
     ShieldCheck,
-    Key
+    Key,
+    Bell
 } from "lucide-react";
 import { ModeNavConfig } from "@/types/navigation";
 
@@ -22,7 +23,7 @@ const defaultModeConfig: ModeNavConfig = {
         },
         {
             label: "Sites",
-            href: "/secure/default/sites",
+            href: "/secure/sites",
             icon: Building2,
         },
         {
@@ -54,6 +55,12 @@ const microsoft365ModeConfig: ModeNavConfig = {
     modeSlug: "microsoft-365",
     items: [
         {
+            label: "Dashboard",
+            href: "/secure/microsoft-365",
+            isExact: true,
+            icon: LayoutDashboard,
+        },
+        {
             label: "Users",
             href: "/secure/microsoft-365/users",
             icon: Users,
@@ -77,6 +84,11 @@ const microsoft365ModeConfig: ModeNavConfig = {
             label: "Licenses",
             href: "/secure/microsoft-365/licenses",
             icon: Key,
+        },
+        {
+            label: "Alerts",
+            href: "/secure/microsoft-365/alerts?view=active",
+            icon: Bell,
         },
     ],
 };

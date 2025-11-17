@@ -26,50 +26,68 @@ export function useDataTableURL() {
 
     // Update URL with new state
     const updateURL = useCallback((updates: Partial<URLState>) => {
-        const params = new URLSearchParams(searchParams.toString());
+        // Always read fresh search params to avoid stale closures
+        const currentParams = new URLSearchParams(window.location.search);
 
-        // Update or remove parameters
-        if (updates.page !== undefined) {
-            if (updates.page === 1) params.delete("page");
-            else params.set("page", String(updates.page));
-        }
+        // Track if we need to reset pagination
+        let shouldResetPage = false;
 
-        if (updates.pageSize !== undefined) {
-            if (updates.pageSize === 50) params.delete("size");
-            else params.set("size", String(updates.pageSize));
-        }
-
+        // Update global search
         if (updates.globalSearch !== undefined) {
-            if (!updates.globalSearch) params.delete("search");
-            else params.set("search", updates.globalSearch);
-            // Reset to page 1 on search
-            params.delete("page");
+            const currentSearch = currentParams.get("search") || "";
+            if (currentSearch !== updates.globalSearch) {
+                shouldResetPage = true;
+                if (!updates.globalSearch) currentParams.delete("search");
+                else currentParams.set("search", updates.globalSearch);
+            }
         }
 
-        if (updates.sortBy !== undefined) {
-            if (!updates.sortBy) params.delete("sort");
-            else params.set("sort", updates.sortBy);
-        }
-
+        // Update filters
         if (updates.filters !== undefined) {
-            const serialized = serializeFilters(updates.filters);
-            if (!serialized) params.delete("filters");
-            else params.set("filters", serialized);
-            // Reset to page 1 on filter change
-            params.delete("page");
+            const currentFilters = currentParams.get("filters") || "";
+            const newFilters = serializeFilters(updates.filters);
+            if (currentFilters !== newFilters) {
+                shouldResetPage = true;
+                if (!newFilters) currentParams.delete("filters");
+                else currentParams.set("filters", newFilters);
+            }
         }
 
+        // Update view
         if (updates.view !== undefined) {
-            if (!updates.view) params.delete("view");
-            else params.set("view", updates.view);
-            // Reset to page 1 on view change
-            params.delete("page");
+            const currentView = currentParams.get("view") || "";
+            if (currentView !== updates.view) {
+                shouldResetPage = true;
+                if (!updates.view) currentParams.delete("view");
+                else currentParams.set("view", updates.view);
+            }
+        }
+
+        // Update sort
+        if (updates.sortBy !== undefined) {
+            if (!updates.sortBy) currentParams.delete("sort");
+            else currentParams.set("sort", updates.sortBy);
+        }
+
+        // Update page size
+        if (updates.pageSize !== undefined) {
+            if (updates.pageSize === 50) currentParams.delete("size");
+            else currentParams.set("size", String(updates.pageSize));
+        }
+
+        // Update page (or reset if filters/search/view changed)
+        if (shouldResetPage) {
+            currentParams.delete("page");
+        } else if (updates.page !== undefined) {
+            if (updates.page === 1) currentParams.delete("page");
+            else currentParams.set("page", String(updates.page));
         }
 
         // Update URL
-        const queryString = params.toString();
-        router.push(`${pathname}${queryString ? `?${queryString}` : ""}`, { scroll: false });
-    }, [searchParams, router, pathname]);
+        const queryString = currentParams.toString();
+        const newUrl = `${pathname}${queryString ? `?${queryString}` : ""}`;
+        router.push(newUrl, { scroll: false });
+    }, [router, pathname]);
 
     return { urlState, updateURL };
 }

@@ -10,7 +10,7 @@ import { prettyText } from "@workspace/shared/lib/utils";
 type User = Doc<"users">;
 
 export default function SitesPage() {
-    const users = useQuery(api.helpers.orm.list, { tableName: 'users' });
+    const users = useQuery(api.helpers.orm.list, { tableName: 'users' }) as Doc<'users'>[] | undefined;
 
     // Define columns
     const columns: DataTableColumn<User>[] = [

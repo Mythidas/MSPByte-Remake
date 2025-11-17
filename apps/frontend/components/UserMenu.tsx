@@ -18,7 +18,7 @@ export function UserMenu() {
     const { user } = useAuth();
     const { theme, setTheme } = useTheme();
 
-    const getInitials = (name?: string) => {
+    const getInitials = (name?: string | null) => {
         if (!name) return "U";
         return name
             .split(" ")

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { UserMenu } from "./UserMenu";
+import { SiteSelector } from "./SiteSelector";
 
 export function TopNavbar() {
     return (
@@ -18,6 +19,7 @@ export function TopNavbar() {
 
                     <div className="flex gap-2 items-center justify-center">
                         <div className="hidden md:block">
+                            <SiteSelector />
                         </div>
 
                         {/* Center: Mode Selector */}

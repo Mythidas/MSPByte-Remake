@@ -10,8 +10,8 @@ import { prettyText } from "@workspace/shared/lib/utils";
 type User = Doc<"roles">;
 
 export default function RolesPage() {
-    const roles = useQuery(api.helpers.orm.list, { tableName: 'roles' });
-    const global = useQuery(api.roles.query.getGlobal);
+    const roles = useQuery(api.helpers.orm.list, { tableName: 'roles' }) as Doc<'roles'>[] | undefined;
+    const global = useQuery(api.roles.query.getGlobal) as Doc<'roles'>[] | undefined;
 
     // Define columns
     const columns: DataTableColumn<User>[] = [

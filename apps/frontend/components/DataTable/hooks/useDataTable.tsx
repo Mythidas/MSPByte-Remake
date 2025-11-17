@@ -119,6 +119,12 @@ export function useDataTable<TData>({
         return cols;
     }, [columns, enableRowSelection]);
 
+    // Local pagination state (TanStack Table requires controlled state pattern)
+    const [pagination, setPagination] = useState({
+        pageIndex: urlState.page - 1,
+        pageSize: urlState.pageSize,
+    });
+
     // Initialize TanStack Table
     const table = useReactTable({
         data: filteredData,
@@ -129,21 +135,20 @@ export function useDataTable<TData>({
             columnVisibility,
             rowSelection,
             globalFilter,
-            pagination: {
-                pageIndex: urlState.page - 1,
-                pageSize: urlState.pageSize,
-            },
+            pagination,
         },
         onSortingChange: setSorting,
         onColumnFiltersChange: setColumnFilters,
         onColumnVisibilityChange: setColumnVisibility,
         onRowSelectionChange: setRowSelection,
         onGlobalFilterChange: setGlobalFilter,
+        onPaginationChange: setPagination,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
         enableRowSelection: enableRowSelection,
+        manualPagination: false,
         globalFilterFn: (row, columnId, filterValue) => {
             // Search across searchable columns
             const searchableColumns = columns.filter(c => c.searchable);
@@ -163,19 +168,23 @@ export function useDataTable<TData>({
 
     // Sync URL with table state
     useEffect(() => {
+        if (!enableURLState) return;
+
         updateURL({
-            page: table.getState().pagination.pageIndex + 1,
-            pageSize: table.getState().pagination.pageSize,
+            page: pagination.pageIndex + 1,
+            pageSize: pagination.pageSize,
             globalSearch: globalFilter,
             filters: filterHook.combinedFilters,
             view: filterHook.activeView?.id,
         });
     }, [
-        table.getState().pagination.pageIndex,
-        table.getState().pagination.pageSize,
+        enableURLState,
+        pagination.pageIndex,
+        pagination.pageSize,
         globalFilter,
         filterHook.combinedFilters,
         filterHook.activeView,
+        updateURL,
     ]);
 
     // Get selected rows

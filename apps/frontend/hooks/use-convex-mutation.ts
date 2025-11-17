@@ -1,17 +1,18 @@
 "use client";
 
 import { useMutation } from "convex/react";
-import { api } from "@/lib/api";
-import { Site } from "@/lib/types";
-import { useSiteStore } from "@/stores/SiteStore";
+import { api, Doc } from "@/lib/api";
+import { useAppStore } from "@/stores/AppStore";
 import { useCallback } from "react";
+
+type Site = Doc<"sites">;
 
 /**
  * Hook to update site selection with Convex persistence
  */
 export function usePersistSite() {
     const updateMetadata = useMutation(api.users.mutate.updateMyMetadata);
-    const { setSite: setStoreSite } = useSiteStore();
+    const { setSite: setStoreSite } = useAppStore();
 
     return useCallback(
         async (site: Site | null) => {
@@ -21,9 +22,7 @@ export function usePersistSite() {
             // Persist to Convex
             if (site) {
                 await updateMetadata({
-                    metadata: {
-                        currentSite: site._id,
-                    },
+                    currentSite: site._id,
                 });
             }
         },

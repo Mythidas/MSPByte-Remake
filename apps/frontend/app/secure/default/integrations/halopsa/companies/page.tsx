@@ -57,7 +57,7 @@ export default function HaloPSACompanies() {
         {
             tableName: 'sites'
         }
-    );
+    ) as Doc<'sites'>[] | undefined;
 
     const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -137,6 +137,10 @@ export default function HaloPSACompanies() {
     }
 
     const handleLink = async (companyId: string, siteId: string) => {
+        if (!companies) {
+            toast.error('Companies not loaded');
+            return;
+        }
         const company = companies.find((c: any) => c._id === companyId);
         if (!company) {
             toast.error('Company not found');
@@ -175,6 +179,10 @@ export default function HaloPSACompanies() {
     };
 
     const handleCreate = async (companyId: string, siteName: string) => {
+        if (!companies) {
+            toast.error('Companies not loaded');
+            return;
+        }
         const company = companies.find((c: any) => c._id === companyId);
         if (!company) {
             toast.error('Company not found');
