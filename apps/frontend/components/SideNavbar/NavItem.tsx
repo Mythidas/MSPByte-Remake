@@ -14,10 +14,11 @@ export function NavItem({ item, isNested = false }: NavItemProps) {
     const pathname = usePathname();
     const isActive = item.isExact ? pathname === item.href : pathname.includes(item.href);
     const Icon = item.icon;
+    const href = item.params ? item.href + '?' + item.params : item.href;
 
     return (
         <Link
-            href={item.href}
+            href={href}
             className={cn(
                 "flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors",
                 isNested && "pl-6",

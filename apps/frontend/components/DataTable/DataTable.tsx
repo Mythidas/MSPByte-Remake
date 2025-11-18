@@ -15,6 +15,7 @@ import { DataTableToolbar } from "./DataTableToolbar";
 import { DataTablePagination } from "./DataTablePagination";
 import { Button } from "@workspace/ui/components/button";
 import { cn } from "@/lib/utils";
+import { ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 
 export function DataTable<TData>({
     data,
@@ -111,9 +112,24 @@ export function DataTable<TData>({
                             <TableRow key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => (
                                     <TableHead key={header.id}>
-                                        {header.isPlaceholder
-                                            ? null
-                                            : flexRender(header.column.columnDef.header, header.getContext())}
+                                        {header.isPlaceholder ? null : (
+                                            <div
+                                                className={cn(
+                                                    "flex items-center gap-2",
+                                                    header.column.getCanSort() && "cursor-pointer select-none hover:text-foreground"
+                                                )}
+                                                onClick={header.column.getCanSort() ? () => header.column.toggleSorting() : undefined}
+                                            >
+                                                {flexRender(header.column.columnDef.header, header.getContext())}
+                                                {header.column.getCanSort() && (
+                                                    <>
+                                                        {header.column.getIsSorted() === "asc" && <ArrowUp className="h-4 w-4" />}
+                                                        {header.column.getIsSorted() === "desc" && <ArrowDown className="h-4 w-4" />}
+                                                        {!header.column.getIsSorted() && <ChevronsUpDown className="h-4 w-4 opacity-30" />}
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
                                     </TableHead>
                                 ))}
                             </TableRow>

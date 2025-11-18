@@ -118,7 +118,7 @@ export default function Microsoft365Licenses() {
         {
             key: "utilization",
             title: "Utilization",
-            sortable: true,
+            sortable: false,
             cell: ({ row }) => {
                 const total = row.normalizedData?.totalUnits;
                 const consumed = row.normalizedData?.consumedUnits;

@@ -87,7 +87,8 @@ const microsoft365ModeConfig: ModeNavConfig = {
         },
         {
             label: "Alerts",
-            href: "/secure/microsoft-365/alerts?view=active",
+            href: "/secure/microsoft-365/alerts",
+            params: "view=active",
             icon: Bell,
         },
     ],
