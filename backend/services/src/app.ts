@@ -21,6 +21,7 @@ import { Scheduler } from "@workspace/pipeline/scheduler/index.js";
 import { BaseWorker } from "@workspace/pipeline/workers/base.js";
 import { CleanupWorker } from "@workspace/pipeline/workers/CleanupWorker.js";
 import { Microsoft365IdentitySecurityAnalyzer } from "@workspace/pipeline/workers/Microsoft365IdentitySecurityAnalyzer.js";
+import { Microsoft365MFATagWorker } from "@workspace/pipeline/workers/Microsoft365MFATagWorker.js";
 import { Microsoft365StaleUserAnalyzer } from "@workspace/pipeline/workers/Microsoft365StaleUserAnalyzer.js";
 import { Microsoft365LicenseAnalyzer } from "@workspace/pipeline/workers/Microsoft365LicenseAnalyzer.js";
 import { Microsoft365PolicyAnalyzer } from "@workspace/pipeline/workers/Microsoft365PolicyAnalyzer.js";
@@ -75,6 +76,7 @@ class MSPByteBackend {
         this.workers = [
             new CleanupWorker(),
             new Microsoft365IdentitySecurityAnalyzer(), // Combines Admin + MFA analysis
+            new Microsoft365MFATagWorker(), // Updates MFA tags based on policy evaluation
             new Microsoft365StaleUserAnalyzer(),
             new Microsoft365LicenseAnalyzer(),
             new Microsoft365PolicyAnalyzer(),

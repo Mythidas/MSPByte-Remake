@@ -11,12 +11,14 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
+import { DataTableColumn } from "./types";
 
 interface DataTableColumnToggleProps<TData> {
     table: Table<TData>;
+    columns: DataTableColumn<TData>[];
 }
 
-export function DataTableColumnToggle<TData>({ table }: DataTableColumnToggleProps<TData>) {
+export function DataTableColumnToggle<TData>({ table, columns }: DataTableColumnToggleProps<TData>) {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -39,7 +41,7 @@ export function DataTableColumnToggle<TData>({ table }: DataTableColumnTogglePro
                                 checked={column.getIsVisible()}
                                 onCheckedChange={(value) => column.toggleVisibility(!!value)}
                             >
-                                {column.id}
+                                {columns.find((col) => col.key === column.id)?.title || column.id}
                             </DropdownMenuCheckboxItem>
                         );
                     })}

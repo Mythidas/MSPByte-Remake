@@ -62,7 +62,7 @@ export function DataTableToolbar<TData>({
                     {onAddFilter && (
                         <DataTableFilterBuilder columns={columns} onAddFilter={onAddFilter} />
                     )}
-                    {showColumnToggle && <DataTableColumnToggle table={table} />}
+                    {showColumnToggle && <DataTableColumnToggle table={table} columns={columns} />}
                 </div>
             </div>
 

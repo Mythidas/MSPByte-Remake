@@ -103,6 +103,7 @@ export interface DataTableProps<TData> {
     // Row selection
     rowActions?: RowAction<TData>[];
     onSelectionChange?: (rows: TData[]) => void;
+    onFilteredDataChange?: (filteredData: TData[]) => void; // Called when filtered data changes
 
     // Row interaction
     onRowClick?: (row: TData) => void;

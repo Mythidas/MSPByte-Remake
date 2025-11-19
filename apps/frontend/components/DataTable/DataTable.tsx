@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { flexRender } from "@tanstack/react-table";
 import {
     Table,
@@ -30,6 +31,7 @@ export function DataTable<TData>({
     rowActions = [],
     onRowClick,
     onSelectionChange,
+    onFilteredDataChange,
     controlledFilters,
     onFiltersChange,
     className,
@@ -46,6 +48,7 @@ export function DataTable<TData>({
         clearFilters,
         selectedRows,
         viewFilters,
+        filteredData,
     } = useDataTable({
         data,
         columns,
@@ -60,6 +63,13 @@ export function DataTable<TData>({
     });
 
     const hasSelectedRows = selectedRows.length > 0;
+    const filteredRowCount = filteredData.length;
+    const allFilteredRowsSelected = hasSelectedRows && selectedRows.length === filteredRowCount;
+
+    // Notify parent of filtered data changes
+    React.useEffect(() => {
+        onFilteredDataChange?.(filteredData);
+    }, [filteredData, onFilteredDataChange]);
 
     return (
         <div className={cn(className, "flex flex-col size-full overflow-hidden")}>
@@ -87,8 +97,24 @@ export function DataTable<TData>({
                 <div className="mb-4 flex items-center gap-2 rounded-md border border-muted bg-muted/50 p-2">
                     <span className="text-sm font-medium">
                         {selectedRows.length} row{selectedRows.length !== 1 ? "s" : ""} selected
+                        {filteredRowCount > 0 && selectedRows.length < filteredRowCount && (
+                            <span className="text-muted-foreground"> of {filteredRowCount} filtered</span>
+                        )}
                     </span>
                     <div className="flex gap-2">
+                        {!allFilteredRowsSelected && filteredRowCount > selectedRows.length && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    // Select all filtered rows
+                                    const rowModel = table.getFilteredRowModel();
+                                    rowModel.rows.forEach(row => row.toggleSelected(true));
+                                }}
+                            >
+                                Select All {filteredRowCount} Results
+                            </Button>
+                        )}
                         {rowActions.map((action, index) => (
                             <Button
                                 key={index}

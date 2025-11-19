@@ -26,7 +26,7 @@ export async function generateConsentUrl(params: {
         const callbackUrl = `${process.env.NEXT_PUBLIC_ORIGIN}/api/v1.0/callbacks/microsoft-365/consent`;
 
         const consentUrl = new URL('https://login.microsoftonline.com/common/adminconsent');
-        consentUrl.searchParams.set('client_id', process.env.NEXT_PUBLIC_MICROSOFT_CLIENT_ID!);
+        consentUrl.searchParams.set('client_id', process.env.MICROSOFT_CLIENT_ID!);
         consentUrl.searchParams.set('redirect_uri', callbackUrl);
         consentUrl.searchParams.set('state', JSON.stringify(state));
 

@@ -228,7 +228,7 @@ export class AlertManager {
             if (!finding) continue;
 
             // Build metadata with entity information and finding details
-            const metadata = {
+            const metadata: Record<string, any> = {
                 ...finding.findings,
                 email: entity.normalizedData.email || entity.normalizedData.name,
                 name: entity.normalizedData.name,

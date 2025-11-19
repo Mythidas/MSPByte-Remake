@@ -11,7 +11,7 @@
         "start": "turbo start",
         "build": "turbo build",
         "dev": "turbo dev",
-        "dev:web": "turbo dev --filter=web-svelte --filter=frontend --filter=@workspace/services --filter=@workspace/events",
+        "dev:web": "turbo dev --filter=frontend --filter=@workspace/services --filter=@workspace/events",
         "dev:agent": "turbo dev --filter=mspagent --filter=@workspace/agents",
         "lint": "turbo lint",
         "format": "prettier --write \"**/*.{ts,tsx,md}\"",

@@ -1,20 +1,29 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api, Doc } from "@/lib/api";
 import { DataTable, DataTableColumn, TableView } from "@/components/DataTable";
-import { AlertCircle, CheckCircle, XCircle, Building2 } from "lucide-react";
+import { AlertCircle, CheckCircle, XCircle, Building2, Download, Key, LogOut, ShieldAlert } from "lucide-react";
 import Loader from "@workspace/ui/components/Loader";
 import Link from "next/link";
 import { prettyText } from "@workspace/shared/lib/utils";
-import { useIntegration } from "../integration-provider";
 import { useApp } from "@/hooks/useApp";
+import { Button } from "@workspace/ui/components/button";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu";
+import { exportToCSV, exportToJSON, generateTimestampedFilename } from "@/lib/utils/export";
+import { toast } from "sonner";
 
 type UserEntity = Doc<'entities'>;
 
 export default function Microsoft365Users() {
-    // Get integration from context (fetched server-side)
-    const integration = useIntegration();
+    // Track filtered data for exports
+    const [filteredData, setFilteredData] = useState<UserEntity[]>([]);
 
     // Get selected site from app state
     const { site: currentSite } = useApp();
@@ -189,6 +198,17 @@ export default function Microsoft365Users() {
                     </div>
                 );
             },
+            filter: {
+                type: "select",
+                label: "Tags",
+                operators: ["contains"],
+                options: [
+                    { label: "Admin", value: "Admin" },
+                    { label: "Stale", value: "Stale" },
+                    { label: "Partial MFA", value: "Partial MFA" },
+                    { label: "No MFA", value: "No MFA" },
+                ]
+            }
         },
         {
             key: "normalizedData.licenses",
@@ -269,6 +289,50 @@ export default function Microsoft365Users() {
         },
     ];
 
+    // Check if filters are active (filtered data is smaller than total data)
+    const hasActiveFilters = users && filteredData.length > 0 && filteredData.length < users.length;
+
+    // Export handlers - use filtered data if available
+    const handleExportCSV = () => {
+        const dataToExport = hasActiveFilters ? filteredData : (users || []);
+        const filename = generateTimestampedFilename('microsoft-365-users', '.csv');
+        exportToCSV(dataToExport, columns, filename.replace('.csv', ''));
+        toast.success(`Exported ${dataToExport.length} user${dataToExport.length !== 1 ? 's' : ''} to CSV`);
+    };
+
+    const handleExportJSON = () => {
+        const dataToExport = hasActiveFilters ? filteredData : (users || []);
+        const filename = generateTimestampedFilename('microsoft-365-users', '.json');
+        exportToJSON(dataToExport, columns, filename.replace('.json', ''));
+        toast.success(`Exported ${dataToExport.length} user${dataToExport.length !== 1 ? 's' : ''} to JSON`);
+    };
+
+    // Bulk action handlers (stubbed)
+    const handleBulkEnable = (selectedRows: UserEntity[]) => {
+        toast.info(`Bulk enable functionality coming soon (${selectedRows.length} users selected)`);
+        // TODO: Implement bulk enable
+    };
+
+    const handleBulkDisable = (selectedRows: UserEntity[]) => {
+        toast.info(`Bulk disable functionality coming soon (${selectedRows.length} users selected)`);
+        // TODO: Implement bulk disable
+    };
+
+    const handleBulkResetPassword = (selectedRows: UserEntity[]) => {
+        toast.info(`Bulk password reset functionality coming soon (${selectedRows.length} users selected)`);
+        // TODO: Implement bulk password reset
+    };
+
+    const handleBulkRevokeSessions = (selectedRows: UserEntity[]) => {
+        toast.info(`Bulk revoke sessions functionality coming soon (${selectedRows.length} users selected)`);
+        // TODO: Implement bulk revoke sessions
+    };
+
+    const handleBulkLockdown = (selectedRows: UserEntity[]) => {
+        toast.info(`Bulk lockdown functionality coming soon (${selectedRows.length} users selected)`);
+        // TODO: Implement bulk lockdown
+    };
+
     // Show empty state if no site is selected
     if (!currentSite) {
         return (
@@ -284,7 +348,7 @@ export default function Microsoft365Users() {
         );
     }
 
-    if (!dataSource) {
+    if (dataSource === null) {
         return (
             <div className="flex flex-col gap-4 items-center justify-center size-full">
                 <AlertCircle className="w-12 h-12 text-muted-foreground" />
@@ -303,12 +367,34 @@ export default function Microsoft365Users() {
 
     return (
         <div className="flex flex-col size-full gap-2">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Microsoft 365 Users</h1>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                    <Building2 className="w-4 h-4" />
-                    <p>{currentSite.name}</p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Microsoft 365 Users</h1>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                        <Building2 className="w-4 h-4" />
+                        <p>{currentSite.name}</p>
+                    </div>
                 </div>
+
+                {/* Export Dropdown */}
+                {users && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="gap-2">
+                                <Download className="w-4 h-4" />
+                                Export
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={handleExportCSV}>
+                                Export to CSV ({hasActiveFilters ? `${filteredData.length} filtered` : `${users.length} total`})
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleExportJSON}>
+                                Export to JSON ({hasActiveFilters ? `${filteredData.length} filtered` : `${users.length} total`})
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
             </div>
             {users ? (
                 <DataTable
@@ -321,6 +407,42 @@ export default function Microsoft365Users() {
                     enablePagination={true}
                     enableColumnToggle={true}
                     enableURLState={true}
+                    onFilteredDataChange={setFilteredData}
+                    onRowClick={(row) => {
+                        window.location.href = `/secure/microsoft-365/users/${row._id}`;
+                    }}
+                    rowActions={[
+                        {
+                            label: "Enable",
+                            icon: <CheckCircle className="w-4 h-4" />,
+                            onClick: handleBulkEnable,
+                            variant: "default"
+                        },
+                        {
+                            label: "Disable",
+                            icon: <XCircle className="w-4 h-4" />,
+                            onClick: handleBulkDisable,
+                            variant: "outline"
+                        },
+                        {
+                            label: "Reset Passwords",
+                            icon: <Key className="w-4 h-4" />,
+                            onClick: handleBulkResetPassword,
+                            variant: "outline"
+                        },
+                        {
+                            label: "Revoke Sessions",
+                            icon: <LogOut className="w-4 h-4" />,
+                            onClick: handleBulkRevokeSessions,
+                            variant: "outline"
+                        },
+                        {
+                            label: "Lockdown",
+                            icon: <ShieldAlert className="w-4 h-4" />,
+                            onClick: handleBulkLockdown,
+                            variant: "destructive"
+                        },
+                    ]}
                 />
             ) : (
                 <Loader />

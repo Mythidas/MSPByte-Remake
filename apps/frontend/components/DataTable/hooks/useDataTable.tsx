@@ -216,5 +216,6 @@ export function useDataTable<TData>({
         clearFilters: filterHook.clearFilters,
         selectedRows,
         viewFilters: filterHook.activeView?.filters || [],
+        filteredData, // Expose filtered data for export and other uses
     };
 }

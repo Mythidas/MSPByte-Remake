@@ -4,25 +4,28 @@ import type { Doc, Id } from "@workspace/database/convex/_generated/dataModel.js
 import { client } from "@workspace/shared/lib/convex.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import { LinkedEventPayload } from "@workspace/shared/types/pipeline/index.js";
-import type { MFAFinding } from "@workspace/shared/types/events/analysis.js";
 
 /**
- * Microsoft 365 Identity Security Analyzer
+ * Microsoft 365 MFA Tag Worker
  *
- * Simplified analyzer that evaluates MFA enforcement and emits findings.
+ * Dedicated worker for managing MFA status tags on identities.
  *
  * Responsibilities:
  * - Evaluate MFA enforcement status (Full MFA, Partial MFA, No MFA)
- * - Emit findings for identities with MFA issues
+ * - Update identity tags based on MFA status:
+ *   - "No MFA" tag for identities with no MFA enforcement
+ *   - "Partial MFA" tag for identities with partial MFA enforcement
+ *   - No tag for identities with full MFA enforcement
+ * - Preserve other tags (e.g., "Admin") during updates
  *
- * Tag Management (handled elsewhere):
- * - Admin tag: Computed by Microsoft365Linker after role linking
- * - MFA/Partial MFA tags: Removed - alerts provide this information
+ * Architecture:
+ * - Subscribes to linked events for identities and policies
+ * - Requires full context (policy changes affect all identities)
+ * - Performs batch tag updates for efficiency
  */
-export class Microsoft365IdentitySecurityAnalyzer extends BaseWorker {
+export class Microsoft365MFATagWorker extends BaseWorker {
     constructor() {
         // Declare dependencies: identities and policies
-        // Note: Admin tag already computed by Linker, so no role dependency
         super(["identities", "policies"]);
 
         // Require full context: Policy changes affect all identities
@@ -30,63 +33,47 @@ export class Microsoft365IdentitySecurityAnalyzer extends BaseWorker {
     }
 
     protected async execute(event: LinkedEventPayload): Promise<void> {
-        const { tenantID, integrationID, integrationType, dataSourceID, entityType, changedEntityIds } = event;
+        const { tenantID, integrationID, integrationType, dataSourceID, entityType } = event;
 
         if (integrationType !== "microsoft-365") return;
 
         Debug.log({
-            module: "Microsoft365IdentitySecurityAnalyzer",
+            module: "Microsoft365MFATagWorker",
             context: "execute",
-            message: `Analyzing MFA enforcement for tenant ${tenantID}`,
+            message: `Updating MFA tags for tenant ${tenantID}`,
         });
 
         try {
             // ==================== STEP 1: Fetch all identities ====================
-            let identitiesToAnalyze: Doc<"entities">[];
-
-            if (entityType === "policies" || !changedEntityIds || changedEntityIds.length === 0) {
-                // Get all identity entities for this data source
-                identitiesToAnalyze = await client.query(api.helpers.orm.list_s, {
-                    tableName: "entities",
-                    secret: process.env.CONVEX_API_KEY!,
-                    index: {
-                        name: "by_data_source",
-                        params: {
-                            dataSourceId: dataSourceID as Id<"data_sources">,
-                            tenantId: tenantID as Id<"tenants">,
-                        },
+            const allIdentities = await client.query(api.helpers.orm.list_s, {
+                tableName: "entities",
+                secret: process.env.CONVEX_API_KEY!,
+                index: {
+                    name: "by_data_source",
+                    params: {
+                        dataSourceId: dataSourceID as Id<"data_sources">,
+                        tenantId: tenantID as Id<"tenants">,
                     },
-                    filters: {
-                        entityType: "identities"
-                    }
-                }) as Doc<"entities">[];
-            } else {
-                // Incremental: Only analyze changed identities
-                identitiesToAnalyze = [];
-                for (const entityId of changedEntityIds) {
-                    const identity = await client.query(api.helpers.orm.get_s, {
-                        tableName: "entities",
-                        id: entityId as Id<"entities">,
-                        secret: process.env.CONVEX_API_KEY!,
-                    }) as Doc<"entities"> | null;
-
-                    if (identity && identity.entityType === "identities") {
-                        identitiesToAnalyze.push(identity);
-                    }
+                },
+                filters: {
+                    entityType: "identities"
                 }
-            }
+            }) as Doc<"entities">[];
+
+            // Filter out soft-deleted identities
+            const identities = allIdentities.filter(identity => !identity.deletedAt);
 
             Debug.log({
-                module: "Microsoft365IdentitySecurityAnalyzer",
+                module: "Microsoft365MFATagWorker",
                 context: "execute",
-                message: `Analyzing ${identitiesToAnalyze.length} identities (incremental: ${!!changedEntityIds})`,
+                message: `Processing ${identities.length} identities`,
             });
 
-            if (identitiesToAnalyze.length === 0) {
+            if (identities.length === 0) {
                 Debug.log({
-                    module: "Microsoft365IdentitySecurityAnalyzer",
+                    module: "Microsoft365MFATagWorker",
                     context: "execute",
-                    message: "No identities to analyze, skipping execution",
+                    message: "No identities to process, skipping execution",
                 });
                 return;
             }
@@ -120,7 +107,7 @@ export class Microsoft365IdentitySecurityAnalyzer extends BaseWorker {
             });
 
             Debug.log({
-                module: "Microsoft365IdentitySecurityAnalyzer",
+                module: "Microsoft365MFATagWorker",
                 context: "execute",
                 message: `MFA Policy Status: Security Defaults=${securityDefaultsEnabled}, CA Policies=${mfaPolicies.length}`,
             });
@@ -144,7 +131,7 @@ export class Microsoft365IdentitySecurityAnalyzer extends BaseWorker {
 
             // Build identity -> group external IDs map
             const identityGroupMap = new Map<Id<"entities">, string[]>();
-            for (const identity of identitiesToAnalyze) {
+            for (const identity of identities) {
                 identityGroupMap.set(identity._id, []);
             }
 
@@ -173,10 +160,13 @@ export class Microsoft365IdentitySecurityAnalyzer extends BaseWorker {
                 }
             }
 
-            // ==================== STEP 4: Process each identity ====================
-            const findings: MFAFinding[] = [];
+            // ==================== STEP 4: Evaluate MFA status and prepare tag updates ====================
+            const tagUpdates: Array<{ id: Id<"entities">; updates: any }> = [];
+            let noMfaTagsAdded = 0;
+            let partialMfaTagsAdded = 0;
+            let mfaTagsRemoved = 0;
 
-            for (const identity of identitiesToAnalyze) {
+            for (const identity of identities) {
                 // Read Admin tag (set by Microsoft365Linker)
                 const tags = identity.normalizedData.tags || [];
                 const isAdmin = tags.includes("Admin");
@@ -244,63 +234,102 @@ export class Microsoft365IdentitySecurityAnalyzer extends BaseWorker {
                     }
                 }
 
-                // ==== CREATE FINDINGS ====
-                // Only create findings for identities with MFA issues
-                if (!hasMFA) {
-                    // No MFA enforcement at all
-                    const severity = isAdmin ? "critical" : "high";
-                    findings.push({
-                        entityId: identity._id,
-                        severity,
-                        findings: {
-                            securityDefaultsEnabled,
-                            isAdmin,
-                            hasMFA: false,
-                            isPartial: false,
-                            reason: "No MFA enforcement configured",
-                        }
-                    });
-                } else if (isPartial) {
-                    // Partial MFA enforcement
-                    const severity = isAdmin ? "high" : "medium";
-                    const reason = securityDefaultsEnabled
-                        ? "Security Defaults provides MFA but not for all scenarios"
-                        : "Conditional Access policy doesn't cover all applications";
+                // ==== UPDATE TAGS ====
+                // Prepare updated tags array
+                const currentTags = [...(identity.normalizedData.tags || [])];
+                const hasNoMfaTag = currentTags.includes("No MFA");
+                const hasPartialMfaTag = currentTags.includes("Partial MFA");
 
-                    findings.push({
-                        entityId: identity._id,
-                        severity,
-                        findings: {
-                            securityDefaultsEnabled,
-                            isAdmin,
-                            hasMFA: true,
-                            isPartial: true,
-                            reason,
-                        }
+                let tagsChanged = false;
+
+                if (!hasMFA) {
+                    // No MFA enforcement - add "No MFA" tag, remove "Partial MFA" if present
+                    if (!hasNoMfaTag) {
+                        currentTags.push("No MFA");
+                        tagsChanged = true;
+                        noMfaTagsAdded++;
+                    }
+                    if (hasPartialMfaTag) {
+                        const idx = currentTags.indexOf("Partial MFA");
+                        if (idx > -1) currentTags.splice(idx, 1);
+                        tagsChanged = true;
+                        mfaTagsRemoved++;
+                    }
+                } else if (isPartial) {
+                    // Partial MFA enforcement - add "Partial MFA" tag, remove "No MFA" if present
+                    if (!hasPartialMfaTag) {
+                        currentTags.push("Partial MFA");
+                        tagsChanged = true;
+                        partialMfaTagsAdded++;
+                    }
+                    if (hasNoMfaTag) {
+                        const idx = currentTags.indexOf("No MFA");
+                        if (idx > -1) currentTags.splice(idx, 1);
+                        tagsChanged = true;
+                        mfaTagsRemoved++;
+                    }
+                } else {
+                    // Full MFA enforcement - remove both MFA tags if present
+                    if (hasNoMfaTag) {
+                        const idx = currentTags.indexOf("No MFA");
+                        if (idx > -1) currentTags.splice(idx, 1);
+                        tagsChanged = true;
+                        mfaTagsRemoved++;
+                    }
+                    if (hasPartialMfaTag) {
+                        const idx = currentTags.indexOf("Partial MFA");
+                        if (idx > -1) currentTags.splice(idx, 1);
+                        tagsChanged = true;
+                        mfaTagsRemoved++;
+                    }
+                }
+
+                // Only add to update batch if tags changed
+                if (tagsChanged) {
+                    tagUpdates.push({
+                        id: identity._id,
+                        updates: {
+                            normalizedData: {
+                                ...identity.normalizedData,
+                                tags: currentTags,
+                            },
+                            updatedAt: Date.now(),
+                        },
                     });
                 }
-                // Note: If hasMFA && !isPartial, no finding is created (full MFA = no issue)
             }
 
-            // ==================== STEP 5: Emit findings ====================
-            Debug.log({
-                module: "Microsoft365IdentitySecurityAnalyzer",
-                context: "execute",
-                message: `Emitting MFA analysis: ${findings.length} findings for identities with MFA issues`,
-            });
+            // ==================== STEP 5: Batch update tags ====================
+            if (tagUpdates.length > 0) {
+                await client.mutation(api.helpers.orm.update_s, {
+                    tableName: "entities",
+                    secret: process.env.CONVEX_API_KEY!,
+                    data: tagUpdates,
+                });
 
-            await this.emitAnalysis(event, "mfa", findings);
+                Debug.log({
+                    module: "Microsoft365MFATagWorker",
+                    context: "execute",
+                    message: `MFA tag updates: +"No MFA"=${noMfaTagsAdded}, +"Partial MFA"=${partialMfaTagsAdded}, -${mfaTagsRemoved} (${tagUpdates.length} total updates)`,
+                });
+            } else {
+                Debug.log({
+                    module: "Microsoft365MFATagWorker",
+                    context: "execute",
+                    message: "No MFA tag updates needed",
+                });
+            }
 
             Debug.log({
-                module: "Microsoft365IdentitySecurityAnalyzer",
+                module: "Microsoft365MFATagWorker",
                 context: "execute",
-                message: `Completed MFA analysis: ${identitiesToAnalyze.length} identities analyzed, ${findings.length} findings emitted`,
+                message: `Completed MFA tag processing: ${identities.length} identities evaluated, ${tagUpdates.length} tags updated`,
             });
         } catch (error) {
             Debug.error({
-                module: "Microsoft365IdentitySecurityAnalyzer",
+                module: "Microsoft365MFATagWorker",
                 context: "execute",
-                message: `Failed to analyze MFA enforcement: ${error}`,
+                message: `Failed to update MFA tags: ${error}`,
             });
             throw error;
         }
