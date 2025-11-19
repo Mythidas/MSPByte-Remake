@@ -6,6 +6,7 @@ import Debug from "@workspace/shared/lib/Debug.js";
 import { LinkedEventPayload } from "@workspace/shared/types/pipeline/index.js";
 import { isLicenseOverused, getLicenseOverage } from "@workspace/shared/lib/licenses.js";
 import type { License } from "@workspace/database/convex/types/normalized.js";
+import type { LicenseFinding } from "@workspace/shared/types/events/analysis.js";
 
 export class Microsoft365LicenseAnalyzer extends BaseWorker {
     constructor() {
@@ -71,6 +72,8 @@ export class Microsoft365LicenseAnalyzer extends BaseWorker {
                 message: `Analyzing ${identitiesToAnalyze.length} identities (incremental: ${!!changedEntityIds})`,
             });
 
+            const findings: LicenseFinding[] = [];
+
             // Check for licenses assigned to disabled or stale users
             for (const identity of identitiesToAnalyze) {
                 const licenses = identity.normalizedData.licenses || [];
@@ -78,10 +81,16 @@ export class Microsoft365LicenseAnalyzer extends BaseWorker {
                 const tags = identity.normalizedData.tags || [];
                 const isStale = tags.includes("Stale");
 
-                // If user is disabled or stale and has licenses, create alerts
+                // If user is disabled or stale and has licenses, create finding
                 if ((!enabled || isStale) && licenses.length > 0) {
+                    const severity = !enabled ? "medium" : "low";
+                    const reason = !enabled ? "disabled" : "stale";
+
+                    // Batch fetch all license entities for this identity
+                    const wastedLicenses: Array<{ licenseSkuId: string; licenseName: string }> = [];
+
                     for (const licenseSkuId of licenses) {
-                        // Get license entity
+                        // Get license entity to fetch the license name
                         const license = await client.query(api.helpers.orm.get_s, {
                             tableName: "entities",
                             secret: process.env.CONVEX_API_KEY!,
@@ -94,126 +103,39 @@ export class Microsoft365LicenseAnalyzer extends BaseWorker {
                             tenantId: tenantID as Id<"tenants">,
                         }) as Doc<"entities"> | null;
 
-                        if (!license || license.entityType !== "licenses") {
-                            continue;
-                        }
-
-                        const licenseName = license.normalizedData.name;
-                        const severity = !enabled ? "medium" : "low";
-                        const reason = !enabled ? "disabled" : "stale";
-
-                        // Check if active alert already exists for this entity, type, and license
-                        const existingAlerts = await client.query(api.helpers.orm.list_s, {
-                            tableName: "entity_alerts",
-                            secret: process.env.CONVEX_API_KEY!,
-                            index: {
-                                name: "by_entity_status",
-                                params: {
-                                    entityId: identity._id,
-                                    status: "active",
-                                },
-                            },
-                            filters: {
-                                alertType: "license_waste"
-                            },
-                            tenantId: tenantID as Id<"tenants">,
-                        }) as Doc<"entity_alerts">[];
-
-                        // Find alert for this specific license
-                        const existingAlert = existingAlerts.find(
-                            alert => alert.metadata?.licenseSkuId === licenseSkuId
-                        );
-
-                        if (existingAlert) {
-                            // UPDATE existing alert with fresh metadata
-                            await client.mutation(api.helpers.orm.update_s, {
-                                tableName: "entity_alerts",
-                                secret: process.env.CONVEX_API_KEY!,
-                                data: [{
-                                    id: existingAlert._id,
-                                    updates: {
-                                        severity,
-                                        message: `License ${licenseName} assigned to ${reason} user ${identity.normalizedData.name}`,
-                                        metadata: {
-                                            email: identity.normalizedData.email,
-                                            licenseSkuId,
-                                            licenseName,
-                                            reason,
-                                            userEnabled: enabled,
-                                            userStale: isStale,
-                                        },
-                                        updatedAt: Date.now(),
-                                    },
-                                }],
-                            });
-                        } else {
-                            // INSERT new alert
-                            await client.mutation(api.helpers.orm.insert_s, {
-                                tableName: "entity_alerts",
-                                secret: process.env.CONVEX_API_KEY!,
-                                tenantId: tenantID as Id<"tenants">,
-                                data: [{
-                                    tenantId: tenantID as Id<"tenants">,
-                                    entityId: identity._id,
-                                    dataSourceId: dataSourceID,
-                                    integrationId: integrationID,
-                                    integrationSlug: integrationType,
-                                    siteId: identity.siteId,
-                                    alertType: "license_waste",
-                                    severity,
-                                    message: `License ${licenseName} assigned to ${reason} user ${identity.normalizedData.name}`,
-                                    metadata: {
-                                        email: identity.normalizedData.email,
-                                        licenseSkuId,
-                                        licenseName,
-                                        reason,
-                                        userEnabled: enabled,
-                                        userStale: isStale,
-                                    },
-                                    status: "active",
-                                    updatedAt: Date.now(),
-                                }],
+                        if (license && license.entityType === "licenses") {
+                            wastedLicenses.push({
+                                licenseSkuId,
+                                licenseName: license.normalizedData.name,
                             });
                         }
                     }
-                } else if (enabled && !isStale) {
-                    // Resolve any license waste alerts for this active user
-                    const existingAlerts = await client.query(api.helpers.orm.list_s, {
-                        tableName: "entity_alerts",
-                        secret: process.env.CONVEX_API_KEY!,
-                        index: {
-                            name: "by_entity_status",
-                            params: {
-                                entityId: identity._id,
-                                status: "active",
-                            },
-                        },
-                        filters: {
-                            alertType: "license_waste"
-                        },
-                        tenantId: tenantID as Id<"tenants">,
-                    }) as Doc<"entity_alerts">[];
 
-                    for (const alert of existingAlerts) {
-                        await client.mutation(api.helpers.orm.update_s, {
-                            tableName: "entity_alerts",
-                            secret: process.env.CONVEX_API_KEY!,
-                            data: [{
-                                id: alert._id,
-                                updates: {
-                                    status: "resolved",
-                                    resolvedAt: Date.now(),
-                                    updatedAt: Date.now(),
-                                },
-                            }],
+                    if (wastedLicenses.length > 0) {
+                        findings.push({
+                            entityId: identity._id,
+                            severity,
+                            findings: {
+                                wastedLicenses,
+                                reason,
+                                userEnabled: enabled,
+                                userStale: isStale,
+                            }
                         });
                     }
                 }
-
-                // Recalculate identity state after alert operations
-                const newState = await this.calculateIdentityState(identity._id, tenantID as Id<"tenants">);
-                await this.updateIdentityState(identity, newState);
+                // Note: If enabled && !isStale, no finding is created
+                // This signals to AlertManager that any existing alerts should be resolved
             }
+
+            // Emit license waste findings for AlertManager
+            Debug.log({
+                module: "Microsoft365LicenseAnalyzer",
+                context: "execute",
+                message: `Emitting license waste analysis: ${findings.length} findings for identities with wasted licenses`,
+            });
+
+            await this.emitAnalysis(event, "license", findings);
 
             // Check for overused licenses (consumed > total)
             const allLicenses = await client.query(api.helpers.orm.list_s, {
@@ -322,7 +244,7 @@ export class Microsoft365LicenseAnalyzer extends BaseWorker {
             Debug.log({
                 module: "Microsoft365LicenseAnalyzer",
                 context: "execute",
-                message: `Completed license optimization analysis for ${identitiesToAnalyze.length} identities and ${allLicenses.length} licenses`,
+                message: `Completed license optimization analysis: ${identitiesToAnalyze.length} identities analyzed, ${findings.length} waste findings emitted, ${allLicenses.length} licenses checked for overuse`,
             });
         } catch (error) {
             Debug.error({

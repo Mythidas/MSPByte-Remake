@@ -4,6 +4,7 @@ import type { Doc, Id } from "@workspace/database/convex/_generated/dataModel.js
 import { client } from "@workspace/shared/lib/convex.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import { LinkedEventPayload } from "@workspace/shared/types/pipeline/index.js";
+import type { StaleUserFinding } from "@workspace/shared/types/events/analysis.js";
 
 const STALE_THRESHOLD_DAYS = 90;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -110,6 +111,10 @@ export class Microsoft365StaleUserAnalyzer extends BaseWorker {
             });
 
             const now = Date.now();
+            const tagUpdates: Array<{ id: Id<"entities">, normalizedData: any }> = [];
+            const findings: StaleUserFinding[] = [];
+            let staleTagsAdded = 0;
+            let staleTagsRemoved = 0;
 
             for (const identity of identitiesToAnalyze) {
                 const lastLoginStr = identity.normalizedData.last_login_at;
@@ -117,51 +122,39 @@ export class Microsoft365StaleUserAnalyzer extends BaseWorker {
                 const daysSinceLogin = (now - lastLoginDate) / MS_PER_DAY;
 
                 const isStale = daysSinceLogin >= STALE_THRESHOLD_DAYS;
-                const identityTags = identity.normalizedData.tags || [];
+                const identityTags = [...(identity.normalizedData.tags || [])];
                 const enabled = identity.normalizedData.enabled;
+                const hasLicenses = identity.normalizedData.licenses?.length > 0;
+                const isAdmin = identityTags.includes("Admin");
+
+                // ==== TAG MANAGEMENT ====
+                let tagsChanged = false;
 
                 // Update Stale tag
                 if (isStale && !identityTags.includes("Stale")) {
                     identityTags.push("Stale");
-                    await client.mutation(api.helpers.orm.update_s, {
-                        tableName: "entities",
-                        secret: process.env.CONVEX_API_KEY!,
-                        data: [{
-                            id: identity._id,
-                            updates: {
-                                normalizedData: {
-                                    ...identity.normalizedData,
-                                    tags: identityTags,
-                                },
-                                updatedAt: Date.now(),
-                            },
-                        }],
-                    });
+                    tagsChanged = true;
+                    staleTagsAdded++;
                 } else if (!isStale && identityTags.includes("Stale")) {
-                    // Remove Stale tag if user is now active
-                    const updatedTags = identityTags.filter((t: any) => t !== "Stale");
-                    await client.mutation(api.helpers.orm.update_s, {
-                        tableName: "entities",
-                        secret: process.env.CONVEX_API_KEY!,
-                        data: [{
-                            id: identity._id,
-                            updates: {
-                                normalizedData: {
-                                    ...identity.normalizedData,
-                                    tags: updatedTags,
-                                },
-                                updatedAt: Date.now(),
-                            },
-                        }],
+                    const index = identityTags.indexOf("Stale");
+                    identityTags.splice(index, 1);
+                    tagsChanged = true;
+                    staleTagsRemoved++;
+                }
+
+                if (tagsChanged) {
+                    tagUpdates.push({
+                        id: identity._id,
+                        normalizedData: {
+                            ...identity.normalizedData,
+                            tags: identityTags,
+                        }
                     });
                 }
 
-                // Create alert if user is stale
+                // ==== FINDINGS COLLECTION ====
+                // Only create findings for stale enabled users
                 if (isStale && enabled) {
-                    // Check if user has licenses (higher priority)
-                    const hasLicenses = identity.normalizedData.licenses?.length > 0;
-                    const isAdmin = identityTags.includes("Admin");
-
                     let severity: "low" | "medium" | "high" = "medium";
                     if (isAdmin) {
                         severity = "high";
@@ -169,115 +162,70 @@ export class Microsoft365StaleUserAnalyzer extends BaseWorker {
                         severity = "low";
                     }
 
-                    // Check if active alert already exists for this entity and type
-                    const existingAlerts = await client.query(api.helpers.orm.list_s, {
-                        tableName: "entity_alerts",
-                        secret: process.env.CONVEX_API_KEY!,
-                        index: {
-                            name: "by_entity_status",
-                            params: {
-                                entityId: identity._id,
-                                status: "active",
-                            },
-                        },
-                        filters: {
-                            alertType: "stale_user"
-                        },
-                        tenantId: tenantID as Id<"tenants">,
-                    }) as Doc<"entity_alerts">[];
-
-                    if (existingAlerts.length > 0) {
-                        // UPDATE existing alert with fresh metadata
-                        await client.mutation(api.helpers.orm.update_s, {
-                            tableName: "entity_alerts",
-                            secret: process.env.CONVEX_API_KEY!,
-                            data: [{
-                                id: existingAlerts[0]._id,
-                                updates: {
-                                    severity,
-                                    message: `User ${identity.normalizedData.name} has been inactive for ${Math.floor(daysSinceLogin)} days`,
-                                    metadata: {
-                                        email: identity.normalizedData.email,
-                                        daysInactive: Math.floor(daysSinceLogin),
-                                        lastLogin: lastLoginStr,
-                                        hasLicenses,
-                                        isAdmin,
-                                    },
-                                    updatedAt: Date.now(),
-                                },
-                            }],
-                        });
-                    } else {
-                        // INSERT new alert
-                        await client.mutation(api.helpers.orm.insert_s, {
-                            tableName: "entity_alerts",
-                            secret: process.env.CONVEX_API_KEY!,
-                            tenantId: tenantID as Id<"tenants">,
-                            data: [{
-                                tenantId: tenantID as Id<"tenants">,
-                                entityId: identity._id,
-                                dataSourceId: dataSourceID,
-                                integrationId: integrationID,
-                                integrationSlug: integrationType,
-                                siteId: identity.siteId,
-                                alertType: "stale_user",
-                                severity,
-                                message: `User ${identity.normalizedData.name} has been inactive for ${Math.floor(daysSinceLogin)} days`,
-                                metadata: {
-                                    email: identity.normalizedData.email,
-                                    daysInactive: Math.floor(daysSinceLogin),
-                                    lastLogin: lastLoginStr,
-                                    hasLicenses,
-                                    isAdmin,
-                                },
-                                status: "active",
-                                updatedAt: Date.now(),
-                            }],
-                        });
-                    }
-                } else if (!isStale || !enabled) {
-                    // Resolve any existing stale user alerts
-                    const existingAlerts = await client.query(api.helpers.orm.list_s, {
-                        tableName: "entity_alerts",
-                        secret: process.env.CONVEX_API_KEY!,
-                        index: {
-                            name: "by_entity_status",
-                            params: {
-                                entityId: identity._id,
-                                status: "active",
-                            },
-                        },
-                        filters: {
-                            alertType: "stale_user"
-                        },
-                        tenantId: tenantID as Id<"tenants">,
-                    }) as Doc<"entity_alerts">[];
-
-                    if (existingAlerts.length > 0) {
-                        await client.mutation(api.helpers.orm.update_s, {
-                            tableName: "entity_alerts",
-                            secret: process.env.CONVEX_API_KEY!,
-                            data: [{
-                                id: existingAlerts[0]._id,
-                                updates: {
-                                    status: "resolved",
-                                    resolvedAt: Date.now(),
-                                    updatedAt: Date.now(),
-                                },
-                            }],
-                        });
-                    }
+                    findings.push({
+                        entityId: identity._id,
+                        severity,
+                        findings: {
+                            isStale: true,
+                            daysSinceLogin: Math.floor(daysSinceLogin),
+                            hasLicenses,
+                            isEnabled: enabled,
+                        }
+                    });
                 }
-
-                // Recalculate identity state after alert operations
-                const newState = await this.calculateIdentityState(identity._id, tenantID as Id<"tenants">);
-                await this.updateIdentityState(identity, newState);
+                // Note: If !isStale || !enabled, no finding is created
+                // This signals to AlertManager that any existing alerts should be resolved
             }
 
             Debug.log({
                 module: "Microsoft365StaleUserAnalyzer",
                 context: "execute",
-                message: `Completed stale user analysis for ${identitiesToAnalyze.length} identities`,
+                message: `Tag changes: Stale +${staleTagsAdded}/-${staleTagsRemoved}`,
+            });
+
+            // Batch update tags
+            if (tagUpdates.length > 0) {
+                try {
+                    await client.mutation(api.helpers.orm.update_s, {
+                        tableName: "entities",
+                        secret: process.env.CONVEX_API_KEY!,
+                        data: tagUpdates.map(update => ({
+                            id: update.id,
+                            updates: {
+                                normalizedData: update.normalizedData,
+                                updatedAt: Date.now(),
+                            },
+                        })),
+                    });
+
+                    Debug.log({
+                        module: "Microsoft365StaleUserAnalyzer",
+                        context: "execute",
+                        message: `Successfully updated tags for ${tagUpdates.length} identities`,
+                    });
+                } catch (error) {
+                    Debug.error({
+                        module: "Microsoft365StaleUserAnalyzer",
+                        context: "execute",
+                        message: `Failed to update tags: ${error}`,
+                    });
+                    // Don't throw - continue with analysis emission
+                }
+            }
+
+            // Emit analysis findings
+            Debug.log({
+                module: "Microsoft365StaleUserAnalyzer",
+                context: "execute",
+                message: `Emitting stale user analysis: ${findings.length} findings for stale enabled users`,
+            });
+
+            await this.emitAnalysis(event, "stale", findings);
+
+            Debug.log({
+                module: "Microsoft365StaleUserAnalyzer",
+                context: "execute",
+                message: `Completed stale user analysis: ${identitiesToAnalyze.length} identities analyzed, ${findings.length} findings emitted`,
             });
         } catch (error) {
             Debug.error({

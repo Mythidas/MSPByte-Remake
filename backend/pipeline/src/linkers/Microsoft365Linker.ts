@@ -290,12 +290,170 @@ export class Microsoft365Linker extends BaseLinker {
                 }
             }
 
+            // Compute Admin tags after role relationships are established
+            await this.computeAdminTags(tenantID as Id<"tenants">, dataSourceID);
+
             await this.publishLinkedEvent(event);
         } catch (error) {
             Debug.error({
                 module: "Microsoft365Linker",
                 context: "handleRoleLinking",
                 message: `Failed to link roles: ${error}`,
+            });
+        }
+    }
+
+    /**
+     * Compute and update Admin tags for all identities based on role assignments
+     */
+    private async computeAdminTags(tenantID: Id<"tenants">, dataSourceID: string): Promise<void> {
+        Debug.log({
+            module: "Microsoft365Linker",
+            context: "computeAdminTags",
+            message: "Computing Admin tags for all identities",
+        });
+
+        try {
+            // Get all role entities
+            const allRoles = await client.query(api.helpers.orm.list_s, {
+                tableName: "entities",
+                secret: process.env.CONVEX_API_KEY!,
+                index: {
+                    name: "by_data_source",
+                    params: {
+                        dataSourceId: dataSourceID as Id<"data_sources">,
+                        tenantId: tenantID,
+                    },
+                },
+                filters: {
+                    entityType: "roles"
+                }
+            }) as Doc<"entities">[];
+
+            // Filter admin roles by name (any role with "Administrator" in the name)
+            const adminRoles = allRoles.filter(role => {
+                const roleName = role.normalizedData.name || "";
+                return roleName.toLowerCase().includes("administrator");
+            });
+
+            const adminRoleIds = new Set(adminRoles.map(r => r._id));
+
+            Debug.log({
+                module: "Microsoft365Linker",
+                context: "computeAdminTags",
+                message: `Found ${adminRoles.length} admin roles out of ${allRoles.length} total roles`,
+            });
+
+            // Get all identities for this data source
+            const allIdentities = await client.query(api.helpers.orm.list_s, {
+                tableName: "entities",
+                secret: process.env.CONVEX_API_KEY!,
+                index: {
+                    name: "by_data_source",
+                    params: {
+                        dataSourceId: dataSourceID as Id<"data_sources">,
+                        tenantId: tenantID,
+                    },
+                },
+                filters: {
+                    entityType: "identities"
+                }
+            }) as Doc<"entities">[];
+
+            const identities = this.filterActiveEntities(allIdentities);
+
+            // Get all identities assigned to admin roles
+            // Loop through each admin role and fetch its members
+            const identityHasAdminRole = new Map<Id<"entities">, boolean>();
+
+            for (const adminRole of adminRoles) {
+                const roleAssignments = await client.query(api.helpers.orm.list_s, {
+                    tableName: "entity_relationships",
+                    secret: process.env.CONVEX_API_KEY!,
+                    index: {
+                        name: "by_parent",
+                        params: {
+                            parentEntityId: adminRole._id,
+                        },
+                    },
+                    filters: {
+                        relationshipType: "assigned_role"
+                    }
+                }) as Doc<"entity_relationships">[];
+
+                // Mark all identities assigned to this admin role
+                for (const assignment of roleAssignments) {
+                    identityHasAdminRole.set(assignment.childEntityId, true);
+                }
+            }
+
+            // Prepare tag updates
+            const tagUpdates: Array<{ id: Id<"entities">; updates: any }> = [];
+            let adminsAdded = 0;
+            let adminsRemoved = 0;
+
+            for (const identity of identities) {
+                const currentTags = [...(identity.normalizedData.tags || [])];
+                const hasAdminTag = currentTags.includes("Admin");
+                const hasAdminRole = identityHasAdminRole.get(identity._id) || false;
+
+                if (hasAdminRole && !hasAdminTag) {
+                    // Add Admin tag
+                    currentTags.push("Admin");
+                    tagUpdates.push({
+                        id: identity._id,
+                        updates: {
+                            normalizedData: {
+                                ...identity.normalizedData,
+                                tags: currentTags,
+                            },
+                            updatedAt: Date.now(),
+                        },
+                    });
+                    adminsAdded++;
+                } else if (!hasAdminRole && hasAdminTag) {
+                    // Remove Admin tag
+                    const idx = currentTags.indexOf("Admin");
+                    if (idx > -1) currentTags.splice(idx, 1);
+                    tagUpdates.push({
+                        id: identity._id,
+                        updates: {
+                            normalizedData: {
+                                ...identity.normalizedData,
+                                tags: currentTags,
+                            },
+                            updatedAt: Date.now(),
+                        },
+                    });
+                    adminsRemoved++;
+                }
+            }
+
+            // Batch update tags
+            if (tagUpdates.length > 0) {
+                await client.mutation(api.helpers.orm.update_s, {
+                    tableName: "entities",
+                    secret: process.env.CONVEX_API_KEY!,
+                    data: tagUpdates,
+                });
+
+                Debug.log({
+                    module: "Microsoft365Linker",
+                    context: "computeAdminTags",
+                    message: `Admin tag updates: +${adminsAdded}/-${adminsRemoved} (${tagUpdates.length} total updates)`,
+                });
+            } else {
+                Debug.log({
+                    module: "Microsoft365Linker",
+                    context: "computeAdminTags",
+                    message: "No Admin tag updates needed",
+                });
+            }
+        } catch (error) {
+            Debug.error({
+                module: "Microsoft365Linker",
+                context: "computeAdminTags",
+                message: `Failed to compute Admin tags: ${error}`,
             });
         }
     }

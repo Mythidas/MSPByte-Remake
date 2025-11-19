@@ -135,6 +135,7 @@ export default function Microsoft365Users() {
             cell: ({ row }) => {
                 const state = row.normalizedData?.state || 'normal';
                 const stateConfig = {
+                    low: { color: "bg-slate-500/50", icon: AlertCircle },
                     normal: { color: "bg-green-500/50", icon: CheckCircle },
                     warn: { color: "bg-yellow-500/50", icon: AlertCircle },
                     critical: { color: "bg-red-500/50", icon: AlertCircle },

@@ -24,6 +24,7 @@ import { Microsoft365IdentitySecurityAnalyzer } from "@workspace/pipeline/worker
 import { Microsoft365StaleUserAnalyzer } from "@workspace/pipeline/workers/Microsoft365StaleUserAnalyzer.js";
 import { Microsoft365LicenseAnalyzer } from "@workspace/pipeline/workers/Microsoft365LicenseAnalyzer.js";
 import { Microsoft365PolicyAnalyzer } from "@workspace/pipeline/workers/Microsoft365PolicyAnalyzer.js";
+import { AlertManager } from "@workspace/pipeline/analyzers/AlertManager.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import { IntegrationType } from "@workspace/shared/types/pipeline/core.js";
 import { dirname, join } from "path";
@@ -43,10 +44,12 @@ class MSPByteBackend {
     private processors: BaseProcessor[];
     private resolvers: BaseResolver[];
     private linkers: BaseLinker[];
+    private alertManager: AlertManager;
     private workers: BaseWorker[];
 
     constructor() {
         this.scheduler = new Scheduler();
+        this.alertManager = new AlertManager();
         this.adapters = new Map([
             ["autotask", new AutoTaskAdapter() as BaseAdapter],
             ["sophos-partner", new SophosPartnerAdapter()],
@@ -135,6 +138,14 @@ class MSPByteBackend {
                 });
                 await linker.start();
             }
+
+            // Start AlertManager (BEFORE workers - must be ready to receive analysis events)
+            Debug.log({
+                module: "MSPByteBackend",
+                context: "start",
+                message: "Starting AlertManager...",
+            });
+            await this.alertManager.start();
 
             // Start all workers
             for await (const worker of this.workers) {

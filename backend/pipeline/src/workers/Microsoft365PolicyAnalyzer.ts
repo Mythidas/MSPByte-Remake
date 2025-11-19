@@ -4,6 +4,7 @@ import type { Doc, Id } from "@workspace/database/convex/_generated/dataModel.js
 import { client } from "@workspace/shared/lib/convex.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import { LinkedEventPayload } from "@workspace/shared/types/pipeline/index.js";
+import type { PolicyFinding } from "@workspace/shared/types/events/analysis.js";
 
 export class Microsoft365PolicyAnalyzer extends BaseWorker {
     constructor() {
@@ -84,6 +85,8 @@ export class Microsoft365PolicyAnalyzer extends BaseWorker {
                 context: "execute",
                 message: `Analyzing ${identitiesToAnalyze.length} identities (incremental: ${!!changedEntityIds})`,
             });
+
+            const findings: PolicyFinding[] = [];
 
             // Check if Security Defaults is enabled
             const securityDefaults = policies.find(
@@ -169,117 +172,36 @@ export class Microsoft365PolicyAnalyzer extends BaseWorker {
                 const tags = identity.normalizedData.tags || [];
                 const isAdmin = tags.includes("Admin");
 
-                // Create alert if user has no policy coverage
+                // Create finding if user has no policy coverage
                 if (!coveredByPolicy) {
                     const severity = isAdmin ? "high" : "medium";
 
-                    // Check if active alert already exists for this entity and type
-                    const existingAlerts = await client.query(api.helpers.orm.list_s, {
-                        tableName: "entity_alerts",
-                        secret: process.env.CONVEX_API_KEY!,
-                        index: {
-                            name: "by_entity_status",
-                            params: {
-                                entityId: identity._id,
-                                status: "active",
-                            },
-                        },
-                        filters: {
-                            alertType: "policy_gap"
-                        },
-                        tenantId: tenantID as Id<"tenants">,
-                    }) as Doc<"entity_alerts">[];
-
-                    if (existingAlerts.length > 0) {
-                        // UPDATE existing alert with fresh metadata
-                        await client.mutation(api.helpers.orm.update_s, {
-                            tableName: "entity_alerts",
-                            secret: process.env.CONVEX_API_KEY!,
-                            data: [{
-                                id: existingAlerts[0]._id,
-                                updates: {
-                                    severity,
-                                    message: `User ${identity.normalizedData.name} is not covered by any security policy`,
-                                    metadata: {
-                                        email: identity.normalizedData.email,
-                                        isAdmin,
-                                        securityDefaultsEnabled,
-                                        enabledPolicyCount: enabledPolicies.length,
-                                    },
-                                    updatedAt: Date.now(),
-                                },
-                            }],
-                        });
-                    } else {
-                        // INSERT new alert
-                        await client.mutation(api.helpers.orm.insert_s, {
-                            tableName: "entity_alerts",
-                            secret: process.env.CONVEX_API_KEY!,
-                            tenantId: tenantID as Id<"tenants">,
-                            data: [{
-                                tenantId: tenantID as Id<"tenants">,
-                                entityId: identity._id,
-                                dataSourceId: dataSourceID,
-                                integrationId: integrationID,
-                                integrationSlug: integrationType,
-                                siteId: identity.siteId,
-                                alertType: "policy_gap",
-                                severity,
-                                message: `User ${identity.normalizedData.name} is not covered by any security policy`,
-                                metadata: {
-                                    email: identity.normalizedData.email,
-                                    isAdmin,
-                                    securityDefaultsEnabled,
-                                    enabledPolicyCount: enabledPolicies.length,
-                                },
-                                status: "active",
-                                updatedAt: Date.now(),
-                            }],
-                        });
-                    }
-                } else {
-                    // Resolve any existing policy gap alerts
-                    const existingAlerts = await client.query(api.helpers.orm.list_s, {
-                        tableName: "entity_alerts",
-                        secret: process.env.CONVEX_API_KEY!,
-                        index: {
-                            name: "by_entity_status",
-                            params: {
-                                entityId: identity._id,
-                                status: "active",
-                            },
-                        },
-                        filters: {
-                            alertType: "policy_gap"
-                        },
-                        tenantId: tenantID as Id<"tenants">,
-                    }) as Doc<"entity_alerts">[];
-
-                    if (existingAlerts.length > 0) {
-                        await client.mutation(api.helpers.orm.update_s, {
-                            tableName: "entity_alerts",
-                            secret: process.env.CONVEX_API_KEY!,
-                            data: [{
-                                id: existingAlerts[0]._id,
-                                updates: {
-                                    status: "resolved",
-                                    resolvedAt: Date.now(),
-                                    updatedAt: Date.now(),
-                                },
-                            }],
-                        });
-                    }
+                    findings.push({
+                        entityId: identity._id,
+                        severity,
+                        findings: {
+                            missingPolicies: [],  // Not tracking specific missing policies
+                            policyGaps: ["No security policy coverage"],
+                        }
+                    });
                 }
-
-                // Recalculate identity state after alert operations
-                const newState = await this.calculateIdentityState(identity._id, tenantID as Id<"tenants">);
-                await this.updateIdentityState(identity, newState);
+                // Note: If coveredByPolicy, no finding is created
+                // This signals to AlertManager that any existing alerts should be resolved
             }
+
+            // Emit policy gap findings for AlertManager
+            Debug.log({
+                module: "Microsoft365PolicyAnalyzer",
+                context: "execute",
+                message: `Emitting policy gap analysis: ${findings.length} findings for identities without policy coverage`,
+            });
+
+            await this.emitAnalysis(event, "policy", findings);
 
             Debug.log({
                 module: "Microsoft365PolicyAnalyzer",
                 context: "execute",
-                message: `Completed policy coverage analysis for ${identitiesToAnalyze.length} identities`,
+                message: `Completed policy coverage analysis: ${identitiesToAnalyze.length} identities analyzed, ${findings.length} findings emitted`,
             });
         } catch (error) {
             Debug.error({

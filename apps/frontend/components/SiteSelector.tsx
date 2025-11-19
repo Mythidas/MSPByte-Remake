@@ -39,14 +39,17 @@ export function SiteSelector() {
     ] : [];
 
     return (
-        <SearchBox
-            className="!bg-card/50 rounded shadow !h-9 !border-border !ring-[0px] !ring-none w-48"
-            placeholder={currentSite?.name ?? "Select a site"}
-            defaultValue={currentSite?._id ?? 'none'}
-            onSelect={handleSelect}
-            options={options}
-            loading={!sites}
-            lead={<Building2 className="w-4 h-4 text-muted-foreground" />}
-        />
+        <div className="w-96">
+            <SearchBox
+                className="!bg-card/50 rounded shadow !h-9 !border-border !ring-[0px] !ring-none"
+                placeholder={currentSite?.name ?? "Select a site"}
+                defaultValue={currentSite?._id ?? 'none'}
+                onSelect={handleSelect}
+                options={options}
+                loading={!sites}
+                lead={<Building2 className="w-4 h-4 text-muted-foreground" />}
+                leadClass="!top-2.5 !left-3.5"
+            />
+        </div>
     );
 }

@@ -8,6 +8,8 @@ import {
 import { api } from "@workspace/database/convex/_generated/api.js";
 import type { Doc, Id } from "@workspace/database/convex/_generated/dataModel.js";
 import { client } from "@workspace/shared/lib/convex.js";
+import type { AnalysisEvent, EntityFinding } from "@workspace/shared/types/events/analysis.js";
+import { randomUUID } from "crypto";
 
 /**
  * BaseWorker - Abstract base class for all pipeline workers
@@ -196,7 +198,7 @@ export abstract class BaseWorker {
     protected async calculateIdentityState(
         entityId: Id<"entities">,
         tenantID: Id<"tenants">
-    ): Promise<"normal" | "warn" | "critical"> {
+    ): Promise<"normal" | "low" | "warn" | "critical"> {
         try {
             // Query all active alerts for this entity
             const alerts = await client.query(api.helpers.orm.list_s, {
@@ -226,7 +228,13 @@ export abstract class BaseWorker {
                 return "warn";
             }
 
-            // No critical/high/medium alerts = normal state
+            // Check for low severity alerts
+            const hasLow = alerts.some(alert => alert.severity === "low");
+            if (hasLow) {
+                return "low";
+            }
+
+            // No alerts = normal state
             return "normal";
         } catch (error) {
             Debug.error({
@@ -247,7 +255,7 @@ export abstract class BaseWorker {
      */
     protected async updateIdentityState(
         identity: Doc<"entities">,
-        newState: "normal" | "warn" | "critical"
+        newState: "normal" | "low" | "warn" | "critical"
     ): Promise<void> {
         const currentState = (identity.normalizedData as any).state;
 
@@ -284,5 +292,43 @@ export abstract class BaseWorker {
                 message: `Failed to update state: ${error}`,
             });
         }
+    }
+
+    /**
+     * Emit analysis event for AlertManager to process
+     *
+     * Workers should use this to report their findings instead of creating alerts directly.
+     * AlertManager will aggregate findings from all workers and create composite alerts.
+     *
+     * @param event - The original linked event
+     * @param analysisType - Type of analysis (e.g., "mfa", "stale", "license", "policy")
+     * @param findings - Array of entity findings with severity and domain-specific data
+     */
+    protected async emitAnalysis(
+        event: LinkedEventPayload,
+        analysisType: string,
+        findings: EntityFinding[]
+    ): Promise<void> {
+        const analysisEvent: AnalysisEvent = {
+            analysisId: randomUUID(),
+            tenantID: event.tenantID,
+            dataSourceID: event.dataSourceID,
+            integrationID: event.integrationID,
+            integrationType: event.integrationType,
+            analysisType,
+            entityType: event.entityType,
+            findings,
+            createdAt: Date.now(),
+        };
+
+        const topic = `analysis.${analysisType}.${event.entityType}`;
+
+        await natsClient.publish(topic, analysisEvent);
+
+        Debug.log({
+            module: "BaseWorker",
+            context: this.constructor.name,
+            message: `Emitted ${analysisType} analysis for ${findings.length} entities to ${topic}`,
+        });
     }
 }

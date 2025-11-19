@@ -10,7 +10,8 @@
     "./resolvers/*": "./src/resolvers/*",
     "./scheduler/*": "./src/scheduler/*",
     "./helpers/*": "./src/helpers/*",
-    "./workers/*": "./src/workers/*"
+    "./workers/*": "./src/workers/*",
+    "./analyzers/*": "./src/analyzers/*"
   },
   "scripts": {
     "test": "vitest run",

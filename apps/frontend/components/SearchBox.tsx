@@ -16,6 +16,7 @@ type Props = {
     placeholder?: string;
     defaultValue?: string;
     lead?: React.ReactNode;
+    leadClass?: ClassValue;
     loading?: boolean;
     delay?: number;
     onSelect?: (value: string) => void;
@@ -28,6 +29,7 @@ export default function SearchBox({
     className,
     placeholder,
     lead,
+    leadClass,
     loading,
     delay = 0,
     onSelect,
@@ -81,6 +83,7 @@ export default function SearchBox({
                         className={cn(lead && 'rounded-l-none', className)}
                         delay={delay}
                         lead={lead}
+                        leadClass={leadClass}
                         defaultValue={defaultValue}
                         ref={inputRef}
                     />
