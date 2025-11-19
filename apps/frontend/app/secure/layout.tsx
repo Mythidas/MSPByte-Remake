@@ -1,8 +1,12 @@
 import SideNavbar from "@/components/SideNavbar";
 import { TopNavbar } from "@/components/TopNavbar";
+import { withAuth } from "@workos-inc/authkit-nextjs";
 import { ReactNode } from "react";
 
-export default function CoreLayout({ children }: { children: ReactNode }) {
+export default async function CoreLayout({ children }: { children: ReactNode }) {
+    const { user } = await withAuth({ ensureSignedIn: true });
+    console.log(`User ${user.email} is logged in`);
+
     return (
         <div className="relative flex flex-col size-full p-2 overflow-hidden">
             {/* SVG Dot Grid Background */}
