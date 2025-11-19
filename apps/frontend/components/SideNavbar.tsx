@@ -35,6 +35,7 @@ export default function SideNavbar() {
 
 function ModesSelector() {
     const { mode, modes, setMode } = useManageMode();
+    const { isLoading } = useFetchModes();
     const router = useRouter();
 
     const handleSelect = async (v: string) => {
@@ -60,5 +61,6 @@ function ModesSelector() {
             { label: 'Default', value: 'default' },
             ...modes.map((i) => ({ label: i.name, value: i.slug }))
         ]}
+        loading={isLoading}
     />
 }

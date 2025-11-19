@@ -5,16 +5,19 @@ import { api, Doc } from "@/lib/api";
 import SearchBox from "@/components/SearchBox";
 import { Building2 } from "lucide-react";
 import { useManageSite } from "@/hooks/useManageSite";
+import { useAuthReady } from "@/hooks/useAuthReady";
 
 export function SiteSelector() {
     const { site: currentSite, setSite } = useManageSite();
+    const { isLoading: authLoading, isAuthenticated } = useAuthReady();
 
     // Fetch all sites for the current tenant
+    // Skip query if auth is still loading or user is not authenticated
     const sites = useQuery(
         api.helpers.orm.list,
-        {
+        !authLoading && isAuthenticated ? {
             tableName: 'sites'
-        }
+        } : 'skip'
     ) as Doc<'sites'>[] | undefined;
 
     const handleSelect = async (value: string) => {
@@ -46,7 +49,7 @@ export function SiteSelector() {
                 defaultValue={currentSite?._id ?? 'none'}
                 onSelect={handleSelect}
                 options={options}
-                loading={!sites}
+                loading={authLoading || (!sites && isAuthenticated)}
                 lead={<Building2 className="w-4 h-4 text-muted-foreground" />}
                 leadClass="!top-2.5 !left-3.5"
             />

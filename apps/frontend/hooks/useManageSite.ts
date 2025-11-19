@@ -2,6 +2,7 @@ import { useMutation } from "convex/react";
 import { api, Doc } from "@/lib/api";
 import { useAppStore } from "@/stores/AppStore";
 import { useCallback } from "react";
+import { toast } from "sonner";
 
 type Site = Doc<"sites">;
 
@@ -15,21 +16,25 @@ export function useManageSite() {
 
     const setSite = useCallback(
         async (site: Site | null) => {
-            // Update Zustand store immediately for instant UI feedback
-            setStoreSite(site);
+            const previousSite = currentSite;
 
-            // Persist to user metadata (cross-device + source of truth)
             try {
+                // Update Zustand store immediately for instant UI feedback
+                setStoreSite(site);
+
+                // Persist to user metadata (cross-device + source of truth)
                 await updateMyMetadata({
                     currentSite: site?._id ?? null,
                 });
             } catch (error) {
                 console.error("Failed to persist site selection:", error);
-                // Note: UI already updated, so user sees change even if persistence fails
-                // Could add toast notification here if desired
+                toast.error("Failed to save site selection. Please try again.");
+
+                // Revert to previous site on error
+                setStoreSite(previousSite);
             }
         },
-        [updateMyMetadata, setStoreSite]
+        [currentSite, updateMyMetadata, setStoreSite]
     );
 
     return {

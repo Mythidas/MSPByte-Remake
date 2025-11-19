@@ -195,7 +195,9 @@ export default function Microsoft365Groups() {
         );
     }
 
-    if (!dataSource) {
+    // Only show error if dataSource query completed and returned null
+    // Don't block if it's still loading (undefined)
+    if (dataSource === null) {
         return (
             <div className="flex flex-col gap-4 items-center justify-center size-full">
                 <AlertCircle className="w-12 h-12 text-muted-foreground" />

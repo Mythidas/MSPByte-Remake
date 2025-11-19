@@ -4,6 +4,8 @@ import { useAppStore } from "@/stores/AppStore";
 import { useMutation, useQuery } from "convex/react";
 import { api, Doc } from "@/lib/api";
 import { useEffect } from "react";
+import { useAuthReady } from "./useAuthReady";
+import { toast } from "sonner";
 
 export function useApp() {
     const { currentSite, currentMode, setSite, setMode } = useAppStore();
@@ -18,56 +20,75 @@ export function useApp() {
 
 export function useFetchModes() {
     const { availableModes, setAvailableModes } = useAppStore();
+    const { isLoading: authLoading, isAuthenticated } = useAuthReady();
     const validModes = ['microsoft-365', 'msp-agent'];
 
-    const integrations = useQuery(api.integrations.query.listActiveWithDataSource, {});
+    // Skip query if auth is loading or user is not authenticated
+    const integrations = useQuery(
+        api.integrations.query.listActiveWithDataSource,
+        !authLoading && isAuthenticated ? {} : 'skip'
+    );
 
     useEffect(() => {
-        const modes = integrations?.filter((i) => i.dataSourceStatus !== 'inactive' && validModes.includes(i.slug)) || [];
-        if (JSON.stringify(availableModes) === JSON.stringify(modes)) {
-            return;
-        }
+        if (!integrations) return;
 
-        setAvailableModes(modes);
-    }, [integrations])
+        const modes = integrations.filter((i) => i.dataSourceStatus !== 'inactive' && validModes.includes(i.slug));
+
+        // Improved comparison: check if modes have actually changed
+        const modesChanged = modes.length !== availableModes.length ||
+            modes.some((mode, index) => mode._id !== availableModes[index]?._id);
+
+        if (modesChanged) {
+            setAvailableModes(modes);
+        }
+    }, [integrations, availableModes, setAvailableModes]);
+
+    return {
+        modes: availableModes,
+        isLoading: authLoading || (!integrations && isAuthenticated),
+    };
 }
 
 export function useManageMode() {
     const { currentMode, availableModes, setMode } = useAppStore();
     const updateMyMetadata = useMutation(api.users.mutate.updateMyMetadata);
 
-    const setModeMutatation = async (modeSlug: string | null) => {
-        if (!modeSlug) {
-            setMode(null);
-            try {
-                await updateMyMetadata({
-                    currentMode: null
-                });
-            } catch (err) {
-                console.log(err)
-            }
-        } else {
-            const mode = availableModes.find((m) => m.slug === modeSlug);
-            if (!mode || mode === currentMode) return;
+    const setModeMutation = async (modeSlug: string | null) => {
+        try {
+            if (!modeSlug) {
+                setMode(null);
+                await updateMyMetadata({ currentMode: null });
+            } else {
+                const mode = availableModes.find((m) => m.slug === modeSlug);
+                if (!mode || mode === currentMode) return;
 
-            setMode(mode);
-            try {
+                setMode(mode);
                 await updateMyMetadata({ currentMode: mode.slug });
-            } catch (err) {
-                console.log(err);
+            }
+        } catch (err) {
+            console.error('Failed to update mode:', err);
+            toast.error('Failed to update mode. Please try again.');
+            // Revert local state on error
+            if (currentMode) {
+                setMode(currentMode);
             }
         }
-    }
+    };
 
-    return { mode: currentMode, modes: availableModes, setMode: setModeMutatation };
+    return { mode: currentMode, modes: availableModes, setMode: setModeMutation };
 }
 
 export function useSyncAppFromUrl(siteSlug?: string, modeSlug?: string) {
     const { currentSite, currentMode, availableModes, setSite, setMode } = useAppStore();
+    const { isLoading: authLoading, isAuthenticated } = useAuthReady();
 
+    // Skip query if auth is loading, user is not authenticated, or no slug provided
     const site = useQuery(
         api.helpers.orm.get,
-        { tableName: 'sites', index: { name: 'by_slug', params: { slug: siteSlug || '' } } }
+        !authLoading && isAuthenticated && siteSlug ? {
+            tableName: 'sites',
+            index: { name: 'by_slug', params: { slug: siteSlug } }
+        } : 'skip'
     );
 
     useEffect(() => {

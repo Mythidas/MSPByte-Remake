@@ -107,7 +107,8 @@ export default function Microsoft365Dashboard() {
         );
     }
 
-    if (!dataSource) {
+    // Show not configured message if dataSource query completed but returned null
+    if (dataSource === null) {
         return (
             <div className="flex flex-col gap-4 items-center justify-center size-full">
                 <AlertCircle className="w-12 h-12 text-muted-foreground" />
@@ -181,15 +182,25 @@ export default function Microsoft365Dashboard() {
             {/* Integration Status */}
             <div className="bg-card/50 border rounded shadow p-6">
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className={`w-3 h-3 rounded-full ${dataSource.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'}`} />
-                        <div>
-                            <h3 className="font-semibold">Integration Status</h3>
-                            <p className="text-sm text-muted-foreground">
-                                {dataSource.status === 'active' ? 'Active and syncing' : 'Configuration needed'}
-                            </p>
+                    {dataSource ? (
+                        <div className="flex items-center gap-3">
+                            <div className={`w-3 h-3 rounded-full ${dataSource.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                            <div>
+                                <h3 className="font-semibold">Integration Status</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    {dataSource.status === 'active' ? 'Active and syncing' : 'Configuration needed'}
+                                </p>
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                        <div className="flex items-center gap-3">
+                            <div className="animate-pulse w-3 h-3 rounded-full bg-muted" />
+                            <div className="space-y-2">
+                                <div className="animate-pulse h-5 w-32 bg-muted rounded" />
+                                <div className="animate-pulse h-4 w-48 bg-muted rounded" />
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
