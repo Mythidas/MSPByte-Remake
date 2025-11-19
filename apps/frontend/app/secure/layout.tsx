@@ -1,11 +1,15 @@
 import SideNavbar from "@/components/SideNavbar";
 import { TopNavbar } from "@/components/TopNavbar";
 import { withAuth } from "@workos-inc/authkit-nextjs";
+import Loader from "@workspace/ui/components/Loader";
 import { ReactNode } from "react";
 
 export default async function CoreLayout({ children }: { children: ReactNode }) {
     const { user } = await withAuth({ ensureSignedIn: true });
-    console.log(`User ${user.email} is logged in`);
+
+    if (!user) {
+        return <Loader />
+    }
 
     return (
         <div className="relative flex flex-col size-full p-2 overflow-hidden">
