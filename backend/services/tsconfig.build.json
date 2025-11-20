@@ -2,7 +2,6 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "baseUrl": ".",
     "paths": {
       "@workspace/shared/*": ["../../packages/shared/src/*"],
       "@workspace/services/*": ["../../backend/services/src/*"],

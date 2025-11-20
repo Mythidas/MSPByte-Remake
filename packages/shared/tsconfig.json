@@ -4,10 +4,11 @@
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
-      "@workspace/shared/*": ["../../packages/shared/src/*"],
+        "@workspace/shared/types/*": ["./src/types/*"],
+      "@workspace/shared/lib/*": ["./src/lib/*"],
       "@workspace/database/*": ["../../packages/database/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", "**/*.css", "**/*.mjs"],
+  "include": ["**/*.ts", "**/*.tsx", "**/*.css", "**/*.mjs", "**/*.js"],
   "exclude": ["node_modules", "dist"]
 }

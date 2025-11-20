@@ -34,6 +34,7 @@ import type * as sites_query from "../sites/query.js";
 import type * as tenants_query from "../tenants/query.js";
 import type * as types_index from "../types/index.js";
 import type * as types_normalized from "../types/normalized.js";
+import type * as types_normalized from "../types/normalized.js";
 import type * as users_mutate from "../users/mutate.js";
 import type * as users_query from "../users/query.js";
 
@@ -69,6 +70,7 @@ declare const fullApi: ApiFromModules<{
   "sites/query": typeof sites_query;
   "tenants/query": typeof tenants_query;
   "types/index": typeof types_index;
+  "types/normalized": typeof types_normalized;
   "types/normalized": typeof types_normalized;
   "users/mutate": typeof users_mutate;
   "users/query": typeof users_query;

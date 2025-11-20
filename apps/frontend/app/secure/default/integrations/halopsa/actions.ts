@@ -1,6 +1,5 @@
 'use server';
 
-import { HaloPSAConnector } from "@workspace/shared/lib/connectors/HaloPSAConnector";
 import Encryption from "@workspace/shared/lib/Encryption";
 import type { HaloPSAConfig } from '@workspace/shared/types/integrations/halopsa';
 import { client } from "@workspace/shared/lib/convex";
@@ -8,22 +7,26 @@ import { api } from "@/lib/api";
 
 export async function testConnection(config: HaloPSAConfig) {
     try {
-        if (!config.clientSecret.includes(':')) {
-            config.clientSecret = await Encryption.encrypt(config.clientSecret, process.env.ENCRYPTION_KEY!);
+        const secret = config.clientSecret.includes(':') ? await Encryption.decrypt(config.clientSecret, process.env.ENCRYPTION_KEY!) : config.clientSecret;
+
+        const response = await fetch(`${config.url}/auth/token`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+                grant_type: "client_credentials",
+                client_id: config.clientId,
+                client_secret: secret || "",
+                scope: "all",
+            }),
+        });
+
+        if (!response.ok) {
+            return { data: false, error: response.text };
+        } else {
+            return { data: true };
         }
-
-        const connector = new HaloPSAConnector(config, process.env.ENCRYPTION_KEY!);
-        if (!connector) {
-            return { data: false, error: 'Failed to create connector' };
-        }
-
-        const { error } = await connector.checkHealth();
-
-        if (error) {
-            return { data: false, error };
-        }
-
-        return { data: true };
     } catch (error: unknown) {
         return { data: false, error: error };
     }

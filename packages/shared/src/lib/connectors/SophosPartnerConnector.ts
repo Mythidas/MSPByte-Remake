@@ -37,7 +37,7 @@ export default class SophosPartnerConnector implements IConnector {
                 throw new Error(sophosPartner.error.message);
             }
 
-            const tenants = [];
+            const tenants: SophosPartnerTenant[] = [];
             const url = "https://api.central.sophos.com/partner/v1/tenants";
 
             let page = 1;

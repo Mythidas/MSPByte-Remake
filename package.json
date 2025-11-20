@@ -10,6 +10,7 @@
     "scripts": {
         "start": "turbo start",
         "build": "turbo build",
+        "build:shared": "turbo build --filter=@workspace/shared",
         "dev": "turbo dev",
         "dev:web": "turbo dev --filter=frontend --filter=@workspace/services --filter=@workspace/events",
         "dev:agent": "turbo dev --filter=mspagent --filter=@workspace/agents",

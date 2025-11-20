@@ -1,32 +1,32 @@
 import { AutoTaskConnector } from "@workspace/shared/lib/connectors/AutoTaskConnector.js";
-import { HaloPSAConnector } from "@workspace/shared/lib/connectors/HaloPSAConnector.js";
+import HaloPSAConnector from "@workspace/shared/lib/connectors/HaloPSAConnector.js";
 import Microsoft365Connector from "@workspace/shared/lib/connectors/Microsoft365Connector.js";
 import SophosPartnerConnector from "@workspace/shared/lib/connectors/SophosPartnerConnector.js";
 import { APIResponse } from "@workspace/shared/types/api.js";
 import { IntegrationType } from "@workspace/shared/types/pipeline/core.js";
 
 export interface IConnector {
-  checkHealth: () => Promise<APIResponse<boolean>>;
+    checkHealth: () => Promise<APIResponse<boolean>>;
 }
 
 export function getConnector(
-  integration: IntegrationType,
-  config: any,
-  secret: string
+    integration: IntegrationType,
+    config: any,
+    secret: string
 ): IConnector | undefined {
-  switch (integration) {
-    case "autotask":
-      return new AutoTaskConnector(config, secret);
-    case "sophos-partner":
-      return new SophosPartnerConnector(config, secret);
-    case "microsoft-365":
-      return new Microsoft365Connector(config);
-    case "halopsa":
-      return new HaloPSAConnector(config, secret);
-    default: {
-      console.error(
-        `No connector defined for this integration: ${integration}`
-      );
+    switch (integration) {
+        case "autotask":
+            return new AutoTaskConnector(config, secret);
+        case "sophos-partner":
+            return new SophosPartnerConnector(config, secret);
+        case "microsoft-365":
+            return new Microsoft365Connector(config);
+        case "halopsa":
+            return new HaloPSAConnector(config, secret);
+        default: {
+            console.error(
+                `No connector defined for this integration: ${integration}`
+            );
+        }
     }
-  }
 }

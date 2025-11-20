@@ -7,8 +7,7 @@ import type { Doc } from "@workspace/database/convex/_generated/dataModel.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import Encryption from "@workspace/shared/lib/Encryption.js";
 import { APIResponse } from "@workspace/shared/types/api.js";
-import { DataFetchPayload } from "@workspace/shared/types/pipeline/events.js";
-import { HaloPSAConnector } from "@workspace/shared/lib/connectors/HaloPSAConnector.js";
+import HaloPSAConnector from "@workspace/shared/lib/connectors/HaloPSAConnector.js";
 import { HaloPSAConfig } from "@workspace/shared/types/integrations/halopsa/index.js";
 
 export class HaloPSAAdapter extends BaseAdapter {

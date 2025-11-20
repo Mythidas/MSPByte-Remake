@@ -35,6 +35,9 @@
             "@workspace/shared/lib/*": [
                 "../../packages/shared/src/lib/*"
             ],
+            "@workspace/shared/config/*": [
+                "../../packages/shared/src/config/*"
+            ],
             "@workspace/ui/lib/*": [
                 "../../packages/ui/src/lib/*"
             ],
