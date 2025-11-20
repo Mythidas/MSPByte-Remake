@@ -49,31 +49,32 @@ export class Microsoft365IdentitySecurityAnalyzer extends BaseWorker {
                 identitiesToAnalyze = await client.query(api.helpers.orm.list_s, {
                     tableName: "entities",
                     secret: process.env.CONVEX_API_KEY!,
+                    tenantId: tenantID as Id<"tenants">,
                     index: {
-                        name: "by_data_source",
+                        name: "by_data_source_type",
                         params: {
                             dataSourceId: dataSourceID as Id<"data_sources">,
-                            tenantId: tenantID as Id<"tenants">,
+                            entityType: "identities"
                         },
                     },
-                    filters: {
-                        entityType: "identities"
-                    }
                 }) as Doc<"entities">[];
             } else {
                 // Incremental: Only analyze changed identities
-                identitiesToAnalyze = [];
-                for (const entityId of changedEntityIds) {
-                    const identity = await client.query(api.helpers.orm.get_s, {
-                        tableName: "entities",
-                        id: entityId as Id<"entities">,
-                        secret: process.env.CONVEX_API_KEY!,
-                    }) as Doc<"entities"> | null;
-
-                    if (identity && identity.entityType === "identities") {
-                        identitiesToAnalyze.push(identity);
+                identitiesToAnalyze = await client.query(api.helpers.orm.list_s, {
+                    tableName: "entities",
+                    secret: process.env.CONVEX_API_KEY!,
+                    tenantId: tenantID as Id<"tenants">,
+                    index: {
+                        name: "by_data_source_type",
+                        params: {
+                            dataSourceId: dataSourceID as Id<"data_sources">,
+                            entityType: "identities",
+                        }
+                    },
+                    filters: {
+                        _id: { in: changedEntityIds }
                     }
-                }
+                }) as Doc<"entities">[];
             }
 
             Debug.log({
@@ -95,16 +96,14 @@ export class Microsoft365IdentitySecurityAnalyzer extends BaseWorker {
             const allPolicies = await client.query(api.helpers.orm.list_s, {
                 tableName: "entities",
                 secret: process.env.CONVEX_API_KEY!,
+                tenantId: tenantID as Id<"tenants">,
                 index: {
-                    name: "by_data_source",
+                    name: "by_data_source_type",
                     params: {
                         dataSourceId: dataSourceID as Id<"data_sources">,
-                        tenantId: tenantID as Id<"tenants">,
+                        entityType: "policies"
                     },
                 },
-                filters: {
-                    entityType: "policies"
-                }
             }) as Doc<"entities">[];
 
             // Check for Security Defaults
@@ -130,16 +129,14 @@ export class Microsoft365IdentitySecurityAnalyzer extends BaseWorker {
             const allGroups = await client.query(api.helpers.orm.list_s, {
                 tableName: "entities",
                 secret: process.env.CONVEX_API_KEY!,
+                tenantId: tenantID as Id<"tenants">,
                 index: {
-                    name: "by_data_source",
+                    name: "by_data_source_type",
                     params: {
                         dataSourceId: dataSourceID as Id<"data_sources">,
-                        tenantId: tenantID as Id<"tenants">,
+                        entityType: "groups"
                     },
                 },
-                filters: {
-                    entityType: "groups"
-                }
             }) as Doc<"entities">[];
 
             // Build identity -> group external IDs map
@@ -180,6 +177,8 @@ export class Microsoft365IdentitySecurityAnalyzer extends BaseWorker {
                 // Read Admin tag (set by Microsoft365Linker)
                 const tags = identity.normalizedData.tags || [];
                 const isAdmin = tags.includes("Admin");
+
+                if (!identity.normalizedData.enabled) continue;
 
                 // ==== MFA EVALUATION ====
                 let hasMFA = false;
@@ -291,10 +290,40 @@ export class Microsoft365IdentitySecurityAnalyzer extends BaseWorker {
 
             await this.emitAnalysis(event, "mfa", findings);
 
+            // ==================== STEP 6: Emit MFA tag findings ====================
+            // Build tag findings for ALL analyzed identities (not just those with issues)
+            const tagFindings = identitiesToAnalyze.map(identity => {
+                const finding = findings.find(f => f.entityId === identity._id);
+
+                // Determine which tags to add/remove based on MFA status
+                const tagsToAdd: string[] = [];
+                const tagsToRemove: string[] = ["No MFA", "Partial MFA"]; // Remove all MFA tags by default
+
+                if (finding) {
+                    const mfaData = finding.findings as any;
+                    if (!mfaData.hasMFA) {
+                        tagsToAdd.push("No MFA");
+                        tagsToRemove.splice(tagsToRemove.indexOf("No MFA"), 1); // Don't remove what we're adding
+                    } else if (mfaData.isPartial) {
+                        tagsToAdd.push("Partial MFA");
+                        tagsToRemove.splice(tagsToRemove.indexOf("Partial MFA"), 1); // Don't remove what we're adding
+                    }
+                }
+                // Note: If no finding exists, it means full MFA coverage - remove all MFA tags
+
+                return {
+                    entityId: identity._id,
+                    tagsToAdd,
+                    tagsToRemove,
+                };
+            });
+
+            await this.emitTagAnalysis(event, "mfa", tagFindings);
+
             Debug.log({
                 module: "Microsoft365IdentitySecurityAnalyzer",
                 context: "execute",
-                message: `Completed MFA analysis: ${identitiesToAnalyze.length} identities analyzed, ${findings.length} findings emitted`,
+                message: `Completed MFA analysis: ${identitiesToAnalyze.length} identities analyzed, ${findings.length} alert findings and ${tagFindings.length} tag findings emitted`,
             });
         } catch (error) {
             Debug.error({

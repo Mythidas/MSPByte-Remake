@@ -21,11 +21,11 @@ import { Scheduler } from "@workspace/pipeline/scheduler/index.js";
 import { BaseWorker } from "@workspace/pipeline/workers/base.js";
 import { CleanupWorker } from "@workspace/pipeline/workers/CleanupWorker.js";
 import { Microsoft365IdentitySecurityAnalyzer } from "@workspace/pipeline/workers/Microsoft365IdentitySecurityAnalyzer.js";
-import { Microsoft365MFATagWorker } from "@workspace/pipeline/workers/Microsoft365MFATagWorker.js";
 import { Microsoft365StaleUserAnalyzer } from "@workspace/pipeline/workers/Microsoft365StaleUserAnalyzer.js";
 import { Microsoft365LicenseAnalyzer } from "@workspace/pipeline/workers/Microsoft365LicenseAnalyzer.js";
 import { Microsoft365PolicyAnalyzer } from "@workspace/pipeline/workers/Microsoft365PolicyAnalyzer.js";
 import { AlertManager } from "@workspace/pipeline/analyzers/AlertManager.js";
+import { TagManager } from "@workspace/pipeline/analyzers/TagManager.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import { IntegrationType } from "@workspace/shared/types/pipeline/core.js";
 import { dirname, join } from "path";
@@ -46,11 +46,13 @@ class MSPByteBackend {
     private resolvers: BaseResolver[];
     private linkers: BaseLinker[];
     private alertManager: AlertManager;
+    private tagManager: TagManager;
     private workers: BaseWorker[];
 
     constructor() {
         this.scheduler = new Scheduler();
         this.alertManager = new AlertManager();
+        this.tagManager = new TagManager();
         this.adapters = new Map([
             ["autotask", new AutoTaskAdapter() as BaseAdapter],
             ["sophos-partner", new SophosPartnerAdapter()],
@@ -75,9 +77,8 @@ class MSPByteBackend {
         ];
         this.workers = [
             new CleanupWorker(),
-            new Microsoft365IdentitySecurityAnalyzer(), // Combines Admin + MFA analysis
-            new Microsoft365MFATagWorker(), // Updates MFA tags based on policy evaluation
-            new Microsoft365StaleUserAnalyzer(),
+            new Microsoft365IdentitySecurityAnalyzer(), // MFA + Admin analysis, emits alerts and tags
+            new Microsoft365StaleUserAnalyzer(), // Stale user analysis, emits alerts and tags
             new Microsoft365LicenseAnalyzer(),
             new Microsoft365PolicyAnalyzer(),
         ];
@@ -148,6 +149,14 @@ class MSPByteBackend {
                 message: "Starting AlertManager...",
             });
             await this.alertManager.start();
+
+            // Start TagManager (BEFORE workers - must be ready to receive tag events)
+            Debug.log({
+                module: "MSPByteBackend",
+                context: "start",
+                message: "Starting TagManager...",
+            });
+            await this.tagManager.start();
 
             // Start all workers
             for await (const worker of this.workers) {

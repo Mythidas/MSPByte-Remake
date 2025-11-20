@@ -243,6 +243,7 @@ export abstract class BaseProcessor<T = any> {
                 entityType: EntityType;
                 dataHash: string;
                 rawData: any;
+                state: string;
                 normalizedData: any;
                 syncId?: string;
                 lastSeenAt?: number;

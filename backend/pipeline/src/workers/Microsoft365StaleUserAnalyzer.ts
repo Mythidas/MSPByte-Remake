@@ -111,10 +111,8 @@ export class Microsoft365StaleUserAnalyzer extends BaseWorker {
             });
 
             const now = Date.now();
-            const tagUpdates: Array<{ id: Id<"entities">, normalizedData: any }> = [];
             const findings: StaleUserFinding[] = [];
-            let staleTagsAdded = 0;
-            let staleTagsRemoved = 0;
+            const tagFindings: Array<{ entityId: Id<"entities">, tagsToAdd: string[], tagsToRemove: string[] }> = [];
 
             for (const identity of identitiesToAnalyze) {
                 const lastLoginStr = identity.normalizedData.last_login_at;
@@ -122,37 +120,29 @@ export class Microsoft365StaleUserAnalyzer extends BaseWorker {
                 const daysSinceLogin = (now - lastLoginDate) / MS_PER_DAY;
 
                 const isStale = daysSinceLogin >= STALE_THRESHOLD_DAYS;
-                const identityTags = [...(identity.normalizedData.tags || [])];
                 const enabled = identity.normalizedData.enabled;
                 const hasLicenses = identity.normalizedData.licenses?.length > 0;
+                const identityTags = [...(identity.normalizedData.tags || [])];
                 const isAdmin = identityTags.includes("Admin");
 
-                // ==== TAG MANAGEMENT ====
-                let tagsChanged = false;
+                // ==== TAG FINDINGS ====
+                // Build tag findings for this identity
+                const tagsToAdd: string[] = [];
+                const tagsToRemove: string[] = [];
 
-                // Update Stale tag
-                if (isStale && !identityTags.includes("Stale")) {
-                    identityTags.push("Stale");
-                    tagsChanged = true;
-                    staleTagsAdded++;
-                } else if (!isStale && identityTags.includes("Stale")) {
-                    const index = identityTags.indexOf("Stale");
-                    identityTags.splice(index, 1);
-                    tagsChanged = true;
-                    staleTagsRemoved++;
+                if (isStale) {
+                    tagsToAdd.push("Stale");
+                } else {
+                    tagsToRemove.push("Stale");
                 }
 
-                if (tagsChanged) {
-                    tagUpdates.push({
-                        id: identity._id,
-                        normalizedData: {
-                            ...identity.normalizedData,
-                            tags: identityTags,
-                        }
-                    });
-                }
+                tagFindings.push({
+                    entityId: identity._id,
+                    tagsToAdd,
+                    tagsToRemove,
+                });
 
-                // ==== FINDINGS COLLECTION ====
+                // ==== ALERT FINDINGS ====
                 // Only create findings for stale enabled users
                 if (isStale && enabled) {
                     let severity: "low" | "medium" | "high" = "medium";
@@ -177,55 +167,22 @@ export class Microsoft365StaleUserAnalyzer extends BaseWorker {
                 // This signals to AlertManager that any existing alerts should be resolved
             }
 
+            // Emit alert findings
             Debug.log({
                 module: "Microsoft365StaleUserAnalyzer",
                 context: "execute",
-                message: `Tag changes: Stale +${staleTagsAdded}/-${staleTagsRemoved}`,
-            });
-
-            // Batch update tags
-            if (tagUpdates.length > 0) {
-                try {
-                    await client.mutation(api.helpers.orm.update_s, {
-                        tableName: "entities",
-                        secret: process.env.CONVEX_API_KEY!,
-                        data: tagUpdates.map(update => ({
-                            id: update.id,
-                            updates: {
-                                normalizedData: update.normalizedData,
-                                updatedAt: Date.now(),
-                            },
-                        })),
-                    });
-
-                    Debug.log({
-                        module: "Microsoft365StaleUserAnalyzer",
-                        context: "execute",
-                        message: `Successfully updated tags for ${tagUpdates.length} identities`,
-                    });
-                } catch (error) {
-                    Debug.error({
-                        module: "Microsoft365StaleUserAnalyzer",
-                        context: "execute",
-                        message: `Failed to update tags: ${error}`,
-                    });
-                    // Don't throw - continue with analysis emission
-                }
-            }
-
-            // Emit analysis findings
-            Debug.log({
-                module: "Microsoft365StaleUserAnalyzer",
-                context: "execute",
-                message: `Emitting stale user analysis: ${findings.length} findings for stale enabled users`,
+                message: `Emitting stale user analysis: ${findings.length} alert findings for stale enabled users`,
             });
 
             await this.emitAnalysis(event, "stale", findings);
 
+            // Emit tag findings
+            await this.emitTagAnalysis(event, "stale", tagFindings);
+
             Debug.log({
                 module: "Microsoft365StaleUserAnalyzer",
                 context: "execute",
-                message: `Completed stale user analysis: ${identitiesToAnalyze.length} identities analyzed, ${findings.length} findings emitted`,
+                message: `Completed stale user analysis: ${identitiesToAnalyze.length} identities analyzed, ${findings.length} alert findings and ${tagFindings.length} tag findings emitted`,
             });
         } catch (error) {
             Debug.error({

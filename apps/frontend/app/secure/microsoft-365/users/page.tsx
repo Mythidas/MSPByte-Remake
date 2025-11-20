@@ -282,15 +282,28 @@ export default function Microsoft365Users() {
         },
         {
             id: "critical",
-            label: "Security Critical",
+            label: "Critical State",
             filters: [
                 {
                     field: "state",
                     operator: "eq",
                     value: "critical",
                 },
+                {
+                    field: "normalizedData.enabled",
+                    operator: "eq",
+                    value: true
+                }
             ],
         },
+        {
+            id: "unhealthy",
+            label: "Unhealthy State",
+            filters: [
+                { field: "state", operator: "ne", value: "normal" },
+                { field: "normalizedData.enabled", operator: "eq", value: true }
+            ]
+        }
     ];
 
     // Check if filters are active (filtered data is smaller than total data)

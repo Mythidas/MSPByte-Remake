@@ -328,4 +328,32 @@ export abstract class BaseWorker {
             message: `Emitted ${analysisType} analysis for ${findings.length} entities to ${topic}`,
         });
     }
+
+    /**
+     * Emit tag analysis to TagManager
+     */
+    protected async emitTagAnalysis(
+        event: LinkedEventPayload,
+        analysisType: string,
+        tagFindings: Array<{ entityId: Id<"entities">, tagsToAdd: string[], tagsToRemove: string[] }>
+    ): Promise<void> {
+        const tagAnalysisEvent = {
+            analysisType,
+            entityType: event.entityType,
+            tenantID: event.tenantID,
+            dataSourceID: event.dataSourceID,
+            integrationID: event.integrationID,
+            findings: tagFindings,
+        };
+
+        const topic = `tag.${analysisType}.${event.entityType}`;
+
+        await natsClient.publish(topic, tagAnalysisEvent);
+
+        Debug.log({
+            module: "BaseWorker",
+            context: this.constructor.name,
+            message: `Emitted ${analysisType} tag analysis for ${tagFindings.length} entities to ${topic}`,
+        });
+    }
 }

@@ -295,24 +295,30 @@ export class AlertManager {
             }
         }
 
-        await client.mutation(api.helpers.orm.update_s, {
-            tableName: "entity_alerts",
-            secret: process.env.CONVEX_API_KEY!,
-            data: resolves,
-        });
+        if (resolves.length > 0) {
+            await client.mutation(api.helpers.orm.update_s, {
+                tableName: "entity_alerts",
+                secret: process.env.CONVEX_API_KEY!,
+                data: resolves,
+            });
+        }
 
-        await client.mutation(api.helpers.orm.update_s, {
-            tableName: "entity_alerts",
-            secret: process.env.CONVEX_API_KEY!,
-            data: updates,
-        });
+        if (updates.length > 0) {
+            await client.mutation(api.helpers.orm.update_s, {
+                tableName: "entity_alerts",
+                secret: process.env.CONVEX_API_KEY!,
+                data: updates,
+            });
+        }
 
-        await client.mutation(api.helpers.orm.insert_s, {
-            tableName: "entity_alerts",
-            secret: process.env.CONVEX_API_KEY!,
-            tenantId: analysisContext.tenantID as Id<"tenants">,
-            data: creates,
-        });
+        if (creates.length > 0) {
+            await client.mutation(api.helpers.orm.insert_s, {
+                tableName: "entity_alerts",
+                secret: process.env.CONVEX_API_KEY!,
+                tenantId: analysisContext.tenantID as Id<"tenants">,
+                data: creates,
+            });
+        }
 
         return { created: creates.length, updated: updates.length, resolved: resolves.length };
     }
@@ -420,7 +426,7 @@ export class AlertManager {
 
         await client.mutation(api.helpers.orm.update_s, {
             tableName: "entities",
-            secret: process.env.convex_api_key!,
+            secret: process.env.CONVEX_API_KEY!,
             data: stateUpdates,
         });
 
