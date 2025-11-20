@@ -165,10 +165,6 @@ export class AlertManager {
         findings: EntityFinding[],
         analysisContext: AnalysisEvent
     ): Promise<{ created: number; updated: number; resolved: number }> {
-        let created = 0;
-        let updated = 0;
-        let resolved = 0;
-
         // Fetch the entity to get siteId
         const entity = await client.query(api.helpers.orm.get_s, {
             tableName: "entities",
@@ -208,6 +204,11 @@ export class AlertManager {
             tenantId: analysisContext.tenantID as Id<"tenants">,
         }) as Doc<"entity_alerts">[];
 
+
+        const creates: Partial<Doc<'entity_alerts'>>[] = [];
+        const updates: { id: Id<'entity_alerts'>, updates: Partial<Doc<'entity_alerts'>> }[] = [];
+        const resolves: { id: Id<'entity_alerts'>, updates: Partial<Doc<'entity_alerts'>> }[] = [];
+
         // Create/update expected alerts
         for (const alertType of expectedAlerts) {
             // Normalize alertType and extract metadata (e.g., license_waste:skuId -> license_waste)
@@ -242,43 +243,32 @@ export class AlertManager {
             if (existing) {
                 // Update existing alert
                 const message = this.generateAlertMessage(alertType, finding, entity);
-                await client.mutation(api.helpers.orm.update_s, {
-                    tableName: "entity_alerts",
-                    secret: process.env.CONVEX_API_KEY!,
-                    data: [{
-                        id: existing._id,
-                        updates: {
-                            severity: finding.severity,
-                            message,
-                            metadata,
-                            updatedAt: Date.now(),
-                        },
-                    }],
-                });
-                updated++;
-            } else {
-                // Create new alert
-                const message = this.generateAlertMessage(alertType, finding, entity);
-                await client.mutation(api.helpers.orm.insert_s, {
-                    tableName: "entity_alerts",
-                    secret: process.env.CONVEX_API_KEY!,
-                    tenantId: analysisContext.tenantID as Id<"tenants">,
-                    data: [{
-                        tenantId: analysisContext.tenantID as Id<"tenants">,
-                        entityId,
-                        dataSourceId: analysisContext.dataSourceID,
-                        integrationId: analysisContext.integrationID,
-                        integrationSlug: analysisContext.integrationType,
-                        siteId: entity.siteId,
-                        alertType: normalizedType,
+                updates.push({
+                    id: existing._id,
+                    updates: {
                         severity: finding.severity,
                         message,
                         metadata,
-                        status: "active",
                         updatedAt: Date.now(),
-                    }],
-                });
-                created++;
+                    },
+                })
+            } else {
+                // Create new alert
+                const message = this.generateAlertMessage(alertType, finding, entity);
+                creates.push({
+                    tenantId: analysisContext.tenantID as Id<"tenants">,
+                    entityId,
+                    dataSourceId: analysisContext.dataSourceID,
+                    integrationId: analysisContext.integrationID,
+                    integrationSlug: analysisContext.integrationType,
+                    siteId: entity.siteId,
+                    alertType: normalizedType,
+                    severity: finding.severity,
+                    message,
+                    metadata,
+                    status: "active",
+                    updatedAt: Date.now(),
+                })
             }
         }
 
@@ -294,23 +284,37 @@ export class AlertManager {
             }
 
             if (shouldResolve) {
-                await client.mutation(api.helpers.orm.update_s, {
-                    tableName: "entity_alerts",
-                    secret: process.env.CONVEX_API_KEY!,
-                    data: [{
-                        id: existing._id,
-                        updates: {
-                            status: "resolved",
-                            resolvedAt: Date.now(),
-                            updatedAt: Date.now(),
-                        },
-                    }],
-                });
-                resolved++;
+                resolves.push({
+                    id: existing._id,
+                    updates: {
+                        status: "resolved",
+                        resolvedAt: Date.now(),
+                        updatedAt: Date.now(),
+                    },
+                })
             }
         }
 
-        return { created, updated, resolved };
+        await client.mutation(api.helpers.orm.update_s, {
+            tableName: "entity_alerts",
+            secret: process.env.CONVEX_API_KEY!,
+            data: resolves,
+        });
+
+        await client.mutation(api.helpers.orm.update_s, {
+            tableName: "entity_alerts",
+            secret: process.env.CONVEX_API_KEY!,
+            data: updates,
+        });
+
+        await client.mutation(api.helpers.orm.insert_s, {
+            tableName: "entity_alerts",
+            secret: process.env.CONVEX_API_KEY!,
+            tenantId: analysisContext.tenantID as Id<"tenants">,
+            data: creates,
+        });
+
+        return { created: creates.length, updated: updates.length, resolved: resolves.length };
     }
 
     /**
@@ -401,52 +405,29 @@ export class AlertManager {
             message: `Updating states for ${entityIds.length} identities`,
         });
 
-        let statesUpdated = 0;
+        const stateUpdates: { id: Id<'entities'>, updates: Partial<Doc<'entities'>> }[] = [];
 
         for (const entityId of entityIds) {
-            const identity = await client.query(api.helpers.orm.get_s, {
-                tableName: "entities",
-                id: entityId,
-                secret: process.env.CONVEX_API_KEY!,
-            }) as Doc<"entities"> | null;
-
-            if (!identity || identity.entityType !== "identities") {
-                continue;
-            }
-
             const newState = await this.calculateIdentityState(entityId, tenantID);
-            const currentState = (identity.normalizedData as any).state;
-
-            if (currentState !== newState) {
-                await client.mutation(api.helpers.orm.update_s, {
-                    tableName: "entities",
-                    secret: process.env.CONVEX_API_KEY!,
-                    data: [{
-                        id: entityId,
-                        updates: {
-                            normalizedData: {
-                                ...identity.normalizedData,
-                                state: newState,
-                            },
-                            updatedAt: Date.now(),
-                        },
-                    }],
-                });
-
-                Debug.log({
-                    module: "AlertManager",
-                    context: "updateIdentityStates",
-                    message: `Updated identity ${entityId} state: ${currentState || 'undefined'} → ${newState}`,
-                });
-
-                statesUpdated++;
-            }
+            stateUpdates.push({
+                id: entityId,
+                updates: {
+                    state: newState,
+                    updatedAt: Date.now(),
+                },
+            })
         }
+
+        await client.mutation(api.helpers.orm.update_s, {
+            tableName: "entities",
+            secret: process.env.convex_api_key!,
+            data: stateUpdates,
+        });
 
         Debug.log({
             module: "AlertManager",
             context: "updateIdentityStates",
-            message: `State update complete: ${statesUpdated} identities changed`,
+            message: `State update complete: ${stateUpdates.length} identities changed`,
         });
     }
 

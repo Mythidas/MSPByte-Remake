@@ -291,6 +291,7 @@ export abstract class BaseProcessor<T = any> {
                             dataHash: row.hash,
                             normalizedData: row.normalized as any,
                             rawData: row.raw,
+                            state: "normal", // Default state for new entities
                             syncId: syncId,
                             lastSeenAt: now,
                         });

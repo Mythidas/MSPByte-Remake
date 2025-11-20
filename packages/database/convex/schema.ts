@@ -301,6 +301,13 @@ export default defineSchema({
         dataSourceId: v.id("data_sources"),
         siteId: v.optional(v.id("sites")),
         entityType: entityTypeValidator, // "device", "ticket", "company", etc.
+        state: v.union(
+            v.literal("low"),
+            v.literal("normal"),
+            v.literal("warn"),
+            v.literal("high"),
+            v.literal("critical"),
+        ),
         externalId: v.string(), // ID in the external system
         dataHash: v.string(), // Hash for change detection
         rawData: v.any(), // Original data from integration

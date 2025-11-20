@@ -257,7 +257,7 @@ export abstract class BaseWorker {
         identity: Doc<"entities">,
         newState: "normal" | "low" | "warn" | "critical"
     ): Promise<void> {
-        const currentState = (identity.normalizedData as any).state;
+        const currentState = identity.state;
 
         // Only update if state has changed
         if (currentState === newState) {
@@ -271,10 +271,7 @@ export abstract class BaseWorker {
                 data: [{
                     id: identity._id,
                     updates: {
-                        normalizedData: {
-                            ...identity.normalizedData,
-                            state: newState,
-                        },
+                        state: newState,
                         updatedAt: Date.now(),
                     },
                 }],

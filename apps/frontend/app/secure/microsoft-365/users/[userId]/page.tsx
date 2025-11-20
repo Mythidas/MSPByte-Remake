@@ -176,7 +176,7 @@ export default function UserDetailPage() {
 
     const userData = user.normalizedData;
     const enabled = userData?.enabled ?? true;
-    const state = userData?.state || 'normal';
+    const state = user.state || 'normal';
     const tags = userData?.tags || [];
     const userType = userData?.type || 'member';
     const lastLogin = userData?.last_login_at;

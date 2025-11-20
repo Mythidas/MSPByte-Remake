@@ -63,7 +63,6 @@ export class IdentityProcessor extends BaseProcessor {
                             ) || [],
                     type: userType,
                     enabled: rawData.accountEnabled,
-                    state: "normal", // Default state, will be updated by analyzers based on alerts
                     tags, // Initial tags (MFA, Admin, Stale will be added by analyzers/linkers)
 
                     licenses: rawData.assignedLicenses?.map((lic) => lic.skuId) || [],

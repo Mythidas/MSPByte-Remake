@@ -84,21 +84,39 @@ export class Microsoft365Linker extends BaseLinker {
             const connector = new Microsoft365Connector(config);
 
             // Get all group entities for this data source (excluding soft-deleted)
-            const allGroups = await client.query(api.helpers.orm.list_s, {
+            const groups = await client.query(api.helpers.orm.list_s, {
                 tableName: "entities",
                 secret: process.env.CONVEX_API_KEY!,
+                tenantId: tenantID as Id<"tenants">,
                 index: {
-                    name: "by_data_source",
+                    name: "by_data_source_type",
                     params: {
                         dataSourceId: dataSourceID as Id<"data_sources">,
-                        tenantId: tenantID as Id<"tenants">,
+                        entityType: "groups"
                     },
                 },
                 filters: {
-                    entityType: "groups"
+                    deletedAt: undefined
                 }
             }) as Doc<"entities">[];
-            const groups = this.filterActiveEntities(allGroups);
+
+            const identities = await client.query(api.helpers.orm.list_s, {
+                tableName: "entities",
+                secret: process.env.CONVEX_API_KEY!,
+                tenantId: tenantID as Id<"tenants">,
+                index: {
+                    name: "by_data_source_type",
+                    params: {
+                        dataSourceId: dataSourceID as Id<"data_sources">,
+                        entityType: "identities",
+                    },
+                },
+                filters: {
+                    deletedAt: undefined
+                }
+            }) as Doc<"entities">[];
+
+            const relationshipsInsert: Partial<Doc<'entity_relationships'>>[] = [];
 
             // For each group, fetch members and create relationships
             for (const group of groups) {
@@ -117,20 +135,10 @@ export class Microsoft365Linker extends BaseLinker {
 
                 // Find identity entities matching the members
                 for (const member of members) {
-                    const identity = await client.query(api.helpers.orm.get_s, {
-                        tableName: "entities",
-                        secret: process.env.CONVEX_API_KEY!,
-                        index: {
-                            name: "by_external_id",
-                            params: {
-                                externalId: member.id,
-                            },
-                        },
-                        tenantId: tenantID as Id<"tenants">,
-                    }) as Doc<"entities">;
+                    const identity = identities.find((id) => id.externalId === member.id);
 
                     // Skip soft-deleted identities
-                    if (identity && identity.entityType === "identities" && !identity.deletedAt) {
+                    if (identity && !identity.deletedAt) {
                         // Check if relationship already exists
                         const existingRelationships = await client.query(api.helpers.orm.list_s, {
                             tableName: "entity_relationships",
@@ -149,25 +157,26 @@ export class Microsoft365Linker extends BaseLinker {
 
                         if (!relationshipExists) {
                             // Create relationship: identity (child) -> group (parent)
-                            await client.mutation(api.helpers.orm.insert_s, {
-                                tableName: "entity_relationships",
-                                secret: process.env.CONVEX_API_KEY!,
+                            relationshipsInsert.push({
                                 tenantId: tenantID as Id<"tenants">,
-                                data: [{
-                                    tenantId: tenantID as Id<"tenants">,
-                                    parentEntityId: group._id,
-                                    dataSourceId: dataSourceID,
-                                    childEntityId: identity._id,
-                                    relationshipType: "member_of",
-                                    metadata: {},
-                                    updatedAt: Date.now(),
-                                }],
-                            } as any);
+                                parentEntityId: group._id,
+                                dataSourceId: dataSourceID,
+                                childEntityId: identity._id,
+                                relationshipType: "member_of",
+                                metadata: {},
+                                updatedAt: Date.now(),
+                            })
                         }
                     }
                 }
             }
 
+            await client.mutation(api.helpers.orm.insert_s, {
+                tableName: "entity_relationships",
+                secret: process.env.CONVEX_API_KEY!,
+                tenantId: tenantID as Id<"tenants">,
+                data: relationshipsInsert
+            })
             // Publish linked event
             await this.publishLinkedEvent(event);
         } catch (error) {
@@ -208,21 +217,39 @@ export class Microsoft365Linker extends BaseLinker {
             const connector = new Microsoft365Connector(config);
 
             // Get all role entities for this data source (excluding soft-deleted)
-            const allRoles = await client.query(api.helpers.orm.list_s, {
+            const roles = await client.query(api.helpers.orm.list_s, {
                 tableName: "entities",
                 secret: process.env.CONVEX_API_KEY!,
+                tenantId: tenantID as Id<"tenants">,
                 index: {
-                    name: "by_data_source",
+                    name: "by_data_source_type",
                     params: {
                         dataSourceId: dataSourceID as Id<"data_sources">,
-                        tenantId: tenantID as Id<"tenants">,
+                        entityType: "roles",
                     },
                 },
                 filters: {
-                    entityType: "roles"
+                    deletedAt: undefined
                 }
             }) as Doc<"entities">[];
-            const roles = this.filterActiveEntities(allRoles);
+
+            const identities = await client.query(api.helpers.orm.list_s, {
+                tableName: "entities",
+                secret: process.env.CONVEX_API_KEY!,
+                tenantId: tenantID as Id<"tenants">,
+                index: {
+                    name: "by_data_source_type",
+                    params: {
+                        dataSourceId: dataSourceID as Id<"data_sources">,
+                        entityType: "identities",
+                    },
+                },
+                filters: {
+                    deletedAt: undefined
+                }
+            }) as Doc<"entities">[];
+
+            const relationshipsInsert: Partial<Doc<'entity_relationships'>>[] = [];
 
             // For each role, fetch members and create relationships
             for (const role of roles) {
@@ -239,20 +266,10 @@ export class Microsoft365Linker extends BaseLinker {
 
                 // Find identity entities matching the members and add Admin tag
                 for (const member of members) {
-                    const identity = await client.query(api.helpers.orm.get_s, {
-                        tableName: "entities",
-                        secret: process.env.CONVEX_API_KEY!,
-                        index: {
-                            name: "by_external_id",
-                            params: {
-                                externalId: member.id,
-                            },
-                        },
-                        tenantId: tenantID as Id<"tenants">,
-                    }) as Doc<"entities"> | null;
+                    const identity = identities.find((id) => id.externalId === member.id);
 
                     // Skip soft-deleted identities
-                    if (identity && identity.entityType === "identities" && !identity.deletedAt) {
+                    if (identity && !identity.deletedAt) {
                         // Check if relationship already exists
                         const existingRelationships = await client.query(api.helpers.orm.list_s, {
                             tableName: "entity_relationships",
@@ -270,28 +287,29 @@ export class Microsoft365Linker extends BaseLinker {
                         );
 
                         if (!relationshipExists) {
-                            // Create relationship: identity (child) -> role (parent)
-                            await client.mutation(api.helpers.orm.insert_s, {
-                                tableName: "entity_relationships",
-                                secret: process.env.CONVEX_API_KEY!,
+                            relationshipsInsert.push({
                                 tenantId: tenantID as Id<"tenants">,
-                                data: [{
-                                    tenantId: tenantID as Id<"tenants">,
-                                    dataSourceId: dataSourceID,
-                                    parentEntityId: role._id,
-                                    childEntityId: identity._id,
-                                    relationshipType: "assigned_role",
-                                    metadata: {},
-                                    updatedAt: Date.now(),
-                                }],
-                            });
+                                dataSourceId: dataSourceID,
+                                parentEntityId: role._id,
+                                childEntityId: identity._id,
+                                relationshipType: "assigned_role",
+                                metadata: {},
+                                updatedAt: Date.now(),
+                            })
                         }
                     }
                 }
             }
 
+            await client.mutation(api.helpers.orm.insert_s, {
+                tableName: "entity_relationships",
+                secret: process.env.CONVEX_API_KEY!,
+                tenantId: tenantID as Id<"tenants">,
+                data: relationshipsInsert,
+            });
+
             // Compute Admin tags after role relationships are established
-            await this.computeAdminTags(tenantID as Id<"tenants">, dataSourceID);
+            await this.computeAdminTags(tenantID as Id<"tenants">, roles, identities);
 
             await this.publishLinkedEvent(event);
         } catch (error) {
@@ -306,7 +324,7 @@ export class Microsoft365Linker extends BaseLinker {
     /**
      * Compute and update Admin tags for all identities based on role assignments
      */
-    private async computeAdminTags(tenantID: Id<"tenants">, dataSourceID: string): Promise<void> {
+    private async computeAdminTags(tenantID: Id<"tenants">, roles: Doc<'entities'>[], identities: Doc<'entities'>[]): Promise<void> {
         Debug.log({
             module: "Microsoft365Linker",
             context: "computeAdminTags",
@@ -314,24 +332,8 @@ export class Microsoft365Linker extends BaseLinker {
         });
 
         try {
-            // Get all role entities
-            const allRoles = await client.query(api.helpers.orm.list_s, {
-                tableName: "entities",
-                secret: process.env.CONVEX_API_KEY!,
-                index: {
-                    name: "by_data_source",
-                    params: {
-                        dataSourceId: dataSourceID as Id<"data_sources">,
-                        tenantId: tenantID,
-                    },
-                },
-                filters: {
-                    entityType: "roles"
-                }
-            }) as Doc<"entities">[];
-
             // Filter admin roles by name (any role with "Administrator" in the name)
-            const adminRoles = allRoles.filter(role => {
+            const adminRoles = roles.filter(role => {
                 const roleName = role.normalizedData.name || "";
                 return roleName.toLowerCase().includes("administrator");
             });
@@ -341,26 +343,8 @@ export class Microsoft365Linker extends BaseLinker {
             Debug.log({
                 module: "Microsoft365Linker",
                 context: "computeAdminTags",
-                message: `Found ${adminRoles.length} admin roles out of ${allRoles.length} total roles`,
+                message: `Found ${adminRoles.length} admin roles out of ${roles.length} total roles`,
             });
-
-            // Get all identities for this data source
-            const allIdentities = await client.query(api.helpers.orm.list_s, {
-                tableName: "entities",
-                secret: process.env.CONVEX_API_KEY!,
-                index: {
-                    name: "by_data_source",
-                    params: {
-                        dataSourceId: dataSourceID as Id<"data_sources">,
-                        tenantId: tenantID,
-                    },
-                },
-                filters: {
-                    entityType: "identities"
-                }
-            }) as Doc<"entities">[];
-
-            const identities = this.filterActiveEntities(allIdentities);
 
             // Get all identities assigned to admin roles
             // Loop through each admin role and fetch its members
@@ -474,21 +458,56 @@ export class Microsoft365Linker extends BaseLinker {
 
         try {
             // Get all policy entities for this data source (excluding soft-deleted)
-            const allPolicies = await client.query(api.helpers.orm.list_s, {
+            const policies = await client.query(api.helpers.orm.list_s, {
                 tableName: "entities",
                 secret: process.env.CONVEX_API_KEY!,
+                tenantId: tenantID as Id<"tenants">,
                 index: {
-                    name: "by_data_source",
+                    name: "by_data_source_type",
                     params: {
                         dataSourceId: dataSourceID as Id<"data_sources">,
-                        tenantId: tenantID as Id<"tenants">,
+                        entityType: "policies",
                     },
                 },
                 filters: {
-                    entityType: "policies"
+                    deletedAt: undefined
                 }
             }) as Doc<"entities">[];
-            const policies = this.filterActiveEntities(allPolicies);
+
+            const identities = await client.query(api.helpers.orm.list_s, {
+                tableName: "entities",
+                secret: process.env.CONVEX_API_KEY!,
+                tenantId: tenantID as Id<"tenants">,
+                index: {
+                    name: "by_data_source_type",
+                    params: {
+                        dataSourceId: dataSourceID as Id<"data_sources">,
+                        entityType: "identities",
+                    },
+                },
+                filters: {
+                    deletedAt: undefined
+                }
+            }) as Doc<"entities">[];
+
+
+            const groups = await client.query(api.helpers.orm.list_s, {
+                tableName: "entities",
+                secret: process.env.CONVEX_API_KEY!,
+                tenantId: tenantID as Id<"tenants">,
+                index: {
+                    name: "by_data_source_type",
+                    params: {
+                        dataSourceId: dataSourceID as Id<"data_sources">,
+                        entityType: "groups",
+                    },
+                },
+                filters: {
+                    deletedAt: undefined
+                }
+            }) as Doc<"entities">[];
+
+            const relationshipsInsert: Partial<Doc<'entity_relationships'>>[] = [];
 
             for (const policy of policies) {
                 // Skip security-defaults special entity
@@ -510,20 +529,10 @@ export class Microsoft365Linker extends BaseLinker {
                             continue;
                         }
 
-                        const identity = await client.query(api.helpers.orm.get_s, {
-                            tableName: "entities",
-                            secret: process.env.CONVEX_API_KEY!,
-                            index: {
-                                name: "by_external_id",
-                                params: {
-                                    externalId: userId,
-                                },
-                            },
-                            tenantId: tenantID as Id<"tenants">,
-                        }) as Doc<"entities"> | null;
+                        const identity = identities.find((id) => id.externalId === userId);
 
                         // Skip soft-deleted identities
-                        if (identity && identity.entityType === "identities" && !identity.deletedAt) {
+                        if (identity && !identity.deletedAt) {
                             // Check if relationship already exists
                             const existingRelationships = await client.query(api.helpers.orm.list_s, {
                                 tableName: "entity_relationships",
@@ -541,20 +550,15 @@ export class Microsoft365Linker extends BaseLinker {
                             );
 
                             if (!relationshipExists) {
-                                await client.mutation(api.helpers.orm.insert_s, {
-                                    tableName: "entity_relationships",
-                                    secret: process.env.CONVEX_API_KEY!,
+                                relationshipsInsert.push({
                                     tenantId: tenantID as Id<"tenants">,
-                                    data: [{
-                                        tenantId: tenantID as Id<"tenants">,
-                                        dataSourceId: dataSourceID,
-                                        parentEntityId: policy._id,
-                                        childEntityId: identity._id,
-                                        relationshipType: "applies_to",
-                                        metadata: { policyType: "conditional_access" },
-                                        updatedAt: Date.now(),
-                                    }],
-                                });
+                                    dataSourceId: dataSourceID,
+                                    parentEntityId: policy._id,
+                                    childEntityId: identity._id,
+                                    relationshipType: "applies_to",
+                                    metadata: { policyType: "conditional_access" },
+                                    updatedAt: Date.now(),
+                                })
                             }
                         }
                     }
@@ -563,20 +567,10 @@ export class Microsoft365Linker extends BaseLinker {
                 // Link to groups
                 if (includeGroups) {
                     for (const groupId of includeGroups) {
-                        const group = await client.query(api.helpers.orm.get_s, {
-                            tableName: "entities",
-                            secret: process.env.CONVEX_API_KEY!,
-                            index: {
-                                name: "by_external_id",
-                                params: {
-                                    externalId: groupId,
-                                },
-                            },
-                            tenantId: tenantID as Id<"tenants">,
-                        }) as Doc<"entities"> | null;
+                        const group = groups.find((g) => g.externalId === groupId);
 
                         // Skip soft-deleted groups
-                        if (group && group.entityType === "groups" && !group.deletedAt) {
+                        if (group && !group.deletedAt) {
                             // Check if relationship already exists
                             const existingRelationships = await client.query(api.helpers.orm.list_s, {
                                 tableName: "entity_relationships",
@@ -594,25 +588,27 @@ export class Microsoft365Linker extends BaseLinker {
                             );
 
                             if (!relationshipExists) {
-                                await client.mutation(api.helpers.orm.insert_s, {
-                                    tableName: "entity_relationships",
-                                    secret: process.env.CONVEX_API_KEY!,
+                                relationshipsInsert.push({
                                     tenantId: tenantID as Id<"tenants">,
-                                    data: [{
-                                        tenantId: tenantID as Id<"tenants">,
-                                        dataSourceId: dataSourceID,
-                                        parentEntityId: policy._id,
-                                        childEntityId: group._id,
-                                        relationshipType: "applies_to",
-                                        metadata: { policyType: "conditional_access" },
-                                        updatedAt: Date.now(),
-                                    }],
-                                });
+                                    dataSourceId: dataSourceID,
+                                    parentEntityId: policy._id,
+                                    childEntityId: group._id,
+                                    relationshipType: "applies_to",
+                                    metadata: { policyType: "conditional_access" },
+                                    updatedAt: Date.now(),
+                                })
                             }
                         }
                     }
                 }
             }
+
+            await client.mutation(api.helpers.orm.insert_s, {
+                tableName: "entity_relationships",
+                secret: process.env.CONVEX_API_KEY!,
+                tenantId: tenantID as Id<"tenants">,
+                data: relationshipsInsert,
+            });
 
             await this.publishLinkedEvent(event);
         } catch (error) {
@@ -639,42 +635,48 @@ export class Microsoft365Linker extends BaseLinker {
         });
 
         try {
-            // Get all identity entities for this data source (excluding soft-deleted)
-            const allIdentities = await client.query(api.helpers.orm.list_s, {
+            const identities = await client.query(api.helpers.orm.list_s, {
                 tableName: "entities",
                 secret: process.env.CONVEX_API_KEY!,
+                tenantId: tenantID as Id<"tenants">,
                 index: {
-                    name: "by_data_source",
+                    name: "by_data_source_type",
                     params: {
                         dataSourceId: dataSourceID as Id<"data_sources">,
-                        tenantId: tenantID as Id<"tenants">,
+                        entityType: "identities",
                     },
                 },
                 filters: {
-                    entityType: "identities"
+                    deletedAt: undefined
                 }
             }) as Doc<"entities">[];
-            const identities = this.filterActiveEntities(allIdentities);
+            const licenses = await client.query(api.helpers.orm.list_s, {
+                tableName: "entities",
+                secret: process.env.CONVEX_API_KEY!,
+                tenantId: tenantID as Id<"tenants">,
+                index: {
+                    name: "by_data_source_type",
+                    params: {
+                        dataSourceId: dataSourceID as Id<"data_sources">,
+                        entityType: "licenses",
+                    },
+                },
+                filters: {
+                    deletedAt: undefined
+                }
+            }) as Doc<"entities">[];
+
+            const relationshipsInsert: Partial<Doc<'entity_relationships'>>[] = [];
 
             for (const identity of identities) {
-                const licenses = identity.normalizedData.licenses || [];
+                const licenseSkus = identity.normalizedData.licenses || [];
 
                 // Link to license entities
-                for (const licenseSkuId of licenses) {
-                    const license = await client.query(api.helpers.orm.get_s, {
-                        tableName: "entities",
-                        secret: process.env.CONVEX_API_KEY!,
-                        index: {
-                            name: "by_external_id",
-                            params: {
-                                externalId: licenseSkuId,
-                            },
-                        },
-                        tenantId: tenantID as Id<"tenants">,
-                    }) as Doc<"entities"> | null;
+                for (const licenseSkuId of licenseSkus) {
+                    const license = licenses.find((l) => l.externalId === licenseSkuId);
 
                     // Skip soft-deleted licenses
-                    if (license && license.entityType === "licenses" && !license.deletedAt) {
+                    if (license && !license.deletedAt) {
                         // Check if relationship already exists
                         const existingRelationships = await client.query(api.helpers.orm.list_s, {
                             tableName: "entity_relationships",
@@ -692,24 +694,26 @@ export class Microsoft365Linker extends BaseLinker {
                         );
 
                         if (!relationshipExists) {
-                            await client.mutation(api.helpers.orm.insert_s, {
-                                tableName: "entity_relationships",
-                                secret: process.env.CONVEX_API_KEY!,
+                            relationshipsInsert.push({
                                 tenantId: tenantID as Id<"tenants">,
-                                data: [{
-                                    tenantId: tenantID as Id<"tenants">,
-                                    dataSourceId: dataSourceID,
-                                    parentEntityId: license._id,
-                                    childEntityId: identity._id,
-                                    relationshipType: "has_license",
-                                    metadata: {},
-                                    updatedAt: Date.now(),
-                                }],
-                            });
+                                dataSourceId: dataSourceID,
+                                parentEntityId: license._id,
+                                childEntityId: identity._id,
+                                relationshipType: "has_license",
+                                metadata: {},
+                                updatedAt: Date.now(),
+                            })
                         }
                     }
                 }
             }
+
+            await client.mutation(api.helpers.orm.insert_s, {
+                tableName: "entity_relationships",
+                secret: process.env.CONVEX_API_KEY!,
+                tenantId: tenantID as Id<"tenants">,
+                data: relationshipsInsert,
+            });
 
             await this.publishLinkedEvent(event);
         } catch (error) {

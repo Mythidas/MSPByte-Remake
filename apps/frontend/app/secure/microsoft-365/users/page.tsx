@@ -142,11 +142,11 @@ export default function Microsoft365Users() {
             },
         },
         {
-            key: "normalizedData.state",
+            key: "state",
             title: "Security State",
             sortable: true,
             cell: ({ row }) => {
-                const state = row.normalizedData?.state || 'normal';
+                const state = row.state || 'normal';
                 const stateConfig = {
                     low: { color: "bg-slate-500/50", icon: AlertCircle },
                     normal: { color: "bg-green-500/50", icon: CheckCircle },
@@ -285,7 +285,7 @@ export default function Microsoft365Users() {
             label: "Security Critical",
             filters: [
                 {
-                    field: "normalizedData.state",
+                    field: "state",
                     operator: "eq",
                     value: "critical",
                 },
