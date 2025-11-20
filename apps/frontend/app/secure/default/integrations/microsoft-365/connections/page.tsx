@@ -276,7 +276,8 @@ export default function Microsoft365Connections() {
 
             await scheduleJobsMutation({
                 integrationId: selectedConnection.integrationId,
-                dataSourceId: selectedConnection._id
+                dataSourceId: selectedConnection._id,
+                scheduledAt: Date.now()
             });
 
             toast.success('Domain mappings saved successfully!');
@@ -511,9 +512,8 @@ export default function Microsoft365Connections() {
                                 return (
                                     <div
                                         key={connection._id}
-                                        className={`bg-card/50 border rounded shadow flex items-center justify-between p-4 hover:shadow-md transition-shadow ${
-                                            needsReconsent ? 'border-yellow-500/30' : ''
-                                        }`}
+                                        className={`bg-card/50 border rounded shadow flex items-center justify-between p-4 hover:shadow-md transition-shadow ${needsReconsent ? 'border-yellow-500/30' : ''
+                                            }`}
                                     >
                                         <div className="flex flex-col gap-2">
                                             <div className="flex items-center gap-3 flex-wrap">

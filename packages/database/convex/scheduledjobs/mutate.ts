@@ -42,6 +42,7 @@ export const scheduleJobsByIntegration = mutation({
     args: {
         integrationId: v.id("integrations"),
         dataSourceId: v.id("data_sources"),
+        scheduledAt: v.optional(v.number())
     },
     handler: async (ctx, args) => {
         const identity = await isAuthenticated(ctx);
@@ -72,7 +73,7 @@ export const scheduleJobsByIntegration = mutation({
             const nextAllowedTime = lastSyncAt + rateMs;
 
             // Calculate when to schedule: either now (if enough time passed) or next allowed time
-            const scheduledAt = currentTime >= nextAllowedTime ? currentTime : nextAllowedTime;
+            const scheduledAt = args.scheduledAt || currentTime >= nextAllowedTime ? currentTime : nextAllowedTime;
 
             // Only schedule if not already pending for this action
             const existingPendingJob = await ctx.db
