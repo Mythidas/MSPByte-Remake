@@ -172,6 +172,7 @@ export default function Microsoft365Users() {
                 operators: ["eq", "ne"],
                 options: [
                     { label: "Normal", value: "normal" },
+                    { label: "Low", value: "low" },
                     { label: "Warning", value: "warn" },
                     { label: "Critical", value: "critical" },
                 ],
@@ -229,9 +230,10 @@ export default function Microsoft365Users() {
             sortable: true,
             cell: ({ row }) => {
                 const lastLogin = row.normalizedData?.last_login_at;
-                if (!lastLogin) return <span className="text-muted-foreground">Never</span>;
+                const date = new Date(lastLogin || 0);
 
-                const date = new Date(lastLogin);
+                if (date.getTime() <= 1) return <span className="text-muted-foreground">Never</span>;
+
                 return date.toLocaleDateString("en-US", {
                     year: "numeric",
                     month: "short",

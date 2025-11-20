@@ -10,7 +10,6 @@ import { Badge } from "@workspace/ui/components/badge";
 import Loader from "@workspace/ui/components/Loader";
 import SearchBox from "@/components/SearchBox";
 import {
-    Cloud,
     Building2,
     Settings,
     ArrowLeft,
@@ -48,7 +47,6 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-    DialogFooter,
 } from "@workspace/ui/components/dialog";
 import {
     AlertDialog,
