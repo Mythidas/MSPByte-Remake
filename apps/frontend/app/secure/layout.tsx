@@ -2,12 +2,16 @@
 
 import SideNavbar from "@/components/SideNavbar";
 import { TopNavbar } from "@/components/TopNavbar";
+import { useSyncAppFromUrl } from "@/hooks/useApp";
 import { useAuthReady } from "@/hooks/useAuthReady";
 import Loader from "@workspace/ui/components/Loader";
+import { usePathname } from "next/navigation";
 import { ReactNode, Suspense } from "react";
 
 export default function CoreLayout({ children }: { children: ReactNode }) {
     const { isLoading: authLoading } = useAuthReady()
+    const pathname = usePathname();
+    useSyncAppFromUrl(undefined, pathname.split('/')[2]);
 
     return (
         <div className="relative flex flex-col size-full p-2 overflow-hidden">

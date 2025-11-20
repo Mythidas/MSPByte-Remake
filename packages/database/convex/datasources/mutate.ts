@@ -91,11 +91,12 @@ export const deleteAllData = mutation({
     handler: async (ctx, args) => {
         await isValidSecret(args.secret);
 
-        const [entities, relationships, jobs, alerts] = await Promise.all([
+        const [entities, relationships, jobs, alerts, mappings] = await Promise.all([
             ctx.db.query("entities").withIndex("by_data_source", (q) => q.eq("dataSourceId", args.id)).collect(),
             ctx.db.query("entity_relationships").withIndex("by_data_source_type", (q) => q.eq("dataSourceId", args.id)).collect(),
             ctx.db.query("scheduled_jobs").withIndex("by_data_source", (q) => q.eq("dataSourceId", args.id)).collect(),
             ctx.db.query("entity_alerts").withIndex("by_data_source", (q) => q.eq("dataSourceId", args.id)).collect(),
+            ctx.db.query("data_source_to_site").withIndex("by_data_source", (q) => q.eq("dataSourceId", args.id)).collect(),
         ]);
 
         await Promise.all([
@@ -103,6 +104,7 @@ export const deleteAllData = mutation({
             ...relationships.map(async (row) => ctx.db.delete(row._id)),
             ...entities.map(async (row) => ctx.db.delete(row._id)),
             ...alerts.map(async (row) => ctx.db.delete(row._id)),
+            ...mappings.map(async (row) => ctx.db.delete(row._id)),
         ]);
 
         await ctx.db.delete(args.id);
