@@ -18,13 +18,15 @@ import {
 } from "lucide-react";
 import { useIntegration } from "./integration-provider";
 import type { Microsoft365DataSourceConfig } from "@workspace/shared/types/integrations/microsoft-365";
+import { useAuthReady } from "@/hooks/useAuthReady";
 
 export default function Microsoft365Overview() {
     const integration = useIntegration();
+    const { isLoading: authLoading } = useAuthReady();
 
     const primaryDataSource = useQuery(
         api.helpers.orm.get,
-        {
+        authLoading ? 'skip' : {
             tableName: 'data_sources',
             index: {
                 name: 'by_integration',
@@ -40,7 +42,7 @@ export default function Microsoft365Overview() {
 
     const connections = useQuery(
         api.helpers.orm.list,
-        primaryDataSource ? {
+        primaryDataSource && authLoading ? 'skip' : {
             tableName: 'data_sources',
             index: {
                 name: 'by_integration',
@@ -51,7 +53,7 @@ export default function Microsoft365Overview() {
             filters: {
                 isPrimary: false
             }
-        } : 'skip'
+        }
     ) as Doc<'data_sources'>[] | undefined;
 
     const hasConfiguration = !!primaryDataSource;

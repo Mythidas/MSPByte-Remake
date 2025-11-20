@@ -15,7 +15,7 @@ const client = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
-    const redirectUrl = '/secure/default/integrations/microsoft-365';
+    const redirectUrl = '/secure/default/integrations/microsoft-365/connections';
 
     const adminConsent = searchParams.get('admin_consent');
     const tenantId = searchParams.get('tenant');
@@ -55,8 +55,6 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
         // Parse state data
         const stateData: M365ConsentState = JSON.parse(state);
 

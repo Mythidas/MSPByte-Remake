@@ -1,15 +1,13 @@
+"use client";
+
 import SideNavbar from "@/components/SideNavbar";
 import { TopNavbar } from "@/components/TopNavbar";
-import { withAuth } from "@workos-inc/authkit-nextjs";
+import { useAuthReady } from "@/hooks/useAuthReady";
 import Loader from "@workspace/ui/components/Loader";
 import { ReactNode, Suspense } from "react";
 
-export default async function CoreLayout({ children }: { children: ReactNode }) {
-    const { user } = await withAuth({ ensureSignedIn: true });
-
-    if (!user) {
-        return <Loader />
-    }
+export default function CoreLayout({ children }: { children: ReactNode }) {
+    const { isLoading: authLoading } = useAuthReady()
 
     return (
         <div className="relative flex flex-col size-full p-2 overflow-hidden">
@@ -30,7 +28,7 @@ export default async function CoreLayout({ children }: { children: ReactNode }) 
                 <SideNavbar />
                 <div className="flex flex-col size-full overflow-hidden pt-2">
                     <Suspense fallback={<Loader />}>
-                        {children}
+                        {authLoading ? <Loader /> : children}
                     </Suspense>
                 </div>
             </div>
