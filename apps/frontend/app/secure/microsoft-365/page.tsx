@@ -6,6 +6,7 @@ import { Users, UsersRound, UserCog, ShieldCheck, Key, AlertCircle, Building2 } 
 import Link from "next/link";
 import { useIntegration } from "./integration-provider";
 import { useApp } from "@/hooks/useApp";
+import { useAuthReady } from "@/hooks/useAuthReady";
 
 export default function Microsoft365Dashboard() {
     // Get integration from context (fetched server-side)
@@ -14,15 +15,18 @@ export default function Microsoft365Dashboard() {
     // Get selected site from app state
     const { site: currentSite } = useApp();
 
+    // Ensure auth is ready before querying
+    const { isLoading: authLoading, isAuthenticated } = useAuthReady();
+
     // Fetch primary data source
     const dataSource = useQuery(api.datasources.query.getBySiteAndIntegration,
-        currentSite ? { siteId: currentSite._id, integrationSlug: integration.slug } : 'skip');
+        !authLoading && isAuthenticated && currentSite ? { siteId: currentSite._id, integrationSlug: integration.slug } : 'skip');
 
     // Fetch entity counts for each type
     // Users (identities) are site-specific - filter by siteId when available
     const users = useQuery(
         api.helpers.orm.list,
-        currentSite ? {
+        !authLoading && isAuthenticated && currentSite ? {
             tableName: 'entities',
             index: {
                 name: 'by_site_type',
@@ -38,7 +42,7 @@ export default function Microsoft365Dashboard() {
     // Filter by dataSourceId (tenant-level resources)
     const groups = useQuery(
         api.helpers.orm.list,
-        dataSource && currentSite ? {
+        !authLoading && isAuthenticated && dataSource && currentSite ? {
             tableName: 'entities',
             index: {
                 name: 'by_data_source_type',
@@ -52,7 +56,7 @@ export default function Microsoft365Dashboard() {
 
     const roles = useQuery(
         api.helpers.orm.list,
-        dataSource && currentSite ? {
+        !authLoading && isAuthenticated && dataSource && currentSite ? {
             tableName: 'entities',
             index: {
                 name: 'by_data_source_type',
@@ -66,7 +70,7 @@ export default function Microsoft365Dashboard() {
 
     const policies = useQuery(
         api.helpers.orm.list,
-        dataSource && currentSite ? {
+        !authLoading && isAuthenticated && dataSource && currentSite ? {
             tableName: 'entities',
             index: {
                 name: 'by_data_source_type',
@@ -80,7 +84,7 @@ export default function Microsoft365Dashboard() {
 
     const licenses = useQuery(
         api.helpers.orm.list,
-        dataSource && currentSite ? {
+        !authLoading && isAuthenticated && dataSource && currentSite ? {
             tableName: 'entities',
             index: {
                 name: 'by_data_source_type',

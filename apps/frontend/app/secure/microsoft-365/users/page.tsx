@@ -9,6 +9,7 @@ import Loader from "@workspace/ui/components/Loader";
 import Link from "next/link";
 import { prettyText } from "@workspace/shared/lib/utils";
 import { useApp } from "@/hooks/useApp";
+import { useAuthReady } from "@/hooks/useAuthReady";
 import { Button } from "@workspace/ui/components/button";
 import {
     DropdownMenu,
@@ -28,10 +29,13 @@ export default function Microsoft365Users() {
     // Get selected site from app state
     const { site: currentSite } = useApp();
 
+    // Ensure auth is ready before querying
+    const { isLoading: authLoading, isAuthenticated } = useAuthReady();
+
     // Fetch data source mapped to this site
     const dataSource = useQuery(
         api.datasources.query.getBySiteAndIntegration,
-        currentSite ? {
+        !authLoading && isAuthenticated && currentSite ? {
             siteId: currentSite._id,
             integrationSlug: 'microsoft-365'
         } : 'skip'
@@ -41,7 +45,7 @@ export default function Microsoft365Users() {
     // Use by_site_type index to get only users for the selected site
     const users = useQuery(
         api.helpers.orm.list,
-        currentSite ? {
+        !authLoading && isAuthenticated && currentSite ? {
             tableName: 'entities',
             index: {
                 name: 'by_site_type',

@@ -5,7 +5,7 @@ import AppProvider from "@/providers/AppProvider";
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { client } from "@workspace/shared/lib/convex";
 import Loader from "@workspace/ui/components/Loader";
-import { ReactNode } from "react";
+import { ReactNode, Suspense } from "react";
 
 export default async function CoreLayout({ children }: { children: ReactNode }) {
     const { user } = await withAuth({ ensureSignedIn: true });
@@ -38,7 +38,9 @@ export default async function CoreLayout({ children }: { children: ReactNode }) 
                 <div className="flex gap-4 size-full overflow-hidden">
                     <SideNavbar />
                     <div className="flex flex-col size-full overflow-hidden pt-2">
-                        {children}
+                        <Suspense fallback={<Loader />}>
+                            {children}
+                        </Suspense>
                     </div>
                 </div>
             </div>

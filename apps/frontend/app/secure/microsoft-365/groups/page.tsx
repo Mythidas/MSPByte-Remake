@@ -9,6 +9,7 @@ import Link from "next/link";
 import { prettyText } from "@workspace/shared/lib/utils";
 import { useIntegration } from "../integration-provider";
 import { useApp } from "@/hooks/useApp";
+import { useAuthReady } from "@/hooks/useAuthReady";
 
 type GroupEntity = Doc<'entities'>;
 
@@ -19,10 +20,13 @@ export default function Microsoft365Groups() {
     // Get selected site from app state
     const { site: currentSite } = useApp();
 
+    // Ensure auth is ready before querying
+    const { isLoading: authLoading, isAuthenticated } = useAuthReady();
+
     // Fetch data source mapped to this site
     const dataSource = useQuery(
         api.datasources.query.getBySiteAndIntegration,
-        currentSite ? {
+        !authLoading && isAuthenticated && currentSite ? {
             siteId: currentSite._id,
             integrationSlug: 'microsoft-365'
         } : 'skip'
@@ -31,7 +35,7 @@ export default function Microsoft365Groups() {
     // Fetch groups (tenant-wide, filter by dataSourceId)
     const groups = useQuery(
         api.helpers.orm.list,
-        dataSource ? {
+        !authLoading && isAuthenticated && dataSource ? {
             tableName: 'entities',
             index: {
                 name: 'by_data_source_type',
