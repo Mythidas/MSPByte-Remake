@@ -162,16 +162,9 @@ export async function updateConnectionName(params: {
  */
 export async function deleteConnection(dataSourceId: string) {
     try {
-        await client.mutation(api.helpers.orm.update_s, {
-            tableName: 'data_sources',
-            secret: process.env.CONVEX_API_KEY!,
-            data: [{
-                id: dataSourceId as Id<'data_sources'>,
-                updates: {
-                    deletedAt: Date.now(),
-                    status: 'inactive' as const
-                }
-            }]
+        await client.mutation(api.datasources.mutate.deleteAllData, {
+            id: dataSourceId as Id<'data_sources'>,
+            secret: process.env.CONVEX_API_KEY!
         });
 
         return { data: true, error: null };

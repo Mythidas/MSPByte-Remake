@@ -1,49 +1,10 @@
 import { v } from "convex/values";
 import { mutation } from "../_generated/server.js";
-import { isAuthenticated, isValidTenant } from "../helpers/validators.js";
+import { isAuthenticated, isValidSecret, isValidTenant } from "../helpers/validators.js";
 import { api } from "../_generated/api.js";
 
 // Replaced by datasources/crud.ts::update
 // export const updateConfig = ...
-
-// Note: Kept for backward compatibility - used in actions.ts
-export const disable = mutation({
-    args: {
-        id: v.id("data_sources"),
-    },
-    handler: async (ctx, args) => {
-        const identity = await isAuthenticated(ctx);
-        const dataSource = await ctx.db.get(args.id);
-        if (!dataSource) throw new Error("Resource not found");
-        await isValidTenant(identity.tenantId, dataSource.tenantId);
-
-        await ctx.db.patch(args.id, {
-            status: "inactive",
-            deletedAt: new Date().getTime(),
-        });
-
-        return true;
-    },
-});
-
-export const enable = mutation({
-    args: {
-        id: v.id("data_sources"),
-    },
-    handler: async (ctx, args) => {
-        const identity = await isAuthenticated(ctx);
-        const dataSource = await ctx.db.get(args.id);
-        if (!dataSource) throw new Error("Resource not found");
-        await isValidTenant(identity.tenantId, dataSource.tenantId);
-
-        await ctx.db.patch(args.id, {
-            status: "active",
-            deletedAt: undefined,
-        });
-
-        return true;
-    },
-});
 
 export const createPrimaryForIntegration = mutation({
     args: {
@@ -122,6 +83,32 @@ export const createOrUpdate = mutation({
     },
 });
 
+export const deleteAllData = mutation({
+    args: {
+        id: v.id("data_sources"),
+        secret: v.string()
+    },
+    handler: async (ctx, args) => {
+        await isValidSecret(args.secret);
+
+        const [entities, relationships, jobs, alerts] = await Promise.all([
+            ctx.db.query("entities").withIndex("by_data_source", (q) => q.eq("dataSourceId", args.id)).collect(),
+            ctx.db.query("entity_relationships").withIndex("by_data_source_type", (q) => q.eq("dataSourceId", args.id)).collect(),
+            ctx.db.query("scheduled_jobs").withIndex("by_data_source", (q) => q.eq("dataSourceId", args.id)).collect(),
+            ctx.db.query("entity_alerts").withIndex("by_data_source", (q) => q.eq("dataSourceId", args.id)).collect(),
+        ]);
+
+        await Promise.all([
+            ...jobs.map(async (row) => ctx.db.delete(row._id)),
+            ...relationships.map(async (row) => ctx.db.delete(row._id)),
+            ...entities.map(async (row) => ctx.db.delete(row._id)),
+            ...alerts.map(async (row) => ctx.db.delete(row._id)),
+        ]);
+
+        await ctx.db.delete(args.id);
+    }
+})
+
 export const createSiteMapping = mutation({
     args: {
         siteId: v.id("sites"),
@@ -169,35 +156,6 @@ export const createSiteMapping = mutation({
 
             return await ctx.db.get(newDataSource);
         }
-    },
-});
-
-// Replaced by datasources/crud.ts::deleteDataSource with hard: true
-// Note: This function had find logic - you may want to keep it as a wrapper
-export const deleteSiteMapping = mutation({
-    args: {
-        siteId: v.id("sites"),
-        integrationId: v.id("integrations"),
-    },
-    handler: async (ctx, args) => {
-        const identity = await isAuthenticated(ctx);
-        const site = await ctx.db.get(args.siteId);
-        if (!site) throw new Error("Site not found");
-        await isValidTenant(identity.tenantId, site.tenantId);
-
-        // Find the data source for this site + integration
-        const dataSource = await ctx.db
-            .query("data_sources")
-            .withIndex("by_site", (q) => q.eq("siteId", args.siteId))
-            .filter((q) => q.eq(q.field("integrationId"), args.integrationId))
-            .first();
-
-        if (!dataSource) {
-            throw new Error("Mapping not found");
-        }
-
-        await ctx.db.delete(dataSource._id);
-        return true;
     },
 });
 

@@ -103,7 +103,7 @@ export const listActiveWithDataSource = query({
 
             return {
                 ...integration,
-                isEnabled: (target && !target.deletedAt) || false,
+                isEnabled: (target && target.status !== 'inactive') || false,
                 dataSourceId: target?._id,
                 dataSourceStatus: target?.status,
             };

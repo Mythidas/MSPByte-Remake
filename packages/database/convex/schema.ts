@@ -132,17 +132,9 @@ export default defineSchema({
         credentialExpirationAt: v.number(), // When credentials expire
         lastSyncAt: v.optional(v.number()),
 
-        // Pagination tracking
-        syncStatus: v.optional(v.union(
-            v.literal("idle"),
-            v.literal("syncing_batch"),
-            v.literal("syncing_final"),
-            v.literal("error")
-        )),
         currentSyncId: v.optional(v.string()), // UUID for current sync session
 
         updatedAt: v.number(),
-        deletedAt: v.optional(v.number()),
     })
         .index("by_tenant", ["tenantId"])
         .index("by_integration", ["integrationId", "tenantId"])
