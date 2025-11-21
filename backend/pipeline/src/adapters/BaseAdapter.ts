@@ -99,7 +99,6 @@ export abstract class BaseAdapter {
                 data: [{
                     id: dataSource._id,
                     updates: {
-                        syncStatus: "syncing_batch",
                         currentSyncId: syncId,
                     },
                 }],
@@ -117,17 +116,6 @@ export abstract class BaseAdapter {
         });
         if (result.error) {
             await Scheduler.failJob(job, result.error.message);
-            // Reset data source sync status on error
-            await client.mutation(api.helpers.orm.update_s, {
-                tableName: "data_sources",
-                data: [{
-                    id: dataSource._id,
-                    updates: {
-                        syncStatus: "error",
-                    },
-                }],
-                secret: process.env.CONVEX_API_KEY!,
-            });
             return;
         }
 
@@ -216,7 +204,6 @@ export abstract class BaseAdapter {
                 data: [{
                     id: dataSource._id,
                     updates: {
-                        syncStatus: "idle",
                         currentSyncId: undefined,
                     },
                 }],

@@ -58,7 +58,7 @@ export class Scheduler {
 
             // Filter for active data sources
             const activeDataSources = allDataSources.filter(
-                (ds) => ds.status === "active" && !ds.deletedAt
+                (ds) => ds.status === "active"
             );
 
             if (activeDataSources.length === 0) {

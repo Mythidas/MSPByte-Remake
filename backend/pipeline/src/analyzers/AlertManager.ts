@@ -86,10 +86,13 @@ export class AlertManager {
         const analyses = Array.from(cache.values());
         const firstAnalysis = analyses[0];
 
+        // Track which analysis types were included in this batch
+        const includedAnalysisTypes = new Set(analyses.map(a => a.analysisType));
+
         Debug.log({
             module: "AlertManager",
             context: "processAggregatedAnalysis",
-            message: `Processing ${cache.size} aggregated analyses for tenant ${firstAnalysis.tenantID}`,
+            message: `Processing ${cache.size} aggregated analyses (${Array.from(includedAnalysisTypes).join(', ')}) for tenant ${firstAnalysis.tenantID}`,
         });
 
         try {
@@ -120,7 +123,8 @@ export class AlertManager {
                 const result = await this.processEntityFindings(
                     entityId,
                     findings,
-                    firstAnalysis
+                    firstAnalysis,
+                    includedAnalysisTypes
                 );
                 alertsCreated += result.created;
                 alertsUpdated += result.updated;
@@ -163,7 +167,8 @@ export class AlertManager {
     private async processEntityFindings(
         entityId: Id<"entities">,
         findings: EntityFinding[],
-        analysisContext: AnalysisEvent
+        analysisContext: AnalysisEvent,
+        includedAnalysisTypes: Set<string>
     ): Promise<{ created: number; updated: number; resolved: number }> {
         // Fetch the entity to get siteId
         const entity = await client.query(api.helpers.orm.get_s, {
@@ -274,6 +279,14 @@ export class AlertManager {
 
         // Resolve alerts that should no longer exist
         for (const existing of existingAlerts) {
+            // Determine which analysis type owns this alert
+            const ownerAnalysisType = this.getAlertOwnerType(existing.alertType);
+
+            // Only resolve if the owning analysis type was included in this batch
+            if (!includedAnalysisTypes.has(ownerAnalysisType)) {
+                continue;  // Skip - we don't have fresh data for this alert type
+            }
+
             // For license_waste, check if the specific license is in expected alerts
             let shouldResolve = false;
             if (existing.alertType === "license_waste" && existing.metadata?.licenseSkuId) {
@@ -435,6 +448,27 @@ export class AlertManager {
             context: "updateIdentityStates",
             message: `State update complete: ${stateUpdates.length} identities changed`,
         });
+    }
+
+    /**
+     * Determine which analysis type owns/manages this alert type
+     */
+    private getAlertOwnerType(alertType: string): string {
+        const normalizedType = alertType.split(":")[0];
+
+        switch (normalizedType) {
+            case "mfa_not_enforced":
+            case "mfa_partial_enforced":
+                return "mfa";
+            case "stale_user":
+                return "stale";
+            case "license_waste":
+                return "license";
+            case "policy_gap":
+                return "policy";
+            default:
+                return "unknown";
+        }
     }
 
     /**
