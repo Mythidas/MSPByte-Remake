@@ -121,7 +121,7 @@ export class Microsoft365IdentitySecurityAnalyzer extends BaseWorker {
             Debug.log({
                 module: "Microsoft365IdentitySecurityAnalyzer",
                 context: "execute",
-                message: `MFA Policy Status: Security Defaults=${securityDefaultsEnabled}, CA Policies=${mfaPolicies.length}`,
+                message: `MFA Policy Status: Security Defaults=${securityDefaultsEnabled}, MFA Policies=${mfaPolicies.length} (${allPolicies.length} total)`,
             });
 
             // ==================== STEP 3: Build group membership map ====================
