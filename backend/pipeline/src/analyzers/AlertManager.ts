@@ -1,7 +1,7 @@
 import { natsClient } from "@workspace/pipeline/helpers/nats.js";
 import { client } from "@workspace/shared/lib/convex.js";
 import { api } from "@workspace/database/convex/_generated/api.js";
-import type { Doc, Id } from "@workspace/database/convex/_generated/dataModel.js";
+import type { Doc, Id, TableNames } from "@workspace/database/convex/_generated/dataModel.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 import type { AnalysisEvent, EntityFinding } from "@workspace/shared/types/events/analysis.js";
 
@@ -14,6 +14,10 @@ import type { AnalysisEvent, EntityFinding } from "@workspace/shared/types/event
  * 3. After aggregation window, creates alerts and updates identity states
  * 4. Eliminates race conditions by being single source of truth for alerts/states
  */
+
+type CreateType = Partial<Doc<'entity_alerts'>>;
+type UpdateType = { id: Id<'entity_alerts'>, updates: Partial<Doc<'entity_alerts'>> };
+
 export class AlertManager {
     private analysisCache = new Map<string, Map<string, AnalysisEvent>>();
     private aggregationTimers = new Map<string, NodeJS.Timeout>();
@@ -115,9 +119,9 @@ export class AlertManager {
             });
 
             // Process each entity's aggregated findings
-            let alertsCreated = 0;
-            let alertsUpdated = 0;
-            let alertsResolved = 0;
+            const createAlerts: CreateType[] = [];
+            const updateAlerts: UpdateType[] = [];
+            const resolveAlerts: UpdateType[] = [];
 
             for (const [entityId, findings] of entitiesFindingsMap) {
                 const result = await this.processEntityFindings(
@@ -126,15 +130,38 @@ export class AlertManager {
                     firstAnalysis,
                     includedAnalysisTypes
                 );
-                alertsCreated += result.created;
-                alertsUpdated += result.updated;
-                alertsResolved += result.resolved;
+                createAlerts.push(...result.created);
+                updateAlerts.push(...result.updated);
+                resolveAlerts.push(...result.resolved);
+            }
+
+            if (createAlerts.length > 0) {
+                await client.mutation(api.helpers.orm.insert_s, {
+                    tableName: 'entity_alerts',
+                    secret: process.env.CONVEX_API_KEY!,
+                    tenantId: firstAnalysis.tenantID,
+                    data: createAlerts
+                })
+            }
+            if (updateAlerts.length > 0) {
+                await client.mutation(api.helpers.orm.update_s, {
+                    tableName: 'entity_alerts',
+                    secret: process.env.CONVEX_API_KEY!,
+                    data: updateAlerts
+                })
+            }
+            if (resolveAlerts.length > 0) {
+                await client.mutation(api.helpers.orm.update_s, {
+                    tableName: 'entity_alerts',
+                    secret: process.env.CONVEX_API_KEY!,
+                    data: resolveAlerts
+                })
             }
 
             Debug.log({
                 module: "AlertManager",
                 context: "processAggregatedAnalysis",
-                message: `Alert operations: ${alertsCreated} created, ${alertsUpdated} updated, ${alertsResolved} resolved`,
+                message: `Alert operations: ${createAlerts.length} created, ${updateAlerts.length} updated, ${resolveAlerts.length} resolved`,
             });
 
             // Update identity states for all affected entities
@@ -169,7 +196,7 @@ export class AlertManager {
         findings: EntityFinding[],
         analysisContext: AnalysisEvent,
         includedAnalysisTypes: Set<string>
-    ): Promise<{ created: number; updated: number; resolved: number }> {
+    ): Promise<{ created: CreateType[]; updated: UpdateType[]; resolved: UpdateType[] }> {
         // Fetch the entity to get siteId
         const entity = await client.query(api.helpers.orm.get_s, {
             tableName: "entities",
@@ -183,7 +210,7 @@ export class AlertManager {
                 context: "processEntityFindings",
                 message: `Entity ${entityId} not found, skipping alert processing`,
             });
-            return { created: 0, updated: 0, resolved: 0 };
+            return { created: [], updated: [], resolved: [] };
         }
 
         // Determine which alerts should exist based on findings
@@ -210,9 +237,9 @@ export class AlertManager {
         }) as Doc<"entity_alerts">[];
 
 
-        const creates: Partial<Doc<'entity_alerts'>>[] = [];
-        const updates: { id: Id<'entity_alerts'>, updates: Partial<Doc<'entity_alerts'>> }[] = [];
-        const resolves: { id: Id<'entity_alerts'>, updates: Partial<Doc<'entity_alerts'>> }[] = [];
+        const creates: CreateType[] = [];
+        const updates: UpdateType[] = [];
+        const resolves: UpdateType[] = [];
 
         // Create/update expected alerts
         for (const alertType of expectedAlerts) {
@@ -308,32 +335,7 @@ export class AlertManager {
             }
         }
 
-        if (resolves.length > 0) {
-            await client.mutation(api.helpers.orm.update_s, {
-                tableName: "entity_alerts",
-                secret: process.env.CONVEX_API_KEY!,
-                data: resolves,
-            });
-        }
-
-        if (updates.length > 0) {
-            await client.mutation(api.helpers.orm.update_s, {
-                tableName: "entity_alerts",
-                secret: process.env.CONVEX_API_KEY!,
-                data: updates,
-            });
-        }
-
-        if (creates.length > 0) {
-            await client.mutation(api.helpers.orm.insert_s, {
-                tableName: "entity_alerts",
-                secret: process.env.CONVEX_API_KEY!,
-                tenantId: analysisContext.tenantID as Id<"tenants">,
-                data: creates,
-            });
-        }
-
-        return { created: creates.length, updated: updates.length, resolved: resolves.length };
+        return { created: creates, updated: updates, resolved: resolves };
     }
 
     /**
