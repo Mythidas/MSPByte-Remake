@@ -28,8 +28,8 @@ export abstract class BaseWorker {
     protected entityTypes: EntityType[];
     protected debounceMs: number;
     protected requiresFullContext: boolean = false; // Default: can work with partial data
-    private debounceTimer: NodeJS.Timeout | null = null;
-    private aggregatedEvents: LinkedEventPayload[] = [];
+    private debounceTimersBySyncId = new Map<string, NodeJS.Timeout>();
+    private aggregatedEventsBySyncId = new Map<string, LinkedEventPayload[]>();
 
     constructor(
         entityTypes: EntityType[],
@@ -76,58 +76,73 @@ export abstract class BaseWorker {
      * Handles incoming linked events with debouncing
      * Aggregates events during the debounce window
      *
-     * Pagination support: Workers with requiresFullContext=true will skip
-     * execution until the final batch is received (isFinalBatch=true)
+     * Pagination support: Workers with requiresFullContext=true will buffer
+     * all batches and only execute when the final batch is received (isFinalBatch=true)
      */
     private async handleLinkedEvent(event: LinkedEventPayload): Promise<void> {
         const isFinalBatch = event.syncMetadata?.isFinalBatch ?? true; // Default true for non-paginated syncs
-        const syncId = event.syncMetadata?.syncId;
+        const syncId = event.syncMetadata?.syncId || 'default';
         const batchNumber = event.syncMetadata?.batchNumber;
 
         Debug.log({
             module: "BaseWorker",
             context: this.constructor.name,
-            message: `Received ${event.stage}.${event.entityType} event (ID: ${event.eventID}, batch: ${batchNumber || 'N/A'}, final: ${isFinalBatch})`,
+            message: `Received ${event.stage}.${event.entityType} event (ID: ${event.eventID}, syncId: ${syncId}, batch: ${batchNumber || 'N/A'}, final: ${isFinalBatch})`,
         });
 
-        // Skip non-final batches if worker requires full context
-        if (this.requiresFullContext && !isFinalBatch) {
-            Debug.log({
-                module: "BaseWorker",
-                context: this.constructor.name,
-                message: `Skipping batch ${batchNumber} - worker requires full context (syncId: ${syncId})`,
-            });
-            return;
+        // ALWAYS add event to aggregation buffer (even non-final batches)
+        if (!this.aggregatedEventsBySyncId.has(syncId)) {
+            this.aggregatedEventsBySyncId.set(syncId, []);
         }
+        this.aggregatedEventsBySyncId.get(syncId)!.push(event);
 
-        // Add event to aggregation buffer
-        this.aggregatedEvents.push(event);
-
-        // Clear existing timer if present
-        if (this.debounceTimer) {
-            clearTimeout(this.debounceTimer);
-        }
-
-        // Set new debounce timer
-        this.debounceTimer = setTimeout(async () => {
-            await this.executeWithAggregation();
-        }, this.debounceMs);
+        const bufferSize = this.aggregatedEventsBySyncId.get(syncId)!.length;
 
         Debug.log({
             module: "BaseWorker",
             context: this.constructor.name,
-            message: `Event aggregated (${this.aggregatedEvents.length} total). Execution scheduled in ${this.debounceMs}ms`,
+            message: `Event buffered for syncId ${syncId} (${bufferSize} events buffered, batch ${batchNumber || 'N/A'}, final: ${isFinalBatch})`,
+        });
+
+        // If worker requires full context, only execute on final batch
+        if (this.requiresFullContext && !isFinalBatch) {
+            Debug.log({
+                module: "BaseWorker",
+                context: this.constructor.name,
+                message: `Waiting for final batch - worker requires full context (syncId: ${syncId}, ${bufferSize} batches buffered)`,
+            });
+            return; // Exit here, AFTER adding to buffer
+        }
+
+        // Clear existing timer for this syncId if present
+        if (this.debounceTimersBySyncId.has(syncId)) {
+            clearTimeout(this.debounceTimersBySyncId.get(syncId)!);
+        }
+
+        // Set new debounce timer for this syncId
+        const timer = setTimeout(async () => {
+            await this.executeWithAggregation(syncId);
+        }, this.debounceMs);
+
+        this.debounceTimersBySyncId.set(syncId, timer);
+
+        Debug.log({
+            module: "BaseWorker",
+            context: this.constructor.name,
+            message: `Execution scheduled for syncId ${syncId} in ${this.debounceMs}ms (${bufferSize} events will be processed)`,
         });
     }
 
     /**
-     * Executes the worker with aggregated events
-     * Combines changedEntityIds from all events and calls execute()
+     * Executes the worker with aggregated events for a specific syncId
+     * Combines changedEntityIds from all events in that sync and calls execute()
      */
-    private async executeWithAggregation(): Promise<void> {
-        const eventsToProcess = [...this.aggregatedEvents];
-        this.aggregatedEvents = []; // Clear buffer
-        this.debounceTimer = null;
+    private async executeWithAggregation(syncId: string): Promise<void> {
+        const eventsToProcess = this.aggregatedEventsBySyncId.get(syncId) || [];
+
+        // Clear buffer and timer for this syncId only
+        this.aggregatedEventsBySyncId.delete(syncId);
+        this.debounceTimersBySyncId.delete(syncId);
 
         if (eventsToProcess.length === 0) {
             return;
@@ -136,14 +151,14 @@ export abstract class BaseWorker {
         Debug.log({
             module: "BaseWorker",
             context: this.constructor.name,
-            message: `Executing with ${eventsToProcess.length} aggregated events`,
+            message: `Executing with ${eventsToProcess.length} aggregated events (syncId: ${syncId})`,
         });
 
         try {
             // Use the most recent event as the base
             const latestEvent = eventsToProcess[eventsToProcess.length - 1];
 
-            // Aggregate all changed entity IDs from all events
+            // Aggregate all changed entity IDs from all events in this sync
             const allChangedIds = new Set<string>();
             for (const event of eventsToProcess) {
                 if (event.changedEntityIds) {
