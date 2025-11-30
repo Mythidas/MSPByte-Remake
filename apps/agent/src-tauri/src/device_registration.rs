@@ -1,7 +1,8 @@
 use crate::device_manager::{
     complete_settings, get_api_endpoint, get_machine_id, get_primary_mac, get_serial_number,
-    update_from_registration,
+    get_username, update_from_registration,
 };
+use crate::heartbeat::{get_external_ip, get_local_ip};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Debug)] // Added Debug trait
@@ -13,6 +14,9 @@ pub struct RegistrationRequest {
     pub platform: String,
     pub serial: Option<String>,
     pub mac: Option<String>,
+    pub ip_address: Option<String>,
+    pub ext_address: Option<String>,
+    pub username: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -37,6 +41,11 @@ pub async fn register_device_with_server(
     let serial = get_serial_number();
     let mac = get_primary_mac();
 
+    // Gather additional system info (previously collected by heartbeat)
+    let ip_address = get_local_ip();
+    let ext_address = get_external_ip().await.ok();
+    let username = get_username().await;
+
     let request = RegistrationRequest {
         guid: guid.clone(),
         site_id: settings.site_id.clone(),
@@ -48,6 +57,9 @@ pub async fn register_device_with_server(
         platform: std::env::consts::OS.to_string(),
         serial: serial.clone(),
         mac: mac.clone(),
+        ip_address,
+        ext_address,
+        username,
     };
 
     let client = reqwest::Client::new();

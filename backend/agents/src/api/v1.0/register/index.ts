@@ -7,15 +7,27 @@ import { FastifyInstance } from "fastify";
 
 export default async function (fastify: FastifyInstance) {
   fastify.post("/", async (req) => {
-    const { site_id, hostname, version, guid, mac, platform } =
-      req.body as string as {
-        site_id?: string;
-        hostname?: string;
-        version?: string;
-        guid?: string;
-        platform?: string;
-        mac?: string;
-      };
+    const {
+      site_id,
+      hostname,
+      version,
+      guid,
+      mac,
+      platform,
+      ip_address,
+      ext_address,
+      username,
+    } = req.body as string as {
+      site_id?: string;
+      hostname?: string;
+      version?: string;
+      guid?: string;
+      platform?: string;
+      mac?: string;
+      ip_address?: string;
+      ext_address?: string;
+      username?: string;
+    };
 
     if (!site_id || !hostname || !version || !platform) {
       return Debug.response(
@@ -61,6 +73,7 @@ export default async function (fastify: FastifyInstance) {
       },
     });
 
+    const now = Date.now();
     const result = !agent
       ? await client.mutation(api.helpers.orm.insert_s, {
           tableName: "agents",
@@ -71,6 +84,11 @@ export default async function (fastify: FastifyInstance) {
               hostname,
               platform,
               version,
+              macAddress: mac,
+              ipAddress: ip_address,
+              extAddress: ext_address,
+              status: "online" as const,
+              statusChangedAt: now,
             },
           ],
           tenantId: site.tenantId,
@@ -86,6 +104,11 @@ export default async function (fastify: FastifyInstance) {
                 guid: calculatedGuid,
                 hostname,
                 version,
+                macAddress: mac,
+                ipAddress: ip_address,
+                extAddress: ext_address,
+                status: "online" as const,
+                statusChangedAt: now,
               },
             },
           ],

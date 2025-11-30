@@ -4,7 +4,7 @@
 !define APP_NAME "MSPAgent"
 !define APP_COMPANY "MSPByte"
 !define CONFIG_DIR_NAME "MSPAgent"  ; Folder name in ProgramData
-!define APP_VERSION "0.1.14"
+!define APP_VERSION "0.1.15"
 !define API_HOST "https://agent.mspbyte.pro"
 
 ; =============================================================================
@@ -523,9 +523,140 @@ Function RepairMalformedSettings
     Call LogWrite
 FunctionEnd
 
+; Function: Merge Config Settings
+; Performs intelligent merge of settings.json, updating installer-controlled fields
+; while preserving registration data (device_id, guid, registered_at, hostname)
+Function MergeConfigSettings
+    StrCpy $R9 "Starting composable config merge"
+    Call LogWrite
+
+    ; Create a temporary PowerShell script for JSON merging
+    StrCpy $R7 "$TEMP\nsis_merge_config_$$.ps1"
+    FileOpen $R8 $R7 w
+
+    ; PowerShell script to intelligently merge JSON configs
+    FileWrite $R8 '$$settingsPath = "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\settings.json"$\r$\n'
+    FileWrite $R8 '$$backupPath = "$COMMONPROGRAMDATA\${CONFIG_DIR_NAME}\settings.json.merge_backup"$\r$\n'
+    FileWrite $R8 '$\r$\n'
+    FileWrite $R8 'try {$\r$\n'
+    FileWrite $R8 '    # Read existing config$\r$\n'
+    FileWrite $R8 '    $$existingContent = Get-Content -Path $$settingsPath -Raw -ErrorAction Stop$\r$\n'
+    FileWrite $R8 '    $$existing = ConvertFrom-Json -InputObject $$existingContent$\r$\n'
+    FileWrite $R8 '    $\r$\n'
+    FileWrite $R8 '    # Create backup$\r$\n'
+    FileWrite $R8 '    Copy-Item -Path $$settingsPath -Destination $$backupPath -Force$\r$\n'
+    FileWrite $R8 '    Write-Output "BACKUP_CREATED"$\r$\n'
+    FileWrite $R8 '    $\r$\n'
+    FileWrite $R8 '    # Build merged config with always-update fields$\r$\n'
+    FileWrite $R8 '    $$merged = [ordered]@{$\r$\n'
+    FileWrite $R8 '        site_id = "$SiteSecret"$\r$\n'
+    FileWrite $R8 '        api_host = "$ApiHost"$\r$\n'
+    FileWrite $R8 '    }$\r$\n'
+    FileWrite $R8 '    $\r$\n'
+    FileWrite $R8 '    # Preserve registration fields if they exist$\r$\n'
+    FileWrite $R8 '    if ($$existing.PSObject.Properties["device_id"] -and $$existing.device_id) {$\r$\n'
+    FileWrite $R8 '        $$merged["device_id"] = $$existing.device_id$\r$\n'
+    FileWrite $R8 '        Write-Output "PRESERVED: device_id"$\r$\n'
+    FileWrite $R8 '    }$\r$\n'
+    FileWrite $R8 '    $\r$\n'
+    FileWrite $R8 '    if ($$existing.PSObject.Properties["guid"] -and $$existing.guid) {$\r$\n'
+    FileWrite $R8 '        $$merged["guid"] = $$existing.guid$\r$\n'
+    FileWrite $R8 '        Write-Output "PRESERVED: guid"$\r$\n'
+    FileWrite $R8 '    }$\r$\n'
+    FileWrite $R8 '    $\r$\n'
+    FileWrite $R8 '    if ($$existing.PSObject.Properties["hostname"] -and $$existing.hostname) {$\r$\n'
+    FileWrite $R8 '        $$merged["hostname"] = $$existing.hostname$\r$\n'
+    FileWrite $R8 '        Write-Output "PRESERVED: hostname"$\r$\n'
+    FileWrite $R8 '    }$\r$\n'
+    FileWrite $R8 '    $\r$\n'
+    FileWrite $R8 '    # Add show_tray with proper boolean conversion$\r$\n'
+    FileWrite $R8 '    $$showTrayValue = "$ShowAgent"$\r$\n'
+    FileWrite $R8 '    if ($$showTrayValue -eq "true") {$\r$\n'
+    FileWrite $R8 '        $$merged["show_tray"] = $$true$\r$\n'
+    FileWrite $R8 '    } else {$\r$\n'
+    FileWrite $R8 '        $$merged["show_tray"] = $$false$\r$\n'
+    FileWrite $R8 '    }$\r$\n'
+    FileWrite $R8 '    Write-Output "UPDATED: show_tray = $$showTrayValue"$\r$\n'
+    FileWrite $R8 '    $\r$\n'
+    FileWrite $R8 '    # Add installed_at timestamp$\r$\n'
+    FileWrite $R8 '    $$merged["installed_at"] = "$InstallTimestamp"$\r$\n'
+    FileWrite $R8 '    Write-Output "UPDATED: installed_at"$\r$\n'
+    FileWrite $R8 '    $\r$\n'
+    FileWrite $R8 '    if ($$existing.PSObject.Properties["registered_at"] -and $$existing.registered_at) {$\r$\n'
+    FileWrite $R8 '        $$merged["registered_at"] = $$existing.registered_at$\r$\n'
+    FileWrite $R8 '        Write-Output "PRESERVED: registered_at"$\r$\n'
+    FileWrite $R8 '    }$\r$\n'
+    FileWrite $R8 '    $\r$\n'
+    FileWrite $R8 '    # Convert to JSON with proper formatting$\r$\n'
+    FileWrite $R8 '    $$json = $$merged | ConvertTo-Json -Depth 10$\r$\n'
+    FileWrite $R8 '    $\r$\n'
+    FileWrite $R8 '    # Write merged config$\r$\n'
+    FileWrite $R8 '    [System.IO.File]::WriteAllText($$settingsPath, $$json, [System.Text.Encoding]::UTF8)$\r$\n'
+    FileWrite $R8 '    Write-Output "MERGE_SUCCESS"$\r$\n'
+    FileWrite $R8 '    $\r$\n'
+    FileWrite $R8 '    # Validate the merged JSON$\r$\n'
+    FileWrite $R8 '    $$null = Get-Content -Path $$settingsPath -Raw | ConvertFrom-Json$\r$\n'
+    FileWrite $R8 '    Write-Output "VALIDATION_SUCCESS"$\r$\n'
+    FileWrite $R8 '    exit 0$\r$\n'
+    FileWrite $R8 '} catch {$\r$\n'
+    FileWrite $R8 '    Write-Output "MERGE_ERROR: $$_"$\r$\n'
+    FileWrite $R8 '    $\r$\n'
+    FileWrite $R8 '    # Restore from backup if merge failed$\r$\n'
+    FileWrite $R8 '    if (Test-Path $$backupPath) {$\r$\n'
+    FileWrite $R8 '        Copy-Item -Path $$backupPath -Destination $$settingsPath -Force$\r$\n'
+    FileWrite $R8 '        Write-Output "RESTORED_FROM_BACKUP"$\r$\n'
+    FileWrite $R8 '    }$\r$\n'
+    FileWrite $R8 '    exit 1$\r$\n'
+    FileWrite $R8 '}$\r$\n'
+    FileClose $R8
+
+    ; Execute the PowerShell merge script
+    StrCpy $R9 "Executing config merge script"
+    Call LogWrite
+
+    nsExec::ExecToStack 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$R7"'
+    Pop $R0  ; Exit code
+    Pop $R1  ; Output
+
+    ; Log the merge output
+    StrCpy $R9 "Merge script output: $R1"
+    Call LogWrite
+    StrCpy $R9 "Merge script exit code: $R0"
+    Call LogWrite
+
+    ; Clean up the temporary script
+    Delete $R7
+
+    ; Check merge result
+    ${StrStr} $R2 $R1 "MERGE_SUCCESS"
+    ${If} $R2 != ""
+        StrCpy $R9 "Config merge completed successfully"
+        Call LogWrite
+        Return
+    ${EndIf}
+
+    ${StrStr} $R2 $R1 "MERGE_ERROR"
+    ${If} $R2 != ""
+        StrCpy $R9 "ERROR: Config merge failed - settings restored from backup"
+        Call LogWrite
+
+        SetErrorLevel 7
+        Abort
+    ${EndIf}
+
+    StrCpy $R9 "WARNING: Unexpected result from merge script"
+    Call LogWrite
+FunctionEnd
+
 ; Function: Create Site Config
 Function CreateSiteConfig
     StrCpy $R9 "Creating site configuration file"
+    Call LogWrite
+
+    ; Get current timestamp (needed for both merge and new file creation)
+    ${GetTime} "" "L" $0 $1 $2 $3 $4 $5 $6
+    StrCpy $InstallTimestamp "$2-$1-$0T$4:$5:$6Z"
+    StrCpy $R9 "Timestamp: $InstallTimestamp"
     Call LogWrite
 
     ; Expand the path for logging
@@ -563,24 +694,24 @@ Function CreateSiteConfig
             Pop $R3
 
             ${If} $R3 != ""
-                StrCpy $R9 "site_id matches provided secret - keeping existing file"
+                StrCpy $R9 "site_id matches provided secret - performing composable config merge"
                 Call LogWrite
-                Return  ; Exit without overwriting
+
+                ; Call merge function to update installer-controlled fields
+                ; while preserving registration data (device_id, guid, registered_at, hostname)
+                Call MergeConfigSettings
+                Return  ; Exit after successful merge
             ${Else}
-                StrCpy $R9 "site_id differs from provided secret - will overwrite"
+                StrCpy $R9 "site_id differs from provided secret - will perform complete overwrite"
+                Call LogWrite
+                StrCpy $R9 "WARNING: Device will re-register as new (all registration data will be lost)"
                 Call LogWrite
             ${EndIf}
         ${EndIf}
     ${Else}
-        StrCpy $R9 "No existing settings.json found"
+        StrCpy $R9 "No existing settings.json found - creating fresh config"
         Call LogWrite
     ${EndIf}
-
-    ; Get current timestamp
-    ${GetTime} "" "L" $0 $1 $2 $3 $4 $5 $6
-    StrCpy $InstallTimestamp "$2-$1-$0T$4:$5:$6Z"
-    StrCpy $R9 "Timestamp: $InstallTimestamp"
-    Call LogWrite
 
     StrCpy $R9 "Creating new settings.json"
     Call LogWrite

@@ -232,6 +232,24 @@ export default defineSchema({
         .index("by_site", ["siteId"])
         .index("by_agent", ["agentId"]),
 
+    ticket_usage: defineTable({
+        tenantId: v.id("tenants"),
+        siteId: v.id("sites"),
+        agentId: v.id("agents"),
+        ticketId: v.string(),
+        ticketSummary: v.string(),
+        psaType: v.string(),
+        endpoint: v.string(),
+        billingPeriod: v.string(), // "YYYY-MM" format
+        createdAt: v.number(),
+        metadata: v.optional(v.any()),
+    })
+        .index("by_tenant", ["tenantId"])
+        .index("by_site", ["siteId"])
+        .index("by_agent", ["agentId"])
+        .index("by_billing_period", ["tenantId", "billingPeriod"])
+        .index("by_site_billing_period", ["siteId", "billingPeriod"]),
+
     api_logs: defineTable({
         url: v.string(),
         method: v.string(),

@@ -33,6 +33,7 @@ import type * as scheduledjobs_query from "../scheduledjobs/query.js";
 import type * as sites_mutate from "../sites/mutate.js";
 import type * as sites_query from "../sites/query.js";
 import type * as tenants_query from "../tenants/query.js";
+import type * as ticket_usage_mutate_s from "../ticket_usage/mutate_s.js";
 import type * as types_index from "../types/index.js";
 import type * as types_normalized from "../types/normalized.js";
 import type * as types_normalized from "../types/normalized.js";
@@ -71,6 +72,7 @@ declare const fullApi: ApiFromModules<{
   "sites/mutate": typeof sites_mutate;
   "sites/query": typeof sites_query;
   "tenants/query": typeof tenants_query;
+  "ticket_usage/mutate_s": typeof ticket_usage_mutate_s;
   "types/index": typeof types_index;
   "types/normalized": typeof types_normalized;
   "types/normalized": typeof types_normalized;

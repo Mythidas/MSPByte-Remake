@@ -32,11 +32,11 @@ pub fn run() {
         .plugin(tauri_plugin_screenshots::init())
         .setup(|app| {
             // Create atomic flags for background task control
-            let heartbeat_running = Arc::new(AtomicBool::new(true));
-            let heartbeat_flag = heartbeat_running.clone();
+            // let heartbeat_running = Arc::new(AtomicBool::new(true));
+            // let heartbeat_flag = heartbeat_running.clone();
 
             // Store the flags in app state for cleanup
-            app.manage(heartbeat_running);
+            // app.manage(heartbeat_running);
 
             // Check and register device on first launch
             tauri::async_runtime::spawn(async move {
@@ -80,7 +80,7 @@ pub fn run() {
                 }
 
                 // Start background tasks after registration check
-                start_heartbeat_task(heartbeat_flag.clone());
+                // start_heartbeat_task(heartbeat_flag.clone());
             });
 
             // Conditionally create system tray based on settings

@@ -60,7 +60,7 @@ pub fn get_local_ip() -> Option<String> {
 }
 
 /// Gets the external IP address by querying an external service
-async fn get_external_ip() -> Result<String, Box<dyn std::error::Error>> {
+pub async fn get_external_ip() -> Result<String, Box<dyn std::error::Error>> {
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(5))
         .build()?;

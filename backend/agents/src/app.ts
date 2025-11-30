@@ -6,7 +6,6 @@ import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import autoload from "@fastify/autoload";
 import fastifyStatic from "@fastify/static";
-import { startHeartbeatManager, stopHeartbeatManager } from "./lib/heartbeatManager.js";
 import Debug from "@workspace/shared/lib/Debug.js";
 
 // Compute __dirname equivalent
@@ -14,21 +13,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 dotenv.config({ path: join(__dirname, "../../../.env") });
-
-// Initialize Heartbeat Manager
-Debug.log({
-    module: "app",
-    context: "startup",
-    message: "Initializing heartbeat manager...",
-});
-
-await startHeartbeatManager();
-
-Debug.log({
-    module: "app",
-    context: "startup",
-    message: "Heartbeat manager initialized successfully",
-});
 
 // Initialize Fastify server
 const fastify = Fastify({ logger: false });
@@ -74,9 +58,6 @@ async function shutdown(signal: string) {
         context: "shutdown",
         message: `Received ${signal}, shutting down gracefully...`,
     });
-
-    // Stop heartbeat manager (flushes pending updates)
-    await stopHeartbeatManager();
 
     // Close Fastify server
     await fastify.close();

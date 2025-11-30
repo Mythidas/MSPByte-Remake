@@ -46,7 +46,7 @@ export default async function(fastify: FastifyInstance) {
 
             // TODO: Implement Convex function to simplify API fetching
             // Fetch agent, site, and data source from database
-            const [agent, site, dataSource] = await perf.trackSpan(
+            const [agent, site, dataSource, psaIntegration] = await perf.trackSpan(
                 "db_fetch_records",
                 async () => {
                     const [agentRes, siteRes] = (await Promise.all([
@@ -98,7 +98,7 @@ export default async function(fastify: FastifyInstance) {
 
                     const psaIntegrationId = agentSource.config?.psaIntegrationId;
                     if (!psaIntegrationId) {
-                        return [agentRes, siteRes, null];
+                        return [agentRes, siteRes, null, null];
                     }
 
                     const dataSourceRes = (await client.query(api.helpers.orm.get_s, {
@@ -114,11 +114,18 @@ export default async function(fastify: FastifyInstance) {
                         },
                     })) as Doc<"data_sources">;
 
-                    return [agentRes, siteRes, dataSourceRes];
+                    // Fetch PSA integration to get the slug (psaType)
+                    const psaIntegrationRes = (await client.query(api.helpers.orm.get_s, {
+                        tableName: "integrations",
+                        id: psaIntegrationId as any,
+                        secret: CONVEX_API_KEY,
+                    })) as Doc<"integrations">;
+
+                    return [agentRes, siteRes, dataSourceRes, psaIntegrationRes];
                 }
             );
 
-            if (!dataSource || !site || !agent) {
+            if (!dataSource || !site || !agent || !psaIntegration) {
                 statusCode = 404;
                 errorMessage = "PSA records not valid";
                 return Debug.response(
@@ -357,6 +364,33 @@ export default async function(fastify: FastifyInstance) {
             });
 
             statusCode = 200;
+
+            // Log ticket usage for billing
+            await perf.trackSpan("log_ticket_usage", async () => {
+                try {
+                    await client.mutation(api.ticket_usage.mutate_s.logTicketUsage, {
+                        secret: CONVEX_API_KEY,
+                        tenantId: agent.tenantId,
+                        siteId: site._id,
+                        agentId: agent._id,
+                        ticketId: String(ticketID),
+                        ticketSummary: body.summary,
+                        psaType: psaIntegration.slug,
+                        endpoint: "/v1.0/ticket/create",
+                        metadata: {
+                            impact: body.impact,
+                            urgency: body.urgency,
+                        },
+                    });
+                } catch (err) {
+                    // Log error but don't fail the request
+                    Debug.log({
+                        module: "v1.0/ticket/create",
+                        context: "log_ticket_usage",
+                        message: `Failed to log ticket usage: ${err}`,
+                    });
+                }
+            });
 
             // Log successful API call
             await logAgentApiCall(
