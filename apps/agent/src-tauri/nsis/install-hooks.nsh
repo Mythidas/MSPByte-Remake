@@ -27,7 +27,6 @@ ${StrStr}
 ; Global variables
 Var SiteSecret
 Var ShowAgent
-Var ShowAgent
 Var ApiHost
 Var InstallTimestamp
 Var LogFile
