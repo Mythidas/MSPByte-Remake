@@ -1,63 +1,117 @@
-import Image from "next/image";
+"use client";
+
+import Link from "next/link";
+import { Button } from "@workspace/ui/components/button";
+import { Card } from "@workspace/ui/components/card";
+import { ArrowRight, LayoutDashboard } from "lucide-react";
+import { useAuthReady } from "@/hooks/useAuthReady";
 
 export default function Home() {
+  const { isAuthenticated, isLoading } = useAuthReady();
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="relative flex min-h-screen items-center justify-center bg-background">
+      {/* Dot Grid Background */}
+      <div className="absolute inset-0 -z-10">
+        <svg className="size-full" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern
+              id="dot-grid"
+              x="0"
+              y="0"
+              width="24"
+              height="24"
+              patternUnits="userSpaceOnUse"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              <circle cx="2" cy="2" r="1" className="fill-foreground/[0.12]" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#dot-grid)" />
+        </svg>
+      </div>
+
+      {/* Main Content */}
+      <main className="flex w-full max-w-4xl flex-col items-center px-6 py-12">
+        {/* Logo/Branding */}
+        <div className="mb-12 flex items-center gap-3">
+          <div className="flex size-12 items-center justify-center rounded bg-primary text-primary-foreground font-bold text-2xl">
+            M
+          </div>
+          <span className="text-3xl font-bold text-foreground">MSPByte</span>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* Hero Card */}
+        <Card className="w-full bg-card/60 backdrop-blur-sm rounded-lg shadow-lg border p-12 text-center">
+          <h1 className="text-5xl font-bold tracking-tight text-foreground mb-6">
+            Welcome to MSPByte
+          </h1>
+          <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
+            Your comprehensive managed service provider platform. Monitor, manage, and secure your infrastructure all in one place.
+          </p>
+
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            {!isLoading && !isAuthenticated && (
+              <Button
+                asChild
+                size="lg"
+                className="text-lg px-8 py-6 gap-2"
+              >
+                <Link href="/auth/login">
+                  Get Started
+                  <ArrowRight className="size-5" />
+                </Link>
+              </Button>
+            )}
+
+            {!isLoading && isAuthenticated && (
+              <Button
+                asChild
+                size="lg"
+                className="text-lg px-8 py-6 gap-2"
+              >
+                <Link href="/secure">
+                  <LayoutDashboard className="size-5" />
+                  Go to Dashboard
+                </Link>
+              </Button>
+            )}
+
+            {isLoading && (
+              <Button
+                size="lg"
+                disabled
+                className="text-lg px-8 py-6"
+              >
+                Loading...
+              </Button>
+            )}
+          </div>
+        </Card>
+
+        {/* Features */}
+        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+          <Card className="bg-card/60 backdrop-blur-sm p-6 text-center">
+            <div className="text-4xl mb-3">🔒</div>
+            <h3 className="font-semibold text-lg mb-2">Secure</h3>
+            <p className="text-sm text-muted-foreground">
+              Enterprise-grade security with role-based access control
+            </p>
+          </Card>
+          <Card className="bg-card/60 backdrop-blur-sm p-6 text-center">
+            <div className="text-4xl mb-3">📊</div>
+            <h3 className="font-semibold text-lg mb-2">Comprehensive</h3>
+            <p className="text-sm text-muted-foreground">
+              Monitor all your sites and services from a single dashboard
+            </p>
+          </Card>
+          <Card className="bg-card/60 backdrop-blur-sm p-6 text-center">
+            <div className="text-4xl mb-3">⚡</div>
+            <h3 className="font-semibold text-lg mb-2">Fast</h3>
+            <p className="text-sm text-muted-foreground">
+              Real-time updates and lightning-fast performance
+            </p>
+          </Card>
         </div>
       </main>
     </div>
