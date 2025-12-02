@@ -3,6 +3,7 @@ import { BaseAdapter } from "@workspace/pipeline/adapters/BaseAdapter.js";
 import { Microsoft365Adapter } from "@workspace/pipeline/adapters/Microsoft365Adpater.js";
 import { SophosPartnerAdapter } from "@workspace/pipeline/adapters/SophosPartnerAdapter.js";
 import { HaloPSAAdapter } from "@workspace/pipeline/adapters/HaloPSAAdapter.js";
+import { DattoRMMAdapter } from "@workspace/pipeline/adapters/DattoRMMAdapter.js";
 import { natsClient } from "@workspace/pipeline/helpers/nats.js";
 import { BaseLinker } from "@workspace/pipeline/linkers/BaseLinker.js";
 import { Microsoft365Linker } from "@workspace/pipeline/linkers/Microsoft365Linker.js";
@@ -58,6 +59,7 @@ class MSPByteBackend {
             ["sophos-partner", new SophosPartnerAdapter()],
             ["microsoft-365", new Microsoft365Adapter()],
             ["halopsa", new HaloPSAAdapter()],
+            ["datto-rmm", new DattoRMMAdapter()],
         ]);
 
         this.processors = [

@@ -29,7 +29,8 @@ export type IntegrationType =
     | "microsoft-365"
     | "sophos-partner"
     | "halopsa"
-    | "datto";
+    | "datto"
+    | "datto-rmm";
 
 // Template literal type for generating event names
 export type EventName<

@@ -30,13 +30,13 @@
     "zod": "^4.1.11"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.9.5",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
-    "typescript": "~5.8.3",
-    "vite": "^7.0.4",
-    "@tauri-apps/cli": "^2",
     "@workspace/eslint-config": "workspace:^",
-    "@workspace/typescript-config": "workspace:*"
+    "@workspace/typescript-config": "workspace:*",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.4"
   }
 }

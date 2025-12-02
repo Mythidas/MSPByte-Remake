@@ -58,8 +58,6 @@ export function SiteSelector() {
             return !!exists;
         });
 
-        console.log(mappings);
-
         const opts = [
             { label: 'No site selected', value: 'none' },
             ...filteredSites.map((site) => ({

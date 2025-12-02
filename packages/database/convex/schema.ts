@@ -78,6 +78,9 @@ export default defineSchema({
         psaIntegrationName: v.optional(v.string()), // Denormalized for sorting/filtering
         psaCompanyId: v.optional(v.string()),
         psaParentCompanyId: v.optional(v.string()),
+        rmmIntegrationId: v.optional(v.id("integrations")),
+        rmmIntegrationName: v.optional(v.string()), // Denormalized for sorting/filtering
+        rmmSiteId: v.optional(v.string()), // External RMM site UID
         metadata: v.optional(v.any()),
 
         updatedAt: v.number(),
@@ -87,7 +90,9 @@ export default defineSchema({
         .index("by_status", ["status", "tenantId"])
         .index("by_slug", ["slug", "tenantId"])
         .index("by_psa_company", ["psaCompanyId", "tenantId"])
-        .index("by_integration", ["psaIntegrationId", "tenantId"]),
+        .index("by_integration", ["psaIntegrationId", "tenantId"])
+        .index("by_rmm_site", ["rmmSiteId", "tenantId"])
+        .index("by_rmm_integration", ["rmmIntegrationId", "tenantId"]),
 
     integrations: defineTable({
         // Uses slug as the document ID (like "halopsa", "sophos")
