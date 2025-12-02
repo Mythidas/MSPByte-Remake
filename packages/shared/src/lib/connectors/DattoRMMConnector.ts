@@ -35,9 +35,11 @@ export default class DattoRMMConnector {
         if (tokenError) return { error: tokenError };
 
         const sites: DattoRMMSite[] = [];
-        let url = `${this.apiUrl}/api/v2/site`;
+        let url = `${this.apiUrl}/api/v2/account/sites`;
 
-        console.log("Fetching Datto RMM Sites", this.config);
+
+        console.log(this.config);
+        console.log(token)
         try {
             while (true) {
                 const response = await fetch(
