@@ -6,6 +6,7 @@ import Debug from "@workspace/shared/lib/Debug.js";
 import { AutoTaskCompany } from "@workspace/shared/types/integrations/autotask/company.js";
 import { HaloPSASite } from "@workspace/shared/types/integrations/halopsa/sites.js";
 import { SophosPartnerTenant } from "@workspace/shared/types/integrations/sophos-partner/tenants.js";
+import { DattoRMMSite } from "@workspace/shared/types/integrations/dattormm/sites.js";
 import {
   DataFetchPayload,
   IntegrationType,
@@ -27,6 +28,8 @@ export class CompanyProcessor extends BaseProcessor {
         return this.fromHaloPSA(data);
       case "sophos-partner":
         return this.fromSophosPartner(data);
+      case "datto-rmm":
+        return this.fromDattoRMM(data);
       default: {
         Debug.error({
           module: "CompanyProcessor",
@@ -103,6 +106,31 @@ export class CompanyProcessor extends BaseProcessor {
 
           name: rawData.name,
           type: "customer",
+
+          created_at: "",
+        },
+      } as CompanyData;
+    });
+  }
+
+  private fromDattoRMM(data: DataFetchPayload[]) {
+    return data.map((row) => {
+      const { rawData, dataHash } = row as {
+        rawData: DattoRMMSite;
+        dataHash: string;
+      };
+
+      return {
+        externalID: rawData.uid,
+        raw: rawData,
+        hash: dataHash,
+        normalized: {
+          external_id: rawData.uid,
+
+          name: rawData.name,
+          type: "customer",
+          description: rawData.description,
+          notes: rawData.notes,
 
           created_at: "",
         },

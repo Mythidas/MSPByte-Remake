@@ -108,3 +108,71 @@ export const createFromPSACompany = mutation({
         return await ctx.db.get(siteId);
     },
 });
+
+export const linkToRMMSite = mutation({
+    args: {
+        siteId: v.id("sites"),
+        integrationId: v.id("integrations"),
+        rmmSiteId: v.string(),
+        integrationName: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const identity = await isAuthenticated(ctx);
+
+        // Verify site exists and user has access
+        const site = await ctx.db.get(args.siteId);
+        if (!site) {
+            throw new Error("Site not found");
+        }
+        await isValidTenant(identity.tenantId, site.tenantId);
+
+        // Verify data source exists
+        const dataSource = await ctx.db
+            .query("data_sources")
+            .withIndex("by_integration", (q) =>
+                q.eq("integrationId", args.integrationId).eq("tenantId", identity.tenantId)
+            )
+            .filter((q) => q.eq(q.field("status"), "active"))
+            .first();
+
+        if (!dataSource) {
+            throw new Error("Active RMM data source not found");
+        }
+
+        // Update site with RMM fields
+        await ctx.db.patch(args.siteId, {
+            rmmSiteId: args.rmmSiteId,
+            rmmIntegrationId: args.integrationId,
+            rmmIntegrationName: args.integrationName,
+            updatedAt: Date.now(),
+        });
+
+        return await ctx.db.get(args.siteId);
+    },
+});
+
+export const unlinkFromRMMSite = mutation({
+    args: {
+        siteId: v.id("sites"),
+    },
+    handler: async (ctx, args) => {
+        const identity = await isAuthenticated(ctx);
+
+        // Verify site exists and user has access
+        const site = await ctx.db.get(args.siteId);
+        if (!site) {
+            throw new Error("Site not found");
+        }
+        await isValidTenant(identity.tenantId, site.tenantId);
+
+        // Clear RMM fields
+        await ctx.db.patch(args.siteId, {
+            rmmSiteId: undefined,
+            rmmIntegrationId: undefined,
+            rmmIntegrationName: undefined,
+            updatedAt: Date.now(),
+        });
+
+        return await ctx.db.get(args.siteId);
+    },
+});

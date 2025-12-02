@@ -229,29 +229,33 @@ export function SiteLinker({
                             </div>
                         </div>
 
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center">
-                                <span className="w-full border-t" />
-                            </div>
-                            <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-card/30 px-2 text-muted-foreground">Or</span>
-                            </div>
-                        </div>
+                        {onCreate && (
+                            <>
+                                <div className="relative">
+                                    <div className="absolute inset-0 flex items-center">
+                                        <span className="w-full border-t" />
+                                    </div>
+                                    <div className="relative flex justify-center text-xs uppercase">
+                                        <span className="bg-card/30 px-2 text-muted-foreground">Or</span>
+                                    </div>
+                                </div>
 
-                        <div>
-                            <h4 className="font-medium mb-3">Create New Site</h4>
-                            <Button
-                                onClick={() => {
-                                    setNewSiteName(company.name || '');
-                                    setShowCreateDialog(true);
-                                }}
-                                variant="outline"
-                                className="w-full gap-2"
-                            >
-                                <Plus className="w-4 h-4" />
-                                Create Site from Company
-                            </Button>
-                        </div>
+                                <div>
+                                    <h4 className="font-medium mb-3">Create New Site</h4>
+                                    <Button
+                                        onClick={() => {
+                                            setNewSiteName(company.name || '');
+                                            setShowCreateDialog(true);
+                                        }}
+                                        variant="outline"
+                                        className="w-full gap-2"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        Create Site from Company
+                                    </Button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
             </div>

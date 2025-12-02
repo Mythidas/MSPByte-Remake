@@ -21,7 +21,7 @@ export default function IntegrationsPage() {
     return (
         <div className="flex flex-col gap-5 size-full">
             <SearchBar placeholder="Search integrations..." lead={<Search className="w-4" />} className="!bg-input w-1/4 !border-border" />
-            <div className="grid grid-cols-4 size-full gap-2">
+            <div className="grid grid-cols-4 w-full gap-2">
                 {integrations?.map((integration) => {
                     return (
                         <div key={integration._id} className="flex flex-col gap-2 bg-card/50 border rounded shadow h-40 p-4">
@@ -29,7 +29,7 @@ export default function IntegrationsPage() {
                             <span className="text-muted-foreground text-sm">{integration.description}</span>
 
                             <div className="mt-auto flex gap-2">
-                                <Badge>{prettyText(integration.dataSourceStatus)}</Badge>
+                                <Badge>{prettyText(integration.dataSourceStatus || "Inactive")}</Badge>
                                 <Badge variant="secondary">{prettyText(integration.category)}</Badge>
                             </div>
                         </div>
