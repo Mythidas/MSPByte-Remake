@@ -153,7 +153,6 @@ export async function pushSiteVariable(
 
         let variableId: string | null = null;
 
-        console.log(variablesResponse)
         if (variablesResponse.ok) {
             const data = await variablesResponse.json();
             const variables = data.variables;
@@ -172,12 +171,13 @@ export async function pushSiteVariable(
             response = await fetch(
                 `${config.url}/api/v2/site/${rmmSiteId}/variable/${variableId}`,
                 {
-                    method: "PUT",
+                    method: "POST",
                     headers: {
                         "Authorization": `Bearer ${token}`,
                         "Content-Type": "application/json",
                     },
                     body: JSON.stringify({
+                        name: variableName,
                         value: siteId,
                     }),
                 }
