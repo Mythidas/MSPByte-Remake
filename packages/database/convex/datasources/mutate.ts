@@ -67,7 +67,7 @@ export const createOrUpdate = mutation({
                 integrationId: args.integrationId,
                 status: "active",
                 config: args.config,
-                credentialExpirationAt: args.credentialExpirationAt ?? Number.MAX_SAFE_INTEGER,
+                credentialExpirationAt: args.credentialExpirationAt ?? 0,
                 isPrimary: true,
                 updatedAt: new Date().getTime(),
             });
