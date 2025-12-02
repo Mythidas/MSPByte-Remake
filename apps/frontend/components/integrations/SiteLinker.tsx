@@ -23,6 +23,7 @@ import {
 import { Link as LinkIcon, Plus, Unlink, Building2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import SearchBox from "../SearchBox";
 
 type Site = {
     _id: string;
@@ -194,29 +195,11 @@ export function SiteLinker({
                         <div>
                             <h4 className="font-medium mb-3">Link to Existing Site</h4>
                             <div className="flex flex-col gap-3">
-                                <Select value={selectedSiteId} onValueChange={setSelectedSiteId}>
-                                    <SelectTrigger className="bg-input border-border">
-                                        <SelectValue placeholder="Select a site..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {availableSites.length === 0 ? (
-                                            <div className="p-2 text-sm text-muted-foreground">
-                                                No available sites
-                                            </div>
-                                        ) : (
-                                            availableSites.map((site) => (
-                                                <SelectItem key={site._id} value={site._id}>
-                                                    <div className="flex items-center gap-2">
-                                                        <span>{site.name}</span>
-                                                        <Badge variant="secondary" className="text-xs">
-                                                            {site.status}
-                                                        </Badge>
-                                                    </div>
-                                                </SelectItem>
-                                            ))
-                                        )}
-                                    </SelectContent>
-                                </Select>
+                                <SearchBox
+                                    onSelect={setSelectedSiteId}
+                                    placeholder="Select site..."
+                                    options={availableSites.map((site) => ({ label: site.name, value: site._id }))}
+                                />
 
                                 <Button
                                     onClick={handleLink}

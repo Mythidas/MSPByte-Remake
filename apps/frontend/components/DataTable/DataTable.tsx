@@ -102,7 +102,7 @@ export function DataTable<TData>({
                         )}
                     </span>
                     <div className="flex gap-2">
-                        {!allFilteredRowsSelected && filteredRowCount > selectedRows.length && (
+                        {!allFilteredRowsSelected && filteredRowCount > selectedRows.length ? (
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -113,6 +113,18 @@ export function DataTable<TData>({
                                 }}
                             >
                                 Select All {filteredRowCount} Results
+                            </Button>
+                        ) : (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    // Select all filtered rows
+                                    const rowModel = table.getFilteredRowModel();
+                                    rowModel.rows.forEach(row => row.toggleSelected(false));
+                                }}
+                            >
+                                Deselect All Results
                             </Button>
                         )}
                         {rowActions.map((action, index) => (
