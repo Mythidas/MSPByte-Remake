@@ -109,10 +109,7 @@ export async function pushSiteVariable(
         const variableName = config.siteVariableName || 'MSPSiteCode';
 
         // Decrypt API credentials
-        const apiKey = config.apiKey.includes(':')
-            ? await Encryption.decrypt(config.apiKey, process.env.ENCRYPTION_KEY!)
-            : config.apiKey;
-
+        const apiKey = config.apiKey
         const apiSecretKey = config.apiSecretKey.includes(':')
             ? await Encryption.decrypt(config.apiSecretKey, process.env.ENCRYPTION_KEY!)
             : config.apiSecretKey;
@@ -156,8 +153,10 @@ export async function pushSiteVariable(
 
         let variableId: string | null = null;
 
+        console.log(variablesResponse)
         if (variablesResponse.ok) {
-            const variables = await variablesResponse.json();
+            const data = await variablesResponse.json();
+            const variables = data.variables;
             const matchingVariable = variables.find((v: any) => v.name === variableName);
             if (matchingVariable) {
                 variableId = matchingVariable.id;
