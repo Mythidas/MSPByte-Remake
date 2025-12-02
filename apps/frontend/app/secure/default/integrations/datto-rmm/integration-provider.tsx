@@ -1,13 +1,23 @@
 "use client";
 
-import { Doc } from "@/lib/api";
 import { createContext, useContext, ReactNode } from "react";
+import { Doc } from "@/lib/api";
 
-const IntegrationContext = createContext<Doc<"integrations"> | undefined>(undefined);
+type IntegrationContextType = {
+    integration: Doc<'integrations'>;
+};
 
-export function IntegrationProvider({ integration, children }: { integration: Doc<"integrations">, children: ReactNode }) {
+const IntegrationContext = createContext<IntegrationContextType | null>(null);
+
+export function IntegrationProvider({
+    integration,
+    children
+}: {
+    integration: Doc<'integrations'>;
+    children: ReactNode;
+}) {
     return (
-        <IntegrationContext.Provider value={integration}>
+        <IntegrationContext.Provider value={{ integration }}>
             {children}
         </IntegrationContext.Provider>
     );
@@ -18,5 +28,5 @@ export function useIntegration() {
     if (!context) {
         throw new Error("useIntegration must be used within IntegrationProvider");
     }
-    return context;
+    return context.integration;
 }
