@@ -57,6 +57,31 @@ export default function Microsoft365Users() {
         } : 'skip'
     ) as UserEntity[] | undefined;
 
+    // Fetch licenses for name lookup during export
+    const licenses = useQuery(
+        api.helpers.orm.list,
+        !authLoading && isAuthenticated && dataSource?._id ? {
+            tableName: 'entities',
+            index: {
+                name: 'by_data_source_type',
+                params: {
+                    dataSourceId: dataSource._id,
+                    entityType: 'licenses'
+                }
+            }
+        } : 'skip'
+    ) as UserEntity[] | undefined;
+
+    // Create license lookup map: SKU ID -> License Name
+    const licenseLookup = licenses?.reduce((acc, license) => {
+        const externalId = license.externalId;
+        const name = license.normalizedData?.name || license.normalizedData?.skuPartNumber || externalId;
+        if (externalId) {
+            acc[externalId] = name;
+        }
+        return acc;
+    }, {} as Record<string, string>) || {};
+
     // Define columns
     const columns: DataTableColumn<UserEntity>[] = [
         {
@@ -101,6 +126,10 @@ export default function Microsoft365Users() {
                     </span>
                 );
             },
+            exportValue: ({ row }) => {
+                const type = row.normalizedData?.type || 'member';
+                return prettyText(type);
+            },
             filter: {
                 type: "select",
                 operators: ["eq", "ne"],
@@ -131,6 +160,10 @@ export default function Microsoft365Users() {
                         )}
                     </div>
                 );
+            },
+            exportValue: ({ row }) => {
+                const enabled = row.normalizedData?.enabled;
+                return enabled ? "Enabled" : "Disabled";
             },
             filter: {
                 type: "select",
@@ -166,6 +199,10 @@ export default function Microsoft365Users() {
                         </span>
                     </div>
                 );
+            },
+            exportValue: ({ row }) => {
+                const state = row.state || 'normal';
+                return prettyText(state);
             },
             filter: {
                 type: "select",
@@ -203,6 +240,10 @@ export default function Microsoft365Users() {
                     </div>
                 );
             },
+            exportValue: ({ row }) => {
+                const tags = row.normalizedData?.tags || [];
+                return tags.length > 0 ? tags.join(', ') : '-';
+            },
             filter: {
                 type: "select",
                 label: "Tags",
@@ -223,6 +264,17 @@ export default function Microsoft365Users() {
                 if (!licenses.length) return <span className="text-muted-foreground">None</span>;
                 return <span>{licenses.length} license(s)</span>;
             },
+            exportValue: ({ row }) => {
+                const licenseSkuIds = row.normalizedData?.licenses || [];
+                if (!licenseSkuIds.length) return "None";
+
+                // Map SKU IDs to license names using lookup
+                const licenseNames = licenseSkuIds
+                    .map((skuId: string) => licenseLookup[skuId] || skuId)
+                    .join(", ");
+
+                return licenseNames;
+            },
         },
         {
             key: "normalizedData.last_login_at",
@@ -233,6 +285,18 @@ export default function Microsoft365Users() {
                 const date = new Date(lastLogin || 0);
 
                 if (date.getTime() <= 1) return <span className="text-muted-foreground">Never</span>;
+
+                return date.toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                });
+            },
+            exportValue: ({ row }) => {
+                const lastLogin = row.normalizedData?.last_login_at;
+                const date = new Date(lastLogin || 0);
+
+                if (date.getTime() <= 1) return "Never";
 
                 return date.toLocaleDateString("en-US", {
                     year: "numeric",
@@ -313,7 +377,11 @@ export default function Microsoft365Users() {
 
     // Export handlers - use filtered data if available
     const handleExportCSV = () => {
-        const dataToExport = hasActiveFilters ? filteredData : (users || []);
+        const dataToExport = (hasActiveFilters ? filteredData : (users || [])).map((user) => {
+            return {
+                ...user
+            }
+        });
         const filename = generateTimestampedFilename('microsoft-365-users', '.csv');
         exportToCSV(dataToExport, columns, filename.replace('.csv', ''));
         toast.success(`Exported ${dataToExport.length} user${dataToExport.length !== 1 ? 's' : ''} to CSV`);
