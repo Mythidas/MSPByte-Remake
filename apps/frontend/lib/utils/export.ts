@@ -17,7 +17,6 @@ export function convertToCSV<T>(data: T[], columns: DataTableColumn<T>[]): strin
     // Get column keys and headers
     const exportColumns = columns.filter(col => col.key); // Only export columns with keys
     const headers = exportColumns.map(col => col.title || col.key);
-    const keys = exportColumns.map(col => col.key);
 
     // Build CSV rows
     const csvRows: string[] = [];
@@ -27,8 +26,24 @@ export function convertToCSV<T>(data: T[], columns: DataTableColumn<T>[]): strin
 
     // Add data rows
     data.forEach(row => {
-        const values = keys.map(key => {
-            const value = getNestedValue(row, key!);
+        const values = exportColumns.map(col => {
+            const rawValue = getNestedValue(row, col.key!);
+            let value: any;
+
+            // If column has an exportValue function, use it
+            if (col.exportValue) {
+                try {
+                    value = col.exportValue({ row, value: rawValue });
+                } catch (error) {
+                    // If export function fails, fall back to raw value
+                    console.warn(`Failed to export value for column ${col.key}:`, error);
+                    value = rawValue;
+                }
+            } else {
+                // No export function, use raw value
+                value = rawValue;
+            }
+
             return escapeCSVValue(formatValueForExport(value));
         });
         csvRows.push(values.join(','));
@@ -48,15 +63,31 @@ export function convertToJSON<T>(data: T[], columns: DataTableColumn<T>[]): stri
 
     // Get column keys
     const exportColumns = columns.filter(col => col.key);
-    const keys = exportColumns.map(col => col.key);
 
     // Build JSON objects with only the specified columns
     const jsonData = data.map(row => {
         const obj: Record<string, any> = {};
-        exportColumns.forEach((col, idx) => {
+        exportColumns.forEach(col => {
             const key = col.key!;
             const fieldName = col.title || key.split('.').pop() || key;
-            obj[fieldName] = getNestedValue(row, key);
+            const rawValue = getNestedValue(row, key);
+            let value: any;
+
+            // If column has an exportValue function, use it
+            if (col.exportValue) {
+                try {
+                    value = col.exportValue({ row, value: rawValue });
+                } catch (error) {
+                    // If export function fails, fall back to raw value
+                    console.warn(`Failed to export value for column ${col.key}:`, error);
+                    value = rawValue;
+                }
+            } else {
+                // No export function, use raw value
+                value = rawValue;
+            }
+
+            obj[fieldName] = value;
         });
         return obj;
     });

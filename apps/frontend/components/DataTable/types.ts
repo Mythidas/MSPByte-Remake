@@ -42,6 +42,9 @@ export interface DataTableColumn<TData> {
     cell?: (context: { row: TData; value: any }) => ReactNode;
     header?: ReactNode | (() => ReactNode);
 
+    // Export
+    exportValue?: (context: { row: TData; value: any }) => string | number | boolean | null;
+
     // Sorting
     sortable?: boolean;
     sortFn?: (rowA: TData, rowB: TData, direction: "asc" | "desc") => number;
