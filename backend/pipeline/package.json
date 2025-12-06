@@ -14,9 +14,6 @@
     "./analyzers/*": "./src/analyzers/*"
   },
   "scripts": {
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@workspace/shared": "workspace:*",

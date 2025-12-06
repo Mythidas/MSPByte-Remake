@@ -1,4 +1,4 @@
-import { BaseWorker } from "@workspace/pipeline/workers/base.js";
+import { BaseWorker } from "@workspace/pipeline/workers/BaseWorker.js";
 import { api } from "@workspace/database/convex/_generated/api.js";
 import type { Doc, Id } from "@workspace/database/convex/_generated/dataModel.js";
 import { client } from "@workspace/shared/lib/convex.js";
