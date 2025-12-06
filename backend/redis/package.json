@@ -1,0 +1,8 @@
+{
+  "name": "@workspace/redis",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "docker run -d --name redis -p 6379:6379 redis"
+  }
+}

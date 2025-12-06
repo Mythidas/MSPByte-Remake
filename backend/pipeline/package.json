@@ -14,11 +14,20 @@
     "./analyzers/*": "./src/analyzers/*"
   },
   "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "test:queue": "tsx src/test-queue.ts"
+  },
+  "dependencies": {
+    "bullmq": "^5.0.0",
+    "ioredis": "^5.0.0",
+    "nats": "^2.0.0"
   },
   "devDependencies": {
     "@workspace/shared": "workspace:*",
     "@types/minimatch": "^6.0.0",
     "@types/node": "^20.8.0",
+    "@types/ioredis": "^5.0.0",
     "@vitest/coverage-v8": "^1.0.0",
     "vitest": "^1.0.0"
   }
