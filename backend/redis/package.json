@@ -3,6 +3,8 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "docker run -d --name redis -p 6379:6379 redis"
+    "dev": "cd .. && docker-compose up -d redis",
+    "stop": "cd .. && docker-compose stop redis",
+    "logs": "cd .. && docker-compose logs -f redis"
   }
 }

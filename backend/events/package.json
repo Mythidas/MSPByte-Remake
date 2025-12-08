@@ -4,7 +4,9 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "docker run -p 4222:4222 -ti nats:latest",
-    "start": "docker run -p 4222:4222 -ti nats:latest"
+    "dev": "cd .. && docker-compose up -d nats",
+    "start": "cd .. && docker-compose up -d nats",
+    "stop": "cd .. && docker-compose stop nats",
+    "logs": "cd .. && docker-compose logs -f nats"
   }
 }

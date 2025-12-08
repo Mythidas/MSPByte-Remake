@@ -1,0 +1,53 @@
+services:
+  # Redis - Job Queue and Caching
+  redis:
+    image: redis:7-alpine
+    container_name: mspbyte-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - mspbyte
+
+  # NATS - Event Bus for Pipeline
+  nats:
+    image: nats:latest
+    container_name: mspbyte-nats
+    ports:
+      - "4222:4222"  # Client connections
+      - "8222:8222"  # HTTP monitoring
+    command:
+      - "--jetstream"
+      - "--store_dir=/data"
+      - "--http_port=8222"
+    volumes:
+      - nats-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - mspbyte
+
+volumes:
+  redis-data:
+    driver: local
+  nats-data:
+    driver: local
+
+networks:
+  mspbyte:
+    driver: bridge

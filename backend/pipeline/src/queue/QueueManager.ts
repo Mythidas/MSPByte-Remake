@@ -18,7 +18,10 @@ interface RecurringJobConfig {
   name: string;
   pattern: string; // Cron pattern
   action: string;
+  tenantId?: string;
+  dataSourceId?: string;
   priority?: number;
+  metadata?: Record<string, any>;
 }
 
 class QueueManager {
@@ -54,7 +57,8 @@ class QueueManager {
       },
     });
 
-    // Create worker
+    // Create worker with configurable concurrency
+    const concurrency = parseInt(process.env.QUEUE_CONCURRENCY || '20', 10);
     this.worker = new Worker(
       'pipeline-jobs',
       async (job: Job<JobData>) => {
@@ -62,7 +66,7 @@ class QueueManager {
       },
       {
         connection,
-        concurrency: 10,
+        concurrency,
       }
     );
 
@@ -253,14 +257,14 @@ class QueueManager {
       config.name,
       {
         action: config.action,
-        tenantId: '', // Will be set per tenant
-        dataSourceId: '',
+        tenantId: config.tenantId || '',
+        dataSourceId: config.dataSourceId || '',
+        metadata: config.metadata,
       },
       {
         repeat: {
           pattern: config.pattern,
         },
-        jobId: `recurring-${config.name}`,
         priority: config.priority || 5,
       }
     );
@@ -272,6 +276,8 @@ class QueueManager {
       metadata: {
         pattern: config.pattern,
         action: config.action,
+        tenantId: config.tenantId,
+        dataSourceId: config.dataSourceId,
       },
     });
   }
@@ -334,6 +340,84 @@ class QueueManager {
     return { waiting, active, completed, failed };
   }
 
+  async getWorkerStatus(): Promise<{
+    activeCount: number;
+    waitingCount: number;
+    concurrency: number;
+  }> {
+    const [activeCount, waitingCount] = await Promise.all([
+      this.queue.getActiveCount(),
+      this.queue.getWaitingCount(),
+    ]);
+
+    return {
+      activeCount,
+      waitingCount,
+      concurrency: parseInt(process.env.QUEUE_CONCURRENCY || '20', 10),
+    };
+  }
+
+  async getJobs(
+    status?: 'waiting' | 'active' | 'completed' | 'failed',
+    limit: number = 50
+  ): Promise<any[]> {
+    let jobs: Job[] = [];
+
+    if (!status) {
+      // Get all jobs
+      const [waiting, active, completed, failed] = await Promise.all([
+        this.queue.getWaiting(0, limit / 4),
+        this.queue.getActive(0, limit / 4),
+        this.queue.getCompleted(0, limit / 4),
+        this.queue.getFailed(0, limit / 4),
+      ]);
+      jobs = [...waiting, ...active, ...completed, ...failed];
+    } else {
+      switch (status) {
+        case 'waiting':
+          jobs = await this.queue.getWaiting(0, limit);
+          break;
+        case 'active':
+          jobs = await this.queue.getActive(0, limit);
+          break;
+        case 'completed':
+          jobs = await this.queue.getCompleted(0, limit);
+          break;
+        case 'failed':
+          jobs = await this.queue.getFailed(0, limit);
+          break;
+      }
+    }
+
+    return Promise.all(
+      jobs.map(async (job) => ({
+        id: job.id,
+        name: job.name,
+        data: job.data,
+        state: await job.getState(),
+        progress: job.progress,
+        attemptsMade: job.attemptsMade,
+        timestamp: job.timestamp,
+        processedOn: job.processedOn,
+        finishedOn: job.finishedOn,
+      }))
+    );
+  }
+
+  async clearRepeatableJobs(): Promise<void> {
+    const repeatableJobs = await this.queue.getRepeatableJobs();
+
+    for (const job of repeatableJobs) {
+      await this.queue.removeRepeatableByKey(job.key);
+    }
+
+    Logger.log({
+      module: 'QueueManager',
+      context: 'clearRepeatableJobs',
+      message: `Cleared ${repeatableJobs.length} repeatable jobs`,
+    });
+  }
+
   async shutdown(): Promise<void> {
     Logger.log({
       module: 'QueueManager',
@@ -350,4 +434,5 @@ class QueueManager {
   }
 }
 
+export { QueueManager };
 export default QueueManager;

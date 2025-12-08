@@ -284,28 +284,6 @@ export default defineSchema({
         .index("by_user", ["userId"])
         .index("by_table", ["tableName"]),
 
-    health_checks: defineTable({
-        tenantId: v.id("tenants"),
-        resourceType: v.string(), // "integration", "data_source", etc.
-        resourceId: v.string(),
-        status: v.union(
-            v.literal("healthy"),
-            v.literal("degraded"),
-            v.literal("down")
-        ),
-        failureCount: v.number(),
-        lastCheckAt: v.number(),
-        lastSuccessAt: v.optional(v.number()),
-        lastFailureAt: v.optional(v.number()),
-        errorMessage: v.optional(v.string()),
-        metadata: v.optional(v.any()),
-
-        updatedAt: v.number(),
-    })
-        .index("by_tenant", ["tenantId"])
-        .index("by_resource", ["resourceType", "resourceId"])
-        .index("by_status", ["status"]),
-
     // ============================================================================
     // ENTITY SYSTEM (for normalized data from integrations)
     // ============================================================================
@@ -347,20 +325,6 @@ export default defineSchema({
         .index("by_sync_id", ["syncId", "dataSourceId"]) // For deletion detection
         .index("by_deleted_at", ["deletedAt"]), // For 90-day cleanup
 
-    global_entities: defineTable({
-        integrationId: v.id("integrations"),
-        entityType: v.string(),
-        externalId: v.string(),
-        dataHash: v.string(),
-        rawData: v.any(),
-        normalizedData: v.any(),
-
-        updatedAt: v.number(),
-    })
-        .index("by_integration", ["integrationId"])
-        .index("by_type", ["entityType"])
-        .index("by_external_id", ["integrationId", "externalId"]),
-
     entity_relationships: defineTable({
         tenantId: v.id("tenants"),
         dataSourceId: v.id("data_sources"),
@@ -374,8 +338,12 @@ export default defineSchema({
         .index("by_tenant", ["tenantId"])
         .index("by_parent", ["parentEntityId", "tenantId"])
         .index("by_child", ["childEntityId", "tenantId"])
+        .index("by_data_source", ["dataSourceId", "tenantId"])
         .index("by_data_source_type", ["dataSourceId", "relationshipType", "tenantId"])
-        .index("by_type", ["relationshipType", "tenantId"]),
+        .index("by_type", ["relationshipType", "tenantId"])
+        // Phase 6: Composite indexes for linker optimization
+        .index("by_parent_type", ["parentEntityId", "relationshipType", "tenantId"])
+        .index("by_child_type", ["childEntityId", "relationshipType", "tenantId"]),
 
     entity_alerts: defineTable({
         tenantId: v.id("tenants"),
@@ -415,7 +383,10 @@ export default defineSchema({
         .index("by_type", ["alertType", "tenantId"])
         .index("by_severity", ["severity", "tenantId"])
         .index("by_status", ["status", "tenantId"])
-        .index("by_entity_status", ["entityId", "status", "tenantId"]),
+        .index("by_entity_status", ["entityId", "status", "tenantId"])
+        // Phase 6: Composite indexes for performance
+        .index("by_data_source_status_type", ["dataSourceId", "status", "alertType", "tenantId"])
+        .index("by_tenant_status_severity", ["tenantId", "status", "severity"]),
 
     // ============================================================================
     // RELATIONSHIPS & MAPPING
