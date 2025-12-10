@@ -27,68 +27,74 @@ import { filter } from "convex-helpers/server/filter";
  * // agents is typed as Doc<'agents'>[]
  */
 export const list = query({
-    args: {
-        tableName: TableName,
-        index: v.optional(
-            v.object({
-                name: v.string(),
-                params: v.any(), // Any object shape for index params
-            })
-        ),
-        filters: v.optional(v.any()), // Any object shape for filters
-        includeSoftDeleted: v.optional(v.boolean()),
-        limit: v.optional(v.number()),
-    },
-    handler: async <T extends keyof DataModel>(
-        ctx: any,
-        args: ListArgs<T>
-    ): Promise<ListResult<T>> => {
-        const identity = await isAuthenticated(ctx);
-        const { tableName, index, filters, includeSoftDeleted = false, limit } = args;
+  args: {
+    tableName: TableName,
+    index: v.optional(
+      v.object({
+        name: v.string(),
+        params: v.any(), // Any object shape for index params
+      }),
+    ),
+    filters: v.optional(v.any()), // Any object shape for filters
+    includeSoftDeleted: v.optional(v.boolean()),
+    limit: v.optional(v.number()),
+  },
+  handler: async <T extends keyof DataModel>(
+    ctx: any,
+    args: ListArgs<T>,
+  ): Promise<ListResult<T>> => {
+    const identity = await isAuthenticated(ctx);
+    const {
+      tableName,
+      index,
+      filters,
+      includeSoftDeleted = false,
+      limit,
+    } = args;
 
-        // Step 1: Start with index query
-        let queryBuilder: any;
+    // Step 1: Start with index query
+    let queryBuilder: any;
 
-        if (index) {
-            // Use custom index with provided params + tenantId
-            queryBuilder = ctx.db
-                .query(tableName)
-                .withIndex(index.name as any, (q: any) => {
-                    let filtered = q;
+    if (index) {
+      // Use custom index with provided params + tenantId
+      queryBuilder = ctx.db
+        .query(tableName)
+        .withIndex(index.name as any, (q: any) => {
+          let filtered = q;
 
-                    // Apply index params in order
-                    for (const [field, value] of Object.entries(index.params)) {
-                        filtered = filtered.eq(field, value);
-                    }
+          // Apply index params in order
+          for (const [field, value] of Object.entries(index.params)) {
+            filtered = filtered.eq(field, value);
+          }
 
-                    // Always add tenantId for tenant isolation
-                    filtered = filtered.eq("tenantId", identity.tenantId);
+          // Always add tenantId for tenant isolation
+          filtered = filtered.eq("tenantId", identity.tenantId);
 
-                    return filtered;
-                });
-        } else {
-            // Default to by_tenant index
-            queryBuilder = ctx.db
-                .query(tableName)
-                .withIndex("by_tenant" as any, (q: any) =>
-                    q.eq("tenantId", identity.tenantId)
-                );
-        }
+          return filtered;
+        });
+    } else {
+      // Default to by_tenant index
+      queryBuilder = ctx.db
+        .query(tableName)
+        .withIndex("by_tenant" as any, (q: any) =>
+          q.eq("tenantId", identity.tenantId),
+        );
+    }
 
-        // Step 2: Apply filters and collect results
-        const allResults = await filter(queryBuilder, (record: any) => {
-            if (!includeSoftDeleted && record.deletedAt) {
-                return false;
-            }
+    // Step 2: Apply filters and collect results
+    const allResults = await filter(queryBuilder, (record: any) => {
+      if (!includeSoftDeleted && record.deletedAt) {
+        return false;
+      }
 
-            return evaluateFilter(record, filters);
-        }).collect();
+      return evaluateFilter(record, filters);
+    }).collect();
 
-        // Apply limit if provided
-        const results = limit ? allResults.slice(0, limit) : allResults;
+    // Apply limit if provided
+    const results = limit ? allResults.slice(0, limit) : allResults;
 
-        return results;
-    },
+    return results;
+  },
 });
 
 /**
@@ -103,75 +109,75 @@ export const list = query({
  * // sites is typed as Doc<'sites'>[]
  */
 export const list_s = query({
-    args: {
-        tableName: TableName,
-        secret: v.string(),
-        tenantId: v.optional(v.id("tenants")),
-        index: v.optional(
-            v.object({
-                name: v.string(),
-                params: v.any(),
-            })
-        ),
-        filters: v.optional(v.any()),
-        includeSoftDeleted: v.optional(v.boolean()),
-        limit: v.optional(v.number()),
-    },
-    handler: async <T extends keyof DataModel>(
-        ctx: any,
-        args: ListArgs<T> & { secret: string; tenantId?: Id<"tenants"> }
-    ): Promise<ListResult<T>> => {
-        await isValidSecret(args.secret);
+  args: {
+    tableName: TableName,
+    secret: v.string(),
+    tenantId: v.optional(v.id("tenants")),
+    index: v.optional(
+      v.object({
+        name: v.string(),
+        params: v.any(),
+      }),
+    ),
+    filters: v.optional(v.any()),
+    includeSoftDeleted: v.optional(v.boolean()),
+    limit: v.optional(v.number()),
+  },
+  handler: async <T extends keyof DataModel>(
+    ctx: any,
+    args: ListArgs<T> & { secret: string; tenantId?: Id<"tenants"> },
+  ): Promise<ListResult<T>> => {
+    await isValidSecret(args.secret);
 
-        const {
-            tableName,
-            index,
-            filters,
-            includeSoftDeleted = false,
-            tenantId,
-            limit,
-        } = args;
+    const {
+      tableName,
+      index,
+      filters,
+      includeSoftDeleted = false,
+      tenantId,
+      limit,
+    } = args;
 
-        // Step 1: Start with index query
-        let queryBuilder: any;
+    // Step 1: Start with index query
+    let queryBuilder: any;
 
-        if (index) {
-            // Use custom index with provided params + tenantId
-            queryBuilder = ctx.db
-                .query(tableName)
-                .withIndex(index.name as any, (q: any) => {
-                    let filtered = q;
+    if (index) {
+      // Use custom index with provided params + tenantId
+      queryBuilder = ctx.db
+        .query(tableName)
+        .withIndex(index.name as any, (q: any) => {
+          let filtered = q;
 
-                    // Apply index params in order
-                    for (const [field, value] of Object.entries(index.params)) {
-                        filtered = filtered.eq(field, value);
-                    }
+          // Apply index params in order
+          for (const [field, value] of Object.entries(index.params)) {
+            filtered = filtered.eq(field, value);
+          }
 
-                    if (tenantId) filtered = filtered.eq("tenantId", tenantId);
+          if (tenantId) filtered = filtered.eq("tenantId", tenantId);
 
-                    return filtered;
-                });
-        } else if (tenantId) {
-            // Default to by_tenant index
-            queryBuilder = ctx.db
-                .query(tableName)
-                .withIndex("by_tenant" as any, (q: any) => q.eq("tenantId", tenantId));
-        } else {
-            queryBuilder = ctx.db.query(tableName);
-        }
+          return filtered;
+        });
+    } else if (tenantId) {
+      // Default to by_tenant index
+      queryBuilder = ctx.db
+        .query(tableName)
+        .withIndex("by_tenant" as any, (q: any) => q.eq("tenantId", tenantId));
+    } else {
+      queryBuilder = ctx.db.query(tableName);
+    }
 
-        // Step 2: Apply filters and collect results
-        const allResults = await filter(queryBuilder, (record: any) => {
-            if (!includeSoftDeleted && record.deletedAt) {
-                return false;
-            }
+    // Step 2: Apply filters and collect results
+    const allResults = await filter(queryBuilder, (record: any) => {
+      if (!includeSoftDeleted && record.deletedAt) {
+        return false;
+      }
 
-            return evaluateFilter(record, filters);
-        }).collect();
+      return evaluateFilter(record, filters);
+    }).collect();
 
-        // Apply limit if provided
-        const results = limit ? allResults.slice(0, limit) : allResults;
+    // Apply limit if provided
+    const results = limit ? allResults.slice(0, limit) : allResults;
 
-        return results;
-    },
+    return results;
+  },
 });

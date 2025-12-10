@@ -9,4 +9,9 @@
 export { api, internal } from "@workspace/database/convex/_generated/api.js";
 
 // Re-export types from dataModel (safe for client)
-export type { Id, Doc, DataModel, TableNames } from "@workspace/database/convex/_generated/dataModel";
+export type {
+  Id,
+  Doc,
+  DataModel,
+  TableNames,
+} from "@workspace/database/convex/_generated/dataModel";

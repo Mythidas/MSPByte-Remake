@@ -13,7 +13,10 @@
  *   }
  */
 
-import type { Doc, Id } from "@workspace/database/convex/_generated/dataModel.js";
+import type {
+  Doc,
+  Id,
+} from "@workspace/database/convex/_generated/dataModel.js";
 import Logger from "../lib/logger.js";
 import { MetricsCollector } from "../monitoring/metrics.js";
 
@@ -122,7 +125,7 @@ export class ComparisonMode {
    */
   public async compare(
     tenantId: Id<"tenants">,
-    dataSourceId: Id<"data_sources">
+    dataSourceId: Id<"data_sources">,
   ): Promise<ComparisonResult> {
     const startTime = Date.now();
 
@@ -192,7 +195,7 @@ export class ComparisonMode {
    */
   private compareEntities(
     oldEntities: Doc<"entities">[],
-    newEntities: Doc<"entities">[]
+    newEntities: Doc<"entities">[],
   ): EntityComparison {
     // Build maps by external ID for comparison
     const oldMap = new Map(oldEntities.map((e) => [e.externalId, e]));
@@ -236,7 +239,8 @@ export class ComparisonMode {
     return {
       old: { count: oldEntities.length, byType: oldByType },
       new: { count: newEntities.length, byType: newByType },
-      match: missing.length === 0 && extra.length === 0 && different.length === 0,
+      match:
+        missing.length === 0 && extra.length === 0 && different.length === 0,
       missing,
       extra,
       different,
@@ -248,7 +252,7 @@ export class ComparisonMode {
    */
   private compareRelationships(
     oldRelationships: Doc<"entity_relationships">[],
-    newRelationships: Doc<"entity_relationships">[]
+    newRelationships: Doc<"entity_relationships">[],
   ): RelationshipComparison {
     // Create relationship keys for comparison
     const makeKey = (rel: Doc<"entity_relationships">) =>
@@ -277,10 +281,12 @@ export class ComparisonMode {
     const newByType: Record<string, number> = {};
 
     for (const rel of oldRelationships) {
-      oldByType[rel.relationshipType] = (oldByType[rel.relationshipType] || 0) + 1;
+      oldByType[rel.relationshipType] =
+        (oldByType[rel.relationshipType] || 0) + 1;
     }
     for (const rel of newRelationships) {
-      newByType[rel.relationshipType] = (newByType[rel.relationshipType] || 0) + 1;
+      newByType[rel.relationshipType] =
+        (newByType[rel.relationshipType] || 0) + 1;
     }
 
     return {
@@ -297,7 +303,7 @@ export class ComparisonMode {
    */
   private compareAlerts(
     oldAlerts: Doc<"entity_alerts">[],
-    newAlerts: Doc<"entity_alerts">[]
+    newAlerts: Doc<"entity_alerts">[],
   ): AlertComparison {
     // Create alert keys for comparison
     const makeKey = (alert: Doc<"entity_alerts">) =>
@@ -337,8 +343,16 @@ export class ComparisonMode {
     }
 
     return {
-      old: { count: oldAlerts.length, bySeverity: oldBySeverity, byType: oldByType },
-      new: { count: newAlerts.length, bySeverity: newBySeverity, byType: newByType },
+      old: {
+        count: oldAlerts.length,
+        bySeverity: oldBySeverity,
+        byType: oldByType,
+      },
+      new: {
+        count: newAlerts.length,
+        bySeverity: newBySeverity,
+        byType: newByType,
+      },
       match: missing.length === 0 && extra.length === 0,
       missing,
       extra,
@@ -348,7 +362,10 @@ export class ComparisonMode {
   /**
    * Check if two entities match (ignoring metadata like timestamps)
    */
-  private entitiesMatch(oldEntity: Doc<"entities">, newEntity: Doc<"entities">): boolean {
+  private entitiesMatch(
+    oldEntity: Doc<"entities">,
+    newEntity: Doc<"entities">,
+  ): boolean {
     // Compare key fields only
     return (
       oldEntity.externalId === newEntity.externalId &&
@@ -484,18 +501,24 @@ export class ComparisonMode {
     lines.push("--- Performance ---");
     lines.push(`Old Duration: ${result.summary.performance.old.durationMs}ms`);
     lines.push(`New Duration: ${result.summary.performance.new.durationMs}ms`);
-    lines.push(`Improvement: ${result.summary.performance.improvement.durationPercent}% faster`);
+    lines.push(
+      `Improvement: ${result.summary.performance.improvement.durationPercent}% faster`,
+    );
     lines.push("");
     lines.push(`Old Queries: ${result.summary.performance.old.queryCount}`);
     lines.push(`New Queries: ${result.summary.performance.new.queryCount}`);
-    lines.push(`Reduction: ${result.summary.performance.improvement.queryReductionPercent}% fewer queries`);
+    lines.push(
+      `Reduction: ${result.summary.performance.improvement.queryReductionPercent}% fewer queries`,
+    );
     lines.push("");
 
     // Discrepancies
     if (result.discrepancies.length > 0) {
       lines.push("--- Discrepancies ---");
       for (const discrepancy of result.discrepancies) {
-        lines.push(`[${discrepancy.severity.toUpperCase()}] ${discrepancy.message}`);
+        lines.push(
+          `[${discrepancy.severity.toUpperCase()}] ${discrepancy.message}`,
+        );
       }
       lines.push("");
     }
@@ -505,14 +528,18 @@ export class ComparisonMode {
     if (result.hasDiscrepancies) {
       lines.push("RESULT: DISCREPANCIES FOUND");
       lines.push(`Total Issues: ${result.discrepancies.length}`);
-      const critical = result.discrepancies.filter((d) => d.severity === "critical").length;
+      const critical = result.discrepancies.filter(
+        (d) => d.severity === "critical",
+      ).length;
       if (critical > 0) {
         lines.push(`CRITICAL: ${critical} critical issues require attention`);
       }
     } else {
       lines.push("RESULT: PIPELINES MATCH");
       lines.push("Both pipelines produced identical results.");
-      lines.push(`Performance improved by ${result.summary.performance.improvement.durationPercent}%`);
+      lines.push(
+        `Performance improved by ${result.summary.performance.improvement.durationPercent}%`,
+      );
     }
 
     return lines.join("\n");

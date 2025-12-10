@@ -77,7 +77,8 @@ export class UnifiedAnalyzer {
    * Handle linked event with debouncing
    */
   private async handleLinkedEvent(event: LinkedEventPayload): Promise<void> {
-    const { tenantID, dataSourceID, eventID, entityType, changedEntityIds } = event;
+    const { tenantID, dataSourceID, eventID, entityType, changedEntityIds } =
+      event;
     const key = `${tenantID}:${dataSourceID}`;
 
     Logger.log({
@@ -228,12 +229,15 @@ export class UnifiedAnalyzer {
         module: "UnifiedAnalyzer",
         context: "execute",
         message: "Analysis complete",
-        metadata: { stats, findingsByType: {
-          mfa: mfaFindings.length,
-          policy: policyFindings.length,
-          license: licenseFindings.length,
-          stale: staleFindings.length,
-        }},
+        metadata: {
+          stats,
+          findingsByType: {
+            mfa: mfaFindings.length,
+            policy: policyFindings.length,
+            license: licenseFindings.length,
+            stale: staleFindings.length,
+          },
+        },
       });
 
       // Emit unified findings
@@ -269,7 +273,7 @@ export class UnifiedAnalyzer {
 
     // Find Security Defaults policy
     const securityDefaults = context.policies.find(
-      (p) => p.externalId === "security-defaults"
+      (p) => p.externalId === "security-defaults",
     );
     const securityDefaultsEnabled =
       securityDefaults?.normalizedData.status === "enabled";
@@ -287,7 +291,11 @@ export class UnifiedAnalyzer {
 
       let hasMFA = false;
       let isPartial = false;
-      const applicablePolicies: Array<{ policyId: string; policyName: string; fullCoverage: boolean }> = [];
+      const applicablePolicies: Array<{
+        policyId: string;
+        policyName: string;
+        fullCoverage: boolean;
+      }> = [];
 
       // Check Security Defaults
       if (securityDefaultsEnabled) {
@@ -301,7 +309,9 @@ export class UnifiedAnalyzer {
           hasMFA = true;
           const rawData = policy.rawData as any;
           const fullCoverage =
-            rawData?.conditions?.applications?.includeApplications?.includes("All") || false;
+            rawData?.conditions?.applications?.includeApplications?.includes(
+              "All",
+            ) || false;
 
           applicablePolicies.push({
             policyId: policy._id,
@@ -359,20 +369,24 @@ export class UnifiedAnalyzer {
   /**
    * Analyze policy coverage gaps
    */
-  private async analyzePolicyGaps(context: AnalysisContext): Promise<PolicyFinding[]> {
+  private async analyzePolicyGaps(
+    context: AnalysisContext,
+  ): Promise<PolicyFinding[]> {
     const findings: PolicyFinding[] = [];
     const identitiesToAnalyze = getIdentitiesToAnalyze(context, false);
 
     // Find Security Defaults
     const securityDefaults = context.policies.find(
-      (p) => p.externalId === "security-defaults"
+      (p) => p.externalId === "security-defaults",
     );
     const securityDefaultsEnabled =
       securityDefaults?.normalizedData.status === "enabled";
 
     // Get enabled policies
     const enabledPolicies = context.policies.filter(
-      (p) => p.normalizedData.status === "enabled" && p.externalId !== "security-defaults"
+      (p) =>
+        p.normalizedData.status === "enabled" &&
+        p.externalId !== "security-defaults",
     );
 
     for (const identity of identitiesToAnalyze) {
@@ -402,7 +416,9 @@ export class UnifiedAnalyzer {
             isAdmin: identityIsAdmin,
             securityDefaultsEnabled,
             enabledPoliciesCount: enabledPolicies.length,
-            missingPolicies: ["No Conditional Access or Security Defaults policy applies"],
+            missingPolicies: [
+              "No Conditional Access or Security Defaults policy applies",
+            ],
           },
         });
       }
@@ -415,7 +431,7 @@ export class UnifiedAnalyzer {
    * Analyze license waste and overuse
    */
   private async analyzeLicenses(
-    context: AnalysisContext
+    context: AnalysisContext,
   ): Promise<(LicenseWasteFinding | LicenseOveruseFinding)[]> {
     const findings: (LicenseWasteFinding | LicenseOveruseFinding)[] = [];
     const identitiesToAnalyze = getIdentitiesToAnalyze(context, false);
@@ -480,7 +496,9 @@ export class UnifiedAnalyzer {
   /**
    * Analyze stale users (90+ days inactive)
    */
-  private async analyzeStaleUsers(context: AnalysisContext): Promise<StaleUserFinding[]> {
+  private async analyzeStaleUsers(
+    context: AnalysisContext,
+  ): Promise<StaleUserFinding[]> {
     const findings: StaleUserFinding[] = [];
     const enabledIdentities = getEnabledIdentities(context);
 
@@ -545,7 +563,7 @@ export class UnifiedAnalyzer {
     context: AnalysisContext,
     results: AnalysisResults,
     stats: any,
-    syncId: string
+    syncId: string,
   ): Promise<void> {
     const event: UnifiedAnalysisEvent = {
       tenantId: context.tenantId,

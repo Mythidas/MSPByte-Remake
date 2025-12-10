@@ -69,7 +69,10 @@ export class FeatureFlagManager {
       name: "new_pipeline",
       description: "Enable new pipeline architecture (Phases 1-7)",
       enabled: this.getEnvFlag("FEATURE_NEW_PIPELINE", true),
-      rolloutPercentage: this.getEnvPercentage("FEATURE_NEW_PIPELINE_ROLLOUT", 100),
+      rolloutPercentage: this.getEnvPercentage(
+        "FEATURE_NEW_PIPELINE_ROLLOUT",
+        100,
+      ),
       tenantOverrides: new Map(),
     });
 
@@ -78,7 +81,10 @@ export class FeatureFlagManager {
       name: "unified_analyzer",
       description: "Use unified analyzer (Phase 4)",
       enabled: this.getEnvFlag("FEATURE_UNIFIED_ANALYZER", true),
-      rolloutPercentage: this.getEnvPercentage("FEATURE_UNIFIED_ANALYZER_ROLLOUT", 100),
+      rolloutPercentage: this.getEnvPercentage(
+        "FEATURE_UNIFIED_ANALYZER_ROLLOUT",
+        100,
+      ),
       tenantOverrides: new Map(),
     });
 
@@ -87,7 +93,10 @@ export class FeatureFlagManager {
       name: "alert_manager",
       description: "Use new alert manager (Phase 5)",
       enabled: this.getEnvFlag("FEATURE_ALERT_MANAGER", true),
-      rolloutPercentage: this.getEnvPercentage("FEATURE_ALERT_MANAGER_ROLLOUT", 100),
+      rolloutPercentage: this.getEnvPercentage(
+        "FEATURE_ALERT_MANAGER_ROLLOUT",
+        100,
+      ),
       tenantOverrides: new Map(),
     });
 
@@ -96,7 +105,10 @@ export class FeatureFlagManager {
       name: "batch_loading",
       description: "Use optimized batch loading in linkers (Phase 6)",
       enabled: this.getEnvFlag("FEATURE_BATCH_LOADING", true),
-      rolloutPercentage: this.getEnvPercentage("FEATURE_BATCH_LOADING_ROLLOUT", 100),
+      rolloutPercentage: this.getEnvPercentage(
+        "FEATURE_BATCH_LOADING_ROLLOUT",
+        100,
+      ),
       tenantOverrides: new Map(),
     });
 
@@ -105,16 +117,23 @@ export class FeatureFlagManager {
       name: "performance_monitoring",
       description: "Enable query performance monitoring (Phase 6)",
       enabled: this.getEnvFlag("FEATURE_PERFORMANCE_MONITORING", true),
-      rolloutPercentage: this.getEnvPercentage("FEATURE_PERFORMANCE_MONITORING_ROLLOUT", 100),
+      rolloutPercentage: this.getEnvPercentage(
+        "FEATURE_PERFORMANCE_MONITORING_ROLLOUT",
+        100,
+      ),
       tenantOverrides: new Map(),
     });
 
     // Comparison mode
     this.flags.set("comparison_mode", {
       name: "comparison_mode",
-      description: "Run both old and new pipelines and compare results (Phase 7)",
+      description:
+        "Run both old and new pipelines and compare results (Phase 7)",
       enabled: this.getEnvFlag("FEATURE_COMPARISON_MODE", false),
-      rolloutPercentage: this.getEnvPercentage("FEATURE_COMPARISON_MODE_ROLLOUT", 0),
+      rolloutPercentage: this.getEnvPercentage(
+        "FEATURE_COMPARISON_MODE_ROLLOUT",
+        0,
+      ),
       tenantOverrides: new Map(),
     });
 
@@ -165,7 +184,7 @@ export class FeatureFlagManager {
    */
   public async isEnabled(
     flagName: FeatureFlagName,
-    tenantId?: Id<"tenants">
+    tenantId?: Id<"tenants">,
   ): Promise<boolean> {
     const flag = this.flags.get(flagName);
     if (!flag) {
@@ -195,8 +214,15 @@ export class FeatureFlagManager {
     }
 
     // Check rollout percentage
-    if (flag.rolloutPercentage !== undefined && flag.rolloutPercentage < 100 && tenantId) {
-      const isInRollout = this.isInRolloutPercentage(tenantId, flag.rolloutPercentage);
+    if (
+      flag.rolloutPercentage !== undefined &&
+      flag.rolloutPercentage < 100 &&
+      tenantId
+    ) {
+      const isInRollout = this.isInRolloutPercentage(
+        tenantId,
+        flag.rolloutPercentage,
+      );
       Logger.log({
         module: "FeatureFlagManager",
         context: "isEnabled",
@@ -211,7 +237,10 @@ export class FeatureFlagManager {
   /**
    * Determine if tenant is in rollout percentage using consistent hashing
    */
-  private isInRolloutPercentage(tenantId: Id<"tenants">, percentage: number): boolean {
+  private isInRolloutPercentage(
+    tenantId: Id<"tenants">,
+    percentage: number,
+  ): boolean {
     if (percentage === 0) return false;
     if (percentage === 100) return true;
 
@@ -233,7 +262,7 @@ export class FeatureFlagManager {
   public setTenantOverride(
     flagName: FeatureFlagName,
     tenantId: Id<"tenants">,
-    enabled: boolean
+    enabled: boolean,
   ): void {
     const flag = this.flags.get(flagName);
     if (!flag) {
@@ -257,7 +286,10 @@ export class FeatureFlagManager {
   /**
    * Remove a tenant-specific override
    */
-  public removeTenantOverride(flagName: FeatureFlagName, tenantId: Id<"tenants">): void {
+  public removeTenantOverride(
+    flagName: FeatureFlagName,
+    tenantId: Id<"tenants">,
+  ): void {
     const flag = this.flags.get(flagName);
     if (!flag || !flag.tenantOverrides) {
       return;
@@ -294,7 +326,10 @@ export class FeatureFlagManager {
   /**
    * Update rollout percentage
    */
-  public setRolloutPercentage(flagName: FeatureFlagName, percentage: number): void {
+  public setRolloutPercentage(
+    flagName: FeatureFlagName,
+    percentage: number,
+  ): void {
     if (percentage < 0 || percentage > 100) {
       throw new Error(`Invalid percentage: ${percentage} (must be 0-100)`);
     }
@@ -316,7 +351,10 @@ export class FeatureFlagManager {
   /**
    * Get status of a feature flag
    */
-  public getStatus(flagName: FeatureFlagName, tenantId?: Id<"tenants">): FeatureFlagStatus {
+  public getStatus(
+    flagName: FeatureFlagName,
+    tenantId?: Id<"tenants">,
+  ): FeatureFlagStatus {
     const flag = this.flags.get(flagName);
     if (!flag) {
       throw new Error(`Unknown flag: ${flagName}`);
@@ -336,8 +374,14 @@ export class FeatureFlagManager {
         status.effectiveForTenant = flag.tenantOverrides.get(tenantId)!;
       } else if (!flag.enabled) {
         status.effectiveForTenant = false;
-      } else if (flag.rolloutPercentage !== undefined && flag.rolloutPercentage < 100) {
-        status.effectiveForTenant = this.isInRolloutPercentage(tenantId, flag.rolloutPercentage);
+      } else if (
+        flag.rolloutPercentage !== undefined &&
+        flag.rolloutPercentage < 100
+      ) {
+        status.effectiveForTenant = this.isInRolloutPercentage(
+          tenantId,
+          flag.rolloutPercentage,
+        );
       } else {
         status.effectiveForTenant = flag.enabled;
       }
@@ -350,7 +394,9 @@ export class FeatureFlagManager {
    * Get all feature flag statuses
    */
   public getAllStatuses(tenantId?: Id<"tenants">): FeatureFlagStatus[] {
-    return Array.from(this.flags.keys()).map((flagName) => this.getStatus(flagName, tenantId));
+    return Array.from(this.flags.keys()).map((flagName) =>
+      this.getStatus(flagName, tenantId),
+    );
   }
 
   /**

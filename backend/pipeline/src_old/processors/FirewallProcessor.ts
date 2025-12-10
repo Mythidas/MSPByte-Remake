@@ -1,7 +1,4 @@
-import {
-  BaseProcessor,
-  FirewallData,
-} from "./BaseProcessor.js";
+import { BaseProcessor, FirewallData } from "./BaseProcessor.js";
 import Logger from "../lib/logger.js";
 import { SophosPartnerFirewall } from "@workspace/shared/types/integrations/sophos-partner/firewall.js";
 import {
@@ -16,7 +13,7 @@ export class FirewallProcessor extends BaseProcessor {
 
   protected normalizeData(
     integrationType: IntegrationType,
-    data: DataFetchPayload[]
+    data: DataFetchPayload[],
   ): FirewallData[] {
     switch (integrationType) {
       case "sophos-partner":
@@ -53,7 +50,9 @@ export class FirewallProcessor extends BaseProcessor {
           hostname: rawData.hostname,
           status: rawData.status.connected ? "online" : "offline",
           firmware: rawData.firmware?.firmwareVersion,
-          firmwareUpgradeAvailable: rawData.firmware?.upgradeToVersion && rawData.firmware.upgradeToVersion.length > 0,
+          firmwareUpgradeAvailable:
+            rawData.firmware?.upgradeToVersion &&
+            rawData.firmware.upgradeToVersion.length > 0,
           model: rawData.model,
 
           extAddress: rawData.externalIpv4Addresses?.[0] || "",

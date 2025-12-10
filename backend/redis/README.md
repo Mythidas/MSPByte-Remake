@@ -108,6 +108,7 @@ redis-cli CLIENT LIST
 ### Metrics
 
 Key metrics to monitor:
+
 - `used_memory` - current memory usage
 - `connected_clients` - active connections
 - `instantaneous_ops_per_sec` - operations per second
@@ -148,10 +149,12 @@ docker-compose restart redis
 ## Data Retention
 
 BullMQ automatically cleans up:
+
 - Completed jobs: Keep last 1000 or 24 hours
 - Failed jobs: Keep last 5000 or 7 days
 
 Manual cleanup:
+
 ```bash
 # Clear all jobs
 redis-cli FLUSHDB

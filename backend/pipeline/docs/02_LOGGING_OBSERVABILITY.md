@@ -11,6 +11,7 @@
 **Duration**: 1 day
 
 **Key Deliverables**:
+
 - Trace IDs linking jobs through entire pipeline
 - Structured logging with timing metrics
 - Alert history table for debugging alert lifecycle
@@ -35,7 +36,7 @@ Examples:
 **File**: `src/lib/tracing.ts`
 
 ```typescript
-import { AsyncLocalStorage } from 'async_hooks';
+import { AsyncLocalStorage } from "async_hooks";
 
 interface TraceContext {
   traceId: string;
@@ -57,7 +58,7 @@ class TracingManager {
     stage: string;
     metadata?: Record<string, any>;
   }): string {
-    const traceId = `${params.syncId || 'job'}_${params.stage}_${Date.now()}`;
+    const traceId = `${params.syncId || "job"}_${params.stage}_${Date.now()}`;
 
     const context: TraceContext = {
       traceId,
@@ -102,14 +103,14 @@ export default TracingManager;
 **File**: `src/lib/logger.ts`
 
 ```typescript
-import Debug from './debug';
-import TracingManager from './tracing';
+import Debug from "./debug";
+import TracingManager from "./tracing";
 
 interface LogParams {
   module: string;
   context: string;
   message: string;
-  level?: 'info' | 'warn' | 'error';
+  level?: "info" | "warn" | "error";
   metadata?: Record<string, any>;
   error?: Error;
 }
@@ -121,7 +122,7 @@ class Logger {
 
     const logEntry = {
       timestamp: new Date().toISOString(),
-      level: params.level || 'info',
+      level: params.level || "info",
       module: params.module,
       context: params.context,
       message: params.message,
@@ -141,17 +142,19 @@ class Logger {
       },
 
       // Error information
-      error: params.error ? {
-        message: params.error.message,
-        stack: params.error.stack,
-        name: params.error.name,
-      } : undefined,
+      error: params.error
+        ? {
+            message: params.error.message,
+            stack: params.error.stack,
+            name: params.error.name,
+          }
+        : undefined,
     };
 
     // Use existing Debug module
     if (params.error) {
       Debug.error(logEntry);
-    } else if (params.level === 'warn') {
+    } else if (params.level === "warn") {
       Debug.error(logEntry); // Debug module doesn't have warn
     } else {
       Debug.log(logEntry);
@@ -159,9 +162,9 @@ class Logger {
   }
 
   static startStage(stage: string, metadata?: Record<string, any>): void {
-    TracingManager.addMetadata('currentStage', stage);
+    TracingManager.addMetadata("currentStage", stage);
     this.log({
-      module: 'Pipeline',
+      module: "Pipeline",
       context: stage,
       message: `Starting ${stage}`,
       metadata,
@@ -171,7 +174,7 @@ class Logger {
   static endStage(stage: string, metadata?: Record<string, any>): void {
     const duration = TracingManager.getDuration();
     this.log({
-      module: 'Pipeline',
+      module: "Pipeline",
       context: stage,
       message: `Completed ${stage}`,
       metadata: {
@@ -188,8 +191,8 @@ class Logger {
     duration: number;
   }): void {
     this.log({
-      module: 'Database',
-      context: 'query',
+      module: "Database",
+      context: "query",
       message: `${params.operation} on ${params.tableName}`,
       metadata: {
         table: params.tableName,
@@ -220,8 +223,16 @@ defineTable("entity_alert_history", {
   dataSourceId: v.id("data_sources"),
 
   alertType: v.string(),
-  previousStatus: v.union(v.literal("active"), v.literal("resolved"), v.literal("snoozed")),
-  newStatus: v.union(v.literal("active"), v.literal("resolved"), v.literal("snoozed")),
+  previousStatus: v.union(
+    v.literal("active"),
+    v.literal("resolved"),
+    v.literal("snoozed"),
+  ),
+  newStatus: v.union(
+    v.literal("active"),
+    v.literal("resolved"),
+    v.literal("snoozed"),
+  ),
 
   previousSeverity: v.optional(v.string()),
   newSeverity: v.optional(v.string()),
@@ -246,17 +257,17 @@ defineTable("entity_alert_history", {
 **File**: `src/lib/alertHistory.ts`
 
 ```typescript
-import { ConvexHttpClient } from 'convex/browser';
-import { api } from '../../convex/_generated/api';
-import { Id, Doc } from '../../convex/_generated/dataModel';
-import TracingManager from './tracing';
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "../../convex/_generated/api";
+import { Id, Doc } from "../../convex/_generated/dataModel";
+import TracingManager from "./tracing";
 
 class AlertHistoryManager {
   constructor(private client: ConvexHttpClient) {}
 
   async recordChange(params: {
-    alertId: Id<'entity_alerts'>;
-    alert: Doc<'entity_alerts'>;
+    alertId: Id<"entity_alerts">;
+    alert: Doc<"entity_alerts">;
     previousStatus: string;
     newStatus: string;
     previousSeverity?: string;
@@ -267,7 +278,7 @@ class AlertHistoryManager {
     const trace = TracingManager.getContext();
 
     await this.client.mutation(api.helpers.orm.insert_s, {
-      tableName: 'entity_alert_history',
+      tableName: "entity_alert_history",
       record: {
         alertId: params.alertId,
         entityId: params.alert.entityId,
@@ -290,31 +301,31 @@ class AlertHistoryManager {
     });
   }
 
-  async getHistory(alertId: Id<'entity_alerts'>): Promise<Doc<'entity_alert_history'>[]> {
+  async getHistory(
+    alertId: Id<"entity_alerts">,
+  ): Promise<Doc<"entity_alert_history">[]> {
     return await this.client.query(api.helpers.orm.list_s, {
-      tableName: 'entity_alert_history',
+      tableName: "entity_alert_history",
       index: {
-        name: 'by_alert',
+        name: "by_alert",
         params: { alertId },
       },
     });
   }
 
   async getEntityHistory(
-    entityId: Id<'entities'>,
-    limit = 100
-  ): Promise<Doc<'entity_alert_history'>[]> {
+    entityId: Id<"entities">,
+    limit = 100,
+  ): Promise<Doc<"entity_alert_history">[]> {
     const history = await this.client.query(api.helpers.orm.list_s, {
-      tableName: 'entity_alert_history',
+      tableName: "entity_alert_history",
       index: {
-        name: 'by_entity',
+        name: "by_entity",
         params: { entityId },
       },
     });
 
-    return history
-      .sort((a, b) => b.changedAt - a.changedAt)
-      .slice(0, limit);
+    return history.sort((a, b) => b.changedAt - a.changedAt).slice(0, limit);
   }
 }
 
@@ -330,14 +341,14 @@ export default AlertHistoryManager;
 **File**: `src/lib/queryWrapper.ts`
 
 ```typescript
-import { ConvexHttpClient } from 'convex/browser';
-import Logger from './logger';
+import { ConvexHttpClient } from "convex/browser";
+import Logger from "./logger";
 
 export async function timedQuery<T>(
   client: ConvexHttpClient,
   operation: string,
   tableName: string,
-  queryFn: () => Promise<T>
+  queryFn: () => Promise<T>,
 ): Promise<T> {
   const startTime = Date.now();
 
@@ -357,10 +368,10 @@ export async function timedQuery<T>(
     // Warn on slow queries
     if (duration > 1000) {
       Logger.log({
-        module: 'Database',
-        context: 'slow_query',
+        module: "Database",
+        context: "slow_query",
         message: `Slow query detected: ${operation} on ${tableName}`,
-        level: 'warn',
+        level: "warn",
         metadata: {
           duration_ms: duration,
           records: recordsAffected,
@@ -373,10 +384,10 @@ export async function timedQuery<T>(
     const duration = Date.now() - startTime;
 
     Logger.log({
-      module: 'Database',
-      context: 'query_error',
+      module: "Database",
+      context: "query_error",
       message: `Query failed: ${operation} on ${tableName}`,
-      level: 'error',
+      level: "error",
       error: error as Error,
       metadata: {
         duration_ms: duration,
@@ -561,7 +572,7 @@ private async processAnalysisBatch(
 
 ```typescript
 // Parse and filter logs for specific trace/sync
-import fs from 'fs';
+import fs from "fs";
 
 interface LogEntry {
   timestamp: string;
@@ -576,15 +587,16 @@ interface LogEntry {
 }
 
 function viewLogsByTrace(logFile: string, traceId: string): void {
-  const logs = fs.readFileSync(logFile, 'utf-8')
-    .split('\n')
+  const logs = fs
+    .readFileSync(logFile, "utf-8")
+    .split("\n")
     .filter(Boolean)
-    .map(line => JSON.parse(line) as LogEntry)
-    .filter(log => log.traceId === traceId || log.syncId?.includes(traceId));
+    .map((line) => JSON.parse(line) as LogEntry)
+    .filter((log) => log.traceId === traceId || log.syncId?.includes(traceId));
 
   console.log(`\n=== Trace: ${traceId} ===\n`);
 
-  logs.forEach(log => {
+  logs.forEach((log) => {
     console.log(`[${log.timestamp}] ${log.module}:${log.context}`);
     console.log(`  ${log.message}`);
     if (log.duration_ms) {
@@ -597,10 +609,15 @@ function viewLogsByTrace(logFile: string, traceId: string): void {
   });
 
   // Summary
-  const totalDuration = logs.reduce((sum, log) => sum + (log.duration_ms || 0), 0);
+  const totalDuration = logs.reduce(
+    (sum, log) => sum + (log.duration_ms || 0),
+    0,
+  );
   console.log(`\nTotal Duration: ${totalDuration}ms`);
-  console.log(`Stages: ${logs.filter(l => l.context.includes('stage')).length}`);
-  console.log(`Queries: ${logs.filter(l => l.module === 'Database').length}`);
+  console.log(
+    `Stages: ${logs.filter((l) => l.context.includes("stage")).length}`,
+  );
+  console.log(`Queries: ${logs.filter((l) => l.module === "Database").length}`);
 }
 ```
 
@@ -611,30 +628,30 @@ function viewLogsByTrace(logFile: string, traceId: string): void {
 ### Trace Continuity Test
 
 ```typescript
-it('should maintain trace context across pipeline', async () => {
-  const syncId = 'test_sync_123';
+it("should maintain trace context across pipeline", async () => {
+  const syncId = "test_sync_123";
 
   // Schedule job with syncId
   await queueManager.scheduleJob({
-    action: 'test.sync',
-    tenantId: 'test',
-    dataSourceId: 'test',
+    action: "test.sync",
+    tenantId: "test",
+    dataSourceId: "test",
     metadata: { syncId },
   });
 
   // Wait for processing
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  await new Promise((resolve) => setTimeout(resolve, 2000));
 
   // Check logs for trace
   const logs = await getLogs();
-  const traceLogs = logs.filter(l => l.syncId === syncId);
+  const traceLogs = logs.filter((l) => l.syncId === syncId);
 
   // Should have logs from all stages
-  const stages = new Set(traceLogs.map(l => l.stage));
-  expect(stages.has('queue')).toBe(true);
-  expect(stages.has('fetch')).toBe(true);
-  expect(stages.has('process')).toBe(true);
-  expect(stages.has('analyze')).toBe(true);
+  const stages = new Set(traceLogs.map((l) => l.stage));
+  expect(stages.has("queue")).toBe(true);
+  expect(stages.has("fetch")).toBe(true);
+  expect(stages.has("process")).toBe(true);
+  expect(stages.has("analyze")).toBe(true);
 });
 ```
 

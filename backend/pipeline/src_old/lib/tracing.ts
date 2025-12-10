@@ -1,4 +1,4 @@
-import { AsyncLocalStorage } from 'async_hooks';
+import { AsyncLocalStorage } from "async_hooks";
 
 export interface TraceContext {
   traceId: string;
@@ -20,7 +20,7 @@ class TracingManager {
     stage: string;
     metadata?: Record<string, any>;
   }): string {
-    const traceId = `${params.syncId || 'job'}_${params.stage}_${Date.now()}`;
+    const traceId = `${params.syncId || "job"}_${params.stage}_${Date.now()}`;
 
     const context: TraceContext = {
       traceId,

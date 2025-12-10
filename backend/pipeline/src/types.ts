@@ -1,5 +1,8 @@
 import type { Doc, Id } from "@workspace/database/convex/_generated/dataModel";
-import type { EntityType, IntegrationId } from "@workspace/shared/types/integrations";
+import type {
+  EntityType,
+  IntegrationId,
+} from "@workspace/shared/types/integrations";
 
 /**
  * ============================================================================
@@ -33,32 +36,32 @@ export type EntityState = "low" | "normal" | "warn" | "high" | "critical";
  * Contains all data needed for analysis, loaded once and shared
  */
 export interface AnalysisContext {
-    // Identifiers
-    tenantId: Id<"tenants">;
-    integrationId: IntegrationId;
-    dataSourceId: Id<"data_sources">;
-    syncId: string;
+  // Identifiers
+  tenantId: Id<"tenants">;
+  integrationId: IntegrationId;
+  dataSourceId: Id<"data_sources">;
+  syncId: string;
 
-    // Entities grouped by type
-    entities: {
-        identities: Entity[];
-        policies: Entity[];
-        licenses: Entity[];
-        groups: Entity[];
-        roles: Entity[];
-        companies: Entity[];
-        endpoints: Entity[];
-        firewalls: Entity[];
-    };
+  // Entities grouped by type
+  entities: {
+    identities: Entity[];
+    policies: Entity[];
+    licenses: Entity[];
+    groups: Entity[];
+    roles: Entity[];
+    companies: Entity[];
+    endpoints: Entity[];
+    firewalls: Entity[];
+  };
 
-    // Relationships between entities
-    relationships: Relationship[];
+  // Relationships between entities
+  relationships: Relationship[];
 
-    // Helper methods for analyzers
-    getEntity(id: Id<"entities">): Entity | undefined;
-    getRelationships(entityId: Id<"entities">, type?: string): Relationship[];
-    getChildEntities(parentId: Id<"entities">): Entity[];
-    getParentEntity(childId: Id<"entities">): Entity | undefined;
+  // Helper methods for analyzers
+  getEntity(id: Id<"entities">): Entity | undefined;
+  getRelationships(entityId: Id<"entities">, type?: string): Relationship[];
+  getChildEntities(parentId: Id<"entities">): Entity[];
+  getParentEntity(childId: Id<"entities">): Entity | undefined;
 }
 
 /**
@@ -76,21 +79,21 @@ export type AlertSeverity = "low" | "medium" | "high" | "critical";
  * Alert type identifiers
  */
 export type AlertType =
-    | "mfa-not-enforced"
-    | "policy-gap"
-    | "license-waste"
-    | "stale-user";
+  | "mfa-not-enforced"
+  | "policy-gap"
+  | "license-waste"
+  | "stale-user";
 
 /**
  * Alert data structure (before saving to database)
  */
 export interface Alert {
-    entityId: Id<"entities">;
-    alertType: AlertType;
-    severity: AlertSeverity;
-    message: string;
-    fingerprint: string; // Unique identifier for deduplication
-    metadata?: Record<string, any>;
+  entityId: Id<"entities">;
+  alertType: AlertType;
+  severity: AlertSeverity;
+  message: string;
+  fingerprint: string; // Unique identifier for deduplication
+  metadata?: Record<string, any>;
 }
 
 /**
@@ -104,14 +107,14 @@ export interface Alert {
  * Analyzers are pure functions that don't mutate state
  */
 export interface AnalyzerResult {
-    // Alerts to create/update
-    alerts: Alert[];
+  // Alerts to create/update
+  alerts: Alert[];
 
-    // Tags to add to entities (merged with existing tags)
-    entityTags: Map<Id<"entities">, string[]>;
+  // Tags to add to entities (merged with existing tags)
+  entityTags: Map<Id<"entities">, string[]>;
 
-    // Entity states to set (highest severity wins)
-    entityStates: Map<Id<"entities">, EntityState>;
+  // Entity states to set (highest severity wins)
+  entityStates: Map<Id<"entities">, EntityState>;
 }
 
 /**
@@ -123,20 +126,25 @@ export interface AnalyzerResult {
 /**
  * Pipeline job stages
  */
-export type PipelineStage = "adapter" | "processor" | "linker" | "analyzer" | "failed";
+export type PipelineStage =
+  | "adapter"
+  | "processor"
+  | "linker"
+  | "analyzer"
+  | "failed";
 
 /**
  * Pipeline job metadata
  */
 export interface PipelineJob {
-    tenantId: Id<"tenants">;
-    integrationId: IntegrationId;
-    dataSourceId: Id<"data_sources">;
-    entityType?: EntityType;
-    syncId: string;
-    stage: PipelineStage;
-    startedAt: number;
-    completedAt?: number;
+  tenantId: Id<"tenants">;
+  integrationId: IntegrationId;
+  dataSourceId: Id<"data_sources">;
+  entityType?: EntityType;
+  syncId: string;
+  stage: PipelineStage;
+  startedAt: number;
+  completedAt?: number;
 }
 
 /**
@@ -149,26 +157,26 @@ export interface PipelineJob {
  * Pagination info for adapters
  */
 export interface PaginationInfo {
-    hasMore: boolean;
-    cursor?: string;
-    nextUrl?: string;
+  hasMore: boolean;
+  cursor?: string;
+  nextUrl?: string;
 }
 
 /**
  * Raw entity data from external API
  */
 export interface RawEntity {
-    externalId: string;
-    siteId?: string;
-    rawData: any;
+  externalId: string;
+  siteId?: string;
+  rawData: any;
 }
 
 /**
  * Adapter fetch result
  */
 export interface AdapterFetchResult {
-    entities: RawEntity[];
-    pagination?: PaginationInfo;
+  entities: RawEntity[];
+  pagination?: PaginationInfo;
 }
 
 /**
@@ -186,8 +194,8 @@ export type EntityChangeType = "created" | "updated" | "deleted" | "unchanged";
  * Entity processing result
  */
 export interface EntityProcessResult {
-    entityId: Id<"entities">;
-    changeType: EntityChangeType;
+  entityId: Id<"entities">;
+  changeType: EntityChangeType;
 }
 
 /**
@@ -200,17 +208,17 @@ export interface EntityProcessResult {
  * Relationship to create
  */
 export interface RelationshipToCreate {
-    parentEntityId: Id<"entities">;
-    childEntityId: Id<"entities">;
-    relationshipType: string;
-    metadata?: Record<string, any>;
+  parentEntityId: Id<"entities">;
+  childEntityId: Id<"entities">;
+  relationshipType: string;
+  metadata?: Record<string, any>;
 }
 
 /**
  * Linker result
  */
 export interface LinkerResult {
-    relationshipsCreated: number;
-    relationshipsUpdated: number;
-    relationshipsDeleted: number;
+  relationshipsCreated: number;
+  relationshipsUpdated: number;
+  relationshipsDeleted: number;
 }

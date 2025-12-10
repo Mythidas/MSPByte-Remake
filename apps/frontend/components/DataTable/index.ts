@@ -3,15 +3,15 @@ export { DataTable } from "./DataTable";
 
 // Types
 export type {
-    FilterOperator,
-    TableFilter,
-    FilterConfig,
-    FilterField,
-    DataTableColumn,
-    TableView,
-    RowAction,
-    DataTableProps,
-    URLState,
+  FilterOperator,
+  TableFilter,
+  FilterConfig,
+  FilterField,
+  DataTableColumn,
+  TableView,
+  RowAction,
+  DataTableProps,
+  URLState,
 } from "./types";
 
 // Hooks (for advanced usage)
@@ -29,5 +29,11 @@ export { DataTableColumnToggle } from "./DataTableColumnToggle";
 
 // Utils
 export { getNestedValue } from "./utils/nested";
-export { serializeFilters, deserializeFilters, applyFilters, matchesOperator, getOperatorLabel } from "./utils/filters";
+export {
+  serializeFilters,
+  deserializeFilters,
+  applyFilters,
+  matchesOperator,
+  getOperatorLabel,
+} from "./utils/filters";
 export { OPERATOR_MAP } from "./utils/operators";

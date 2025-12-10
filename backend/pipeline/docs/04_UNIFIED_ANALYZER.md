@@ -9,6 +9,7 @@
 **Goal**: Consolidate 5 separate workers into single UnifiedAnalyzer
 
 **Files to Replace**:
+
 - `Microsoft365IdentitySecurityAnalyzer.ts` (MFA analysis)
 - `Microsoft365PolicyAnalyzer.ts` (Policy coverage)
 - `Microsoft365LicenseAnalyzer.ts` (License waste)
@@ -16,6 +17,7 @@
 - `BaseWorker.ts` (No longer needed)
 
 **Files to Keep**:
+
 - `CleanupWorker.ts` (Different concern)
 
 ---
@@ -25,27 +27,27 @@
 **File**: `src/analyzers/UnifiedAnalyzer.ts`
 
 ```typescript
-import NatsClient from '../lib/nats';
-import { ConvexHttpClient } from 'convex/browser';
-import { api } from '../../convex/_generated/api';
-import { Id } from '../../convex/_generated/dataModel';
-import DataContextLoader from '../context/DataContextLoader';
-import { AnalysisContext } from '../context/AnalysisContext';
-import { AnalysisHelpers } from '../context/AnalysisHelpers';
-import Logger from '../lib/logger';
-import TracingManager from '../lib/tracing';
+import NatsClient from "../lib/nats";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "../../convex/_generated/api";
+import { Id } from "../../convex/_generated/dataModel";
+import DataContextLoader from "../context/DataContextLoader";
+import { AnalysisContext } from "../context/AnalysisContext";
+import { AnalysisHelpers } from "../context/AnalysisHelpers";
+import Logger from "../lib/logger";
+import TracingManager from "../lib/tracing";
 
 interface LinkedEvent {
-  tenantId: Id<'tenants'>;
-  dataSourceId: Id<'data_sources'>;
+  tenantId: Id<"tenants">;
+  dataSourceId: Id<"data_sources">;
   syncId: string;
   entityType: string;
   isFinalBatch: boolean;
-  changedEntityIds?: Id<'entities'>[];
+  changedEntityIds?: Id<"entities">[];
 }
 
 interface Finding {
-  entityId: Id<'entities'>;
+  entityId: Id<"entities">;
   alertType: string;
   severity: string;
   message: string;
@@ -66,12 +68,12 @@ class UnifiedAnalyzer {
 
   async initialize(): Promise<void> {
     // Subscribe to all linked events
-    await NatsClient.subscribe('linked.>', this.handleLinkedEvent.bind(this));
+    await NatsClient.subscribe("linked.>", this.handleLinkedEvent.bind(this));
 
     Logger.log({
-      module: 'UnifiedAnalyzer',
-      context: 'initialize',
-      message: 'UnifiedAnalyzer initialized',
+      module: "UnifiedAnalyzer",
+      context: "initialize",
+      message: "UnifiedAnalyzer initialized",
     });
   }
 
@@ -88,9 +90,9 @@ class UnifiedAnalyzer {
     // If requires full context and not final batch, wait
     if (this.requiresFullContext && !isFinalBatch) {
       Logger.log({
-        module: 'UnifiedAnalyzer',
-        context: 'handleLinkedEvent',
-        message: 'Waiting for final batch',
+        module: "UnifiedAnalyzer",
+        context: "handleLinkedEvent",
+        message: "Waiting for final batch",
         metadata: { syncId, entityType },
       });
       return;
@@ -107,24 +109,24 @@ class UnifiedAnalyzer {
           changedEntityIds: event.changedEntityIds,
         });
         this.pendingAnalysis.delete(key);
-      }, this.debounceMs)
+      }, this.debounceMs),
     );
   }
 
   private async execute(params: {
-    tenantId: Id<'tenants'>;
-    dataSourceId: Id<'data_sources'>;
+    tenantId: Id<"tenants">;
+    dataSourceId: Id<"data_sources">;
     syncId: string;
-    changedEntityIds?: Id<'entities'>[];
+    changedEntityIds?: Id<"entities">[];
   }): Promise<void> {
     TracingManager.startTrace({
       syncId: params.syncId,
       tenantId: params.tenantId,
       dataSourceId: params.dataSourceId,
-      stage: 'analyze',
+      stage: "analyze",
     });
 
-    Logger.startStage('unified_analysis', {
+    Logger.startStage("unified_analysis", {
       tenantId: params.tenantId,
       syncId: params.syncId,
     });
@@ -150,7 +152,7 @@ class UnifiedAnalyzer {
         stale: staleFindings,
       });
 
-      Logger.endStage('unified_analysis', {
+      Logger.endStage("unified_analysis", {
         totalFindings:
           mfaFindings.length +
           policyFindings.length +
@@ -159,10 +161,10 @@ class UnifiedAnalyzer {
       });
     } catch (error) {
       Logger.log({
-        module: 'UnifiedAnalyzer',
-        context: 'execute',
-        message: 'Analysis failed',
-        level: 'error',
+        module: "UnifiedAnalyzer",
+        context: "execute",
+        message: "Analysis failed",
+        level: "error",
         error: error as Error,
       });
       throw error;
@@ -172,34 +174,34 @@ class UnifiedAnalyzer {
   // ==================== MFA ANALYSIS ====================
 
   private async analyzeMFA(context: AnalysisContext): Promise<Finding[]> {
-    Logger.startStage('analyze_mfa');
+    Logger.startStage("analyze_mfa");
 
     const findings: Finding[] = [];
     const identitiesToAnalyze = AnalysisHelpers.getIdentitiesToAnalyze(
       context,
-      Array.from(context.changedIdentityIds || [])
+      Array.from(context.changedIdentityIds || []),
     );
 
     for (const identity of identitiesToAnalyze) {
       const mfaCoverage = this.evaluateMFACoverage(context, identity);
 
-      if (mfaCoverage === 'none') {
+      if (mfaCoverage === "none") {
         findings.push({
           entityId: identity._id,
-          alertType: 'mfa_not_enforced',
-          severity: 'high',
-          message: 'MFA is not enforced for this user',
+          alertType: "mfa_not_enforced",
+          severity: "high",
+          message: "MFA is not enforced for this user",
           metadata: {
             identityId: identity._id,
             email: identity.normalizedData?.email,
           },
         });
-      } else if (mfaCoverage === 'partial') {
+      } else if (mfaCoverage === "partial") {
         findings.push({
           entityId: identity._id,
-          alertType: 'mfa_partial_enforced',
-          severity: 'medium',
-          message: 'MFA is partially enforced for this user',
+          alertType: "mfa_partial_enforced",
+          severity: "medium",
+          message: "MFA is partially enforced for this user",
           metadata: {
             identityId: identity._id,
             email: identity.normalizedData?.email,
@@ -208,7 +210,7 @@ class UnifiedAnalyzer {
       }
     }
 
-    Logger.endStage('analyze_mfa', {
+    Logger.endStage("analyze_mfa", {
       identitiesAnalyzed: identitiesToAnalyze.length,
       findingsCount: findings.length,
     });
@@ -218,11 +220,11 @@ class UnifiedAnalyzer {
 
   private evaluateMFACoverage(
     context: AnalysisContext,
-    identity: Doc<'entities'>
-  ): 'full' | 'partial' | 'none' {
+    identity: Doc<"entities">,
+  ): "full" | "partial" | "none" {
     const userGroups = AnalysisHelpers.getGroupsForIdentity(
       context,
-      identity._id
+      identity._id,
     );
 
     let hasFullMFA = false;
@@ -234,40 +236,42 @@ class UnifiedAnalyzer {
       }
 
       const mfaState = policy.normalizedData?.mfaState;
-      if (mfaState === 'enabled') {
+      if (mfaState === "enabled") {
         hasFullMFA = true;
-      } else if (mfaState === 'enabledForReportingButNotEnforced') {
+      } else if (mfaState === "enabledForReportingButNotEnforced") {
         hasPartialMFA = true;
       }
     }
 
-    if (hasFullMFA) return 'full';
-    if (hasPartialMFA) return 'partial';
-    return 'none';
+    if (hasFullMFA) return "full";
+    if (hasPartialMFA) return "partial";
+    return "none";
   }
 
   // ==================== POLICY ANALYSIS ====================
 
-  private async analyzePolicyGaps(context: AnalysisContext): Promise<Finding[]> {
-    Logger.startStage('analyze_policy');
+  private async analyzePolicyGaps(
+    context: AnalysisContext,
+  ): Promise<Finding[]> {
+    Logger.startStage("analyze_policy");
 
     const findings: Finding[] = [];
     const identitiesToAnalyze = AnalysisHelpers.getIdentitiesToAnalyze(
       context,
-      Array.from(context.changedIdentityIds || [])
+      Array.from(context.changedIdentityIds || []),
     );
 
     for (const identity of identitiesToAnalyze) {
-      const hasAnyPolicy = context.policies.some(policy =>
-        AnalysisHelpers.doesPolicyApply(context, policy._id, identity._id)
+      const hasAnyPolicy = context.policies.some((policy) =>
+        AnalysisHelpers.doesPolicyApply(context, policy._id, identity._id),
       );
 
       if (!hasAnyPolicy) {
         findings.push({
           entityId: identity._id,
-          alertType: 'policy_gap',
-          severity: 'medium',
-          message: 'User has no conditional access policies applied',
+          alertType: "policy_gap",
+          severity: "medium",
+          message: "User has no conditional access policies applied",
           metadata: {
             identityId: identity._id,
             email: identity.normalizedData?.email,
@@ -276,7 +280,7 @@ class UnifiedAnalyzer {
       }
     }
 
-    Logger.endStage('analyze_policy', {
+    Logger.endStage("analyze_policy", {
       identitiesAnalyzed: identitiesToAnalyze.length,
       findingsCount: findings.length,
     });
@@ -287,7 +291,7 @@ class UnifiedAnalyzer {
   // ==================== LICENSE ANALYSIS ====================
 
   private async analyzeLicenses(context: AnalysisContext): Promise<Finding[]> {
-    Logger.startStage('analyze_license');
+    Logger.startStage("analyze_license");
 
     const findings: Finding[] = [];
 
@@ -300,13 +304,13 @@ class UnifiedAnalyzer {
       if (hasLicense && (isDisabled || isStale)) {
         findings.push({
           entityId: identity._id,
-          alertType: 'license_waste',
-          severity: 'low',
-          message: 'License assigned to inactive user',
+          alertType: "license_waste",
+          severity: "low",
+          message: "License assigned to inactive user",
           metadata: {
             identityId: identity._id,
             email: identity.normalizedData?.email,
-            reason: isDisabled ? 'disabled' : 'stale',
+            reason: isDisabled ? "disabled" : "stale",
           },
         });
       }
@@ -320,9 +324,9 @@ class UnifiedAnalyzer {
       if (consumed > total) {
         findings.push({
           entityId: license._id,
-          alertType: 'license_overuse',
-          severity: 'high',
-          message: 'License consumption exceeds available units',
+          alertType: "license_overuse",
+          severity: "high",
+          message: "License consumption exceeds available units",
           metadata: {
             skuPartNumber: license.normalizedData?.skuPartNumber,
             consumed,
@@ -333,7 +337,7 @@ class UnifiedAnalyzer {
       }
     }
 
-    Logger.endStage('analyze_license', {
+    Logger.endStage("analyze_license", {
       findingsCount: findings.length,
     });
 
@@ -342,16 +346,19 @@ class UnifiedAnalyzer {
 
   // ==================== STALE USER ANALYSIS ====================
 
-  private async analyzeStaleUsers(context: AnalysisContext): Promise<Finding[]> {
-    Logger.startStage('analyze_stale');
+  private async analyzeStaleUsers(
+    context: AnalysisContext,
+  ): Promise<Finding[]> {
+    Logger.startStage("analyze_stale");
 
     const findings: Finding[] = [];
     const staleThresholdDays = 90;
-    const staleThresholdDate = Date.now() - staleThresholdDays * 24 * 60 * 60 * 1000;
+    const staleThresholdDate =
+      Date.now() - staleThresholdDays * 24 * 60 * 60 * 1000;
 
     const identitiesToAnalyze = AnalysisHelpers.getIdentitiesToAnalyze(
       context,
-      Array.from(context.changedIdentityIds || [])
+      Array.from(context.changedIdentityIds || []),
     );
 
     for (const identity of identitiesToAnalyze) {
@@ -359,15 +366,15 @@ class UnifiedAnalyzer {
         const daysSinceLogin = identity.normalizedData?.last_login_at
           ? Math.floor(
               (Date.now() - identity.normalizedData.last_login_at) /
-                (24 * 60 * 60 * 1000)
+                (24 * 60 * 60 * 1000),
             )
           : null;
 
         findings.push({
           entityId: identity._id,
-          alertType: 'stale_user',
-          severity: 'medium',
-          message: `User has not logged in for ${daysSinceLogin || '90+'} days`,
+          alertType: "stale_user",
+          severity: "medium",
+          message: `User has not logged in for ${daysSinceLogin || "90+"} days`,
           metadata: {
             identityId: identity._id,
             email: identity.normalizedData?.email,
@@ -377,7 +384,7 @@ class UnifiedAnalyzer {
       }
     }
 
-    Logger.endStage('analyze_stale', {
+    Logger.endStage("analyze_stale", {
       identitiesAnalyzed: identitiesToAnalyze.length,
       findingsCount: findings.length,
     });
@@ -385,7 +392,7 @@ class UnifiedAnalyzer {
     return findings;
   }
 
-  private isStaleUser(identity: Doc<'entities'>, threshold?: number): boolean {
+  private isStaleUser(identity: Doc<"entities">, threshold?: number): boolean {
     const staleThreshold = threshold || Date.now() - 90 * 24 * 60 * 60 * 1000;
 
     if (!identity.normalizedData?.enabled) {
@@ -405,17 +412,17 @@ class UnifiedAnalyzer {
       policy: Finding[];
       license: Finding[];
       stale: Finding[];
-    }
+    },
   ): Promise<void> {
-    Logger.startStage('emit_findings');
+    Logger.startStage("emit_findings");
 
     // Emit to AlertManager
-    await NatsClient.publish('analysis.unified', {
+    await NatsClient.publish("analysis.unified", {
       tenantId: context.tenantId,
       dataSourceId: context.dataSourceId,
       syncId: context.syncId,
       traceId: TracingManager.getContext()?.traceId,
-      analysisTypes: ['mfa', 'policy', 'license', 'stale'],
+      analysisTypes: ["mfa", "policy", "license", "stale"],
       findings: {
         mfa: findings.mfa,
         policy: findings.policy,
@@ -430,7 +437,7 @@ class UnifiedAnalyzer {
       },
     });
 
-    Logger.endStage('emit_findings', {
+    Logger.endStage("emit_findings", {
       mfaFindings: findings.mfa.length,
       policyFindings: findings.policy.length,
       licenseFindings: findings.license.length,
@@ -483,7 +490,7 @@ private async handleUnifiedAnalysis(event: any): Promise<void> {
 
 ```typescript
 // Feature flag
-const USE_UNIFIED_ANALYZER = process.env.USE_UNIFIED_ANALYZER === 'true';
+const USE_UNIFIED_ANALYZER = process.env.USE_UNIFIED_ANALYZER === "true";
 
 if (USE_UNIFIED_ANALYZER) {
   const unifiedAnalyzer = new UnifiedAnalyzer(client);
@@ -500,7 +507,7 @@ if (USE_UNIFIED_ANALYZER) {
 
 ```typescript
 // Run both in parallel, compare findings
-if (process.env.COMPARE_ANALYZERS === 'true') {
+if (process.env.COMPARE_ANALYZERS === "true") {
   const [oldFindings, newFindings] = await Promise.all([
     runOldAnalyzers(),
     runUnifiedAnalyzer(),
@@ -531,41 +538,45 @@ export UNIFIED_ANALYZER_TENANTS=tenant1,tenant2,tenant3
 ## Testing
 
 ```typescript
-describe('UnifiedAnalyzer', () => {
-  it('should produce same findings as old MFA analyzer', async () => {
+describe("UnifiedAnalyzer", () => {
+  it("should produce same findings as old MFA analyzer", async () => {
     const oldFindings = await oldMFAAnalyzer.execute(event);
     const newFindings = await unifiedAnalyzer.analyzeMFA(context);
 
     expect(newFindings.length).toBe(oldFindings.length);
-    expect(newFindings.map(f => f.entityId).sort()).toEqual(
-      oldFindings.map(f => f.entityId).sort()
+    expect(newFindings.map((f) => f.entityId).sort()).toEqual(
+      oldFindings.map((f) => f.entityId).sort(),
     );
   });
 
-  it('should complete analysis in <60s', async () => {
+  it("should complete analysis in <60s", async () => {
     const start = Date.now();
-    await unifiedAnalyzer.execute({ /* ... */ });
+    await unifiedAnalyzer.execute({
+      /* ... */
+    });
     const duration = Date.now() - start;
 
     expect(duration).toBeLessThan(60000);
   });
 
-  it('should emit all analysis types', async () => {
+  it("should emit all analysis types", async () => {
     const emittedEvents: any[] = [];
-    NatsClient.on('publish', (event) => {
-      if (event.subject === 'analysis.unified') {
+    NatsClient.on("publish", (event) => {
+      if (event.subject === "analysis.unified") {
         emittedEvents.push(event.data);
       }
     });
 
-    await unifiedAnalyzer.execute({ /* ... */ });
+    await unifiedAnalyzer.execute({
+      /* ... */
+    });
 
     expect(emittedEvents.length).toBe(1);
     expect(emittedEvents[0].analysisTypes).toEqual([
-      'mfa',
-      'policy',
-      'license',
-      'stale',
+      "mfa",
+      "policy",
+      "license",
+      "stale",
     ]);
   });
 });

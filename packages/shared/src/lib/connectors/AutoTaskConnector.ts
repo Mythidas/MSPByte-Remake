@@ -12,7 +12,7 @@ import {
 export class AutoTaskConnector implements IConnector {
   constructor(
     private config: AutoTaskDataSourceConfig,
-    private encryptionKey: string
+    private encryptionKey: string,
   ) {}
 
   async checkHealth() {
@@ -28,7 +28,7 @@ export class AutoTaskConnector implements IConnector {
       const secret =
         (await Encryption.decrypt(
           this.config.clientSecret,
-          this.encryptionKey
+          this.encryptionKey,
         )) || "failed";
 
       const response = await fetch(
@@ -40,7 +40,7 @@ export class AutoTaskConnector implements IConnector {
             Secret: secret,
             ApiIntegrationCode: this.config.trackerId,
           },
-        }
+        },
       );
 
       if (!response.ok) {

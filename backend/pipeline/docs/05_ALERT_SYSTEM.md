@@ -9,6 +9,7 @@
 **Goal**: Fix MFA alert bug and consolidate all alert creation through AlertManager
 
 **Key Issues to Resolve**:
+
 1. MFA alerts persisting when tags are cleared (explicit findings)
 2. LicenseAnalyzer creating alerts directly (inconsistent architecture)
 3. Alert history integration
@@ -31,6 +32,7 @@ await emitAnalysis(event, "mfa", findings); // Only emits when problems found
 ```
 
 **Problem**: AlertManager can't distinguish between:
+
 - "MFA analysis ran and found no issues" (should resolve alerts)
 - "MFA analysis didn't run" (should NOT touch alerts)
 
@@ -163,7 +165,7 @@ await client.mutation(api.helpers.orm.insert_s, {
   record: {
     alertType: "license_overuse",
     // ... bypasses AlertManager
-  }
+  },
 });
 ```
 
@@ -176,9 +178,9 @@ This is already fixed in UnifiedAnalyzer (Phase 4):
 if (consumed > total) {
   findings.push({
     entityId: license._id,
-    alertType: 'license_overuse',
-    severity: 'high',
-    message: 'License consumption exceeds available units',
+    alertType: "license_overuse",
+    severity: "high",
+    message: "License consumption exceeds available units",
     metadata: { consumed, total, overage: consumed - total },
   });
 }
@@ -339,47 +341,47 @@ private async shouldCreateAlert(
 ### Test Case 1: Alert Resolves When Issue Fixed
 
 ```typescript
-it('should resolve MFA alert when MFA is enabled', async () => {
+it("should resolve MFA alert when MFA is enabled", async () => {
   // Setup: Identity with no MFA
-  const identity = await createIdentity({ email: 'test@example.com' });
+  const identity = await createIdentity({ email: "test@example.com" });
 
   // First analysis: No MFA policy
-  await unifiedAnalyzer.execute({ tenantId, dataSourceId, syncId: 'sync1' });
+  await unifiedAnalyzer.execute({ tenantId, dataSourceId, syncId: "sync1" });
 
   // Verify alert created
   let alerts = await getActiveAlerts(identity._id);
-  expect(alerts.some(a => a.alertType === 'mfa_not_enforced')).toBe(true);
+  expect(alerts.some((a) => a.alertType === "mfa_not_enforced")).toBe(true);
 
   // Enable MFA policy
-  await createMFAPolicy({ includeGroups: ['All Users'] });
+  await createMFAPolicy({ includeGroups: ["All Users"] });
 
   // Second analysis: With MFA policy
-  await unifiedAnalyzer.execute({ tenantId, dataSourceId, syncId: 'sync2' });
+  await unifiedAnalyzer.execute({ tenantId, dataSourceId, syncId: "sync2" });
 
   // Verify alert resolved
   alerts = await getActiveAlerts(identity._id);
-  expect(alerts.some(a => a.alertType === 'mfa_not_enforced')).toBe(false);
+  expect(alerts.some((a) => a.alertType === "mfa_not_enforced")).toBe(false);
 
   // Verify history shows resolution
   const history = await getAlertHistory(identity._id);
   const resolved = history.find(
-    h => h.alertType === 'mfa_not_enforced' && h.newStatus === 'resolved'
+    (h) => h.alertType === "mfa_not_enforced" && h.newStatus === "resolved",
   );
   expect(resolved).toBeDefined();
-  expect(resolved.metadata.reason).toBe('no_findings');
+  expect(resolved.metadata.reason).toBe("no_findings");
 });
 ```
 
 ### Test Case 2: Alert NOT Resolved When Analysis Doesn't Run
 
 ```typescript
-it('should not touch MFA alerts when only license sync runs', async () => {
+it("should not touch MFA alerts when only license sync runs", async () => {
   // Setup: Identity with MFA alert
-  const identity = await createIdentity({ email: 'test@example.com' });
-  await unifiedAnalyzer.execute({ tenantId, dataSourceId, syncId: 'sync1' });
+  const identity = await createIdentity({ email: "test@example.com" });
+  await unifiedAnalyzer.execute({ tenantId, dataSourceId, syncId: "sync1" });
 
   const alertsBefore = await getActiveAlerts(identity._id);
-  const mfaAlert = alertsBefore.find(a => a.alertType === 'mfa_not_enforced');
+  const mfaAlert = alertsBefore.find((a) => a.alertType === "mfa_not_enforced");
   expect(mfaAlert).toBeDefined();
 
   // Only license sync (shouldn't trigger MFA analysis)
@@ -387,7 +389,9 @@ it('should not touch MFA alerts when only license sync runs', async () => {
 
   // Verify MFA alert still active (analysis didn't run)
   const alertsAfter = await getActiveAlerts(identity._id);
-  const mfaAlertAfter = alertsAfter.find(a => a.alertType === 'mfa_not_enforced');
+  const mfaAlertAfter = alertsAfter.find(
+    (a) => a.alertType === "mfa_not_enforced",
+  );
   expect(mfaAlertAfter).toBeDefined();
   expect(mfaAlertAfter._id).toBe(mfaAlert._id); // Same alert, not touched
 });
@@ -396,32 +400,32 @@ it('should not touch MFA alerts when only license sync runs', async () => {
 ### Test Case 3: Tag and Alert Stay in Sync
 
 ```typescript
-it('should keep tags and alerts in sync', async () => {
+it("should keep tags and alerts in sync", async () => {
   // Setup: Identity with no MFA
-  const identity = await createIdentity({ email: 'test@example.com' });
+  const identity = await createIdentity({ email: "test@example.com" });
 
   // First analysis
-  await unifiedAnalyzer.execute({ tenantId, dataSourceId, syncId: 'sync1' });
+  await unifiedAnalyzer.execute({ tenantId, dataSourceId, syncId: "sync1" });
 
   // Verify both tag and alert
   const entity1 = await getEntity(identity._id);
-  expect(entity1.tags).toContain('No MFA');
+  expect(entity1.tags).toContain("No MFA");
 
   const alerts1 = await getActiveAlerts(identity._id);
-  expect(alerts1.some(a => a.alertType === 'mfa_not_enforced')).toBe(true);
+  expect(alerts1.some((a) => a.alertType === "mfa_not_enforced")).toBe(true);
 
   // Enable MFA
-  await createMFAPolicy({ includeGroups: ['All Users'] });
+  await createMFAPolicy({ includeGroups: ["All Users"] });
 
   // Second analysis
-  await unifiedAnalyzer.execute({ tenantId, dataSourceId, syncId: 'sync2' });
+  await unifiedAnalyzer.execute({ tenantId, dataSourceId, syncId: "sync2" });
 
   // Verify both tag AND alert removed
   const entity2 = await getEntity(identity._id);
-  expect(entity2.tags).not.toContain('No MFA');
+  expect(entity2.tags).not.toContain("No MFA");
 
   const alerts2 = await getActiveAlerts(identity._id);
-  expect(alerts2.some(a => a.alertType === 'mfa_not_enforced')).toBe(false);
+  expect(alerts2.some((a) => a.alertType === "mfa_not_enforced")).toBe(false);
 });
 ```
 
@@ -432,18 +436,16 @@ it('should keep tags and alerts in sync', async () => {
 Add detection for alerts that flip on/off repeatedly:
 
 ```typescript
-async function detectFlapping(
-  alertId: Id<'entity_alerts'>
-): Promise<boolean> {
+async function detectFlapping(alertId: Id<"entity_alerts">): Promise<boolean> {
   const history = await alertHistoryManager.getHistory(alertId);
 
   // Check last 24 hours
   const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
-  const recentHistory = history.filter(h => h.changedAt > oneDayAgo);
+  const recentHistory = history.filter((h) => h.changedAt > oneDayAgo);
 
   // Count status changes
   const statusChanges = recentHistory.filter(
-    h => h.previousStatus !== h.newStatus
+    (h) => h.previousStatus !== h.newStatus,
   ).length;
 
   // Flapping if >5 status changes in 24 hours

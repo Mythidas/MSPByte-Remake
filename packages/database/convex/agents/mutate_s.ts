@@ -51,7 +51,7 @@ export const batchUpdate = mutation({
         status: v.union(
           v.literal("online"),
           v.literal("offline"),
-          v.literal("unknown")
+          v.literal("unknown"),
         ),
         statusChangedAt: v.number(),
         lastCheckinAt: v.optional(v.number()),
@@ -61,7 +61,7 @@ export const batchUpdate = mutation({
         ipAddress: v.optional(v.string()),
         extAddress: v.optional(v.string()),
         macAddress: v.optional(v.string()),
-      })
+      }),
     ),
   },
   handler: async (ctx, args) => {
@@ -127,11 +127,11 @@ export const batchUpdateStatus = mutation({
         status: v.union(
           v.literal("online"),
           v.literal("offline"),
-          v.literal("unknown")
+          v.literal("unknown"),
         ),
         statusChangedAt: v.number(),
         lastCheckinAt: v.optional(v.number()),
-      })
+      }),
     ),
   },
   handler: async (ctx, args) => {

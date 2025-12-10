@@ -1,11 +1,11 @@
-import Debug from '@workspace/shared/lib/Debug.js';
-import TracingManager from './tracing.js';
+import Debug from "@workspace/shared/lib/Debug.js";
+import TracingManager from "./tracing.js";
 
 interface LogParams {
   module: string;
   context: string;
   message: string;
-  level?: 'info' | 'warn' | 'error';
+  level?: "info" | "warn" | "error";
   metadata?: Record<string, any>;
   error?: Error;
 }
@@ -17,7 +17,7 @@ class Logger {
 
     const logEntry = {
       timestamp: new Date().toISOString(),
-      level: params.level || 'info',
+      level: params.level || "info",
       module: params.module,
       context: params.context,
       message: params.message,
@@ -47,7 +47,7 @@ class Logger {
     };
 
     // Use existing Debug module
-    if (params.error || params.level === 'error') {
+    if (params.error || params.level === "error") {
       Debug.error(logEntry);
     } else {
       Debug.log(logEntry);
@@ -57,7 +57,7 @@ class Logger {
   static startStage(stage: string, metadata?: Record<string, any>): void {
     TracingManager.updateStage(stage);
     this.log({
-      module: 'Pipeline',
+      module: "Pipeline",
       context: stage,
       message: `Starting ${stage}`,
       metadata,
@@ -67,7 +67,7 @@ class Logger {
   static endStage(stage: string, metadata?: Record<string, any>): void {
     const duration = TracingManager.getDuration();
     this.log({
-      module: 'Pipeline',
+      module: "Pipeline",
       context: stage,
       message: `Completed ${stage}`,
       metadata: {
@@ -84,8 +84,8 @@ class Logger {
     duration: number;
   }): void {
     this.log({
-      module: 'Database',
-      context: 'query',
+      module: "Database",
+      context: "query",
       message: `${params.operation} on ${params.tableName}`,
       metadata: {
         table: params.tableName,
@@ -98,10 +98,10 @@ class Logger {
     // Warn on slow queries
     if (params.duration > 1000) {
       this.log({
-        module: 'Database',
-        context: 'slow_query',
+        module: "Database",
+        context: "slow_query",
         message: `Slow query detected: ${params.operation} on ${params.tableName}`,
-        level: 'warn',
+        level: "warn",
         metadata: {
           duration_ms: params.duration,
           records: params.recordsAffected,

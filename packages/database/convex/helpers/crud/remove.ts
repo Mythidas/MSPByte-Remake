@@ -31,21 +31,19 @@ export const remove = mutation({
   },
   handler: async <T extends keyof DataModel>(
     ctx: any,
-    args: RemoveArgs<T>
+    args: RemoveArgs<T>,
   ): Promise<RemoveResult<T>> => {
     const identity = await isAuthenticated(ctx);
-    const {
-      tableName,
-      ids,
-      hard = false,
-    } = args;
+    const { tableName, ids, hard = false } = args;
     const now = Date.now();
 
     // Normalize to array for consistent processing
     const idsArray = (Array.isArray(ids) ? ids : [ids]) as Id<T>[];
 
     if (idsArray.length === 0) {
-      throw new Error("Remove failed: ids must be a non-empty array or a single ID");
+      throw new Error(
+        "Remove failed: ids must be a non-empty array or a single ID",
+      );
     }
 
     try {
@@ -56,9 +54,7 @@ export const remove = mutation({
             const record = await ctx.db.get(id);
 
             if (!record) {
-              throw new Error(
-                `Record not found with id "${id}"`
-              );
+              throw new Error(`Record not found with id "${id}"`);
             }
 
             if ((record as any).tenantId !== identity.tenantId) {
@@ -78,10 +74,10 @@ export const remove = mutation({
             throw new Error(
               `Delete failed at index ${index} in table "${String(tableName)}" (id: ${id}): ${
                 error instanceof Error ? error.message : String(error)
-              }`
+              }`,
             );
           }
-        })
+        }),
       );
 
       return idsArray;
@@ -90,7 +86,7 @@ export const remove = mutation({
       throw new Error(
         `Batch ${hard ? "hard" : "soft"} delete failed for table "${String(tableName)}" (attempted ${idsArray.length} records): ${
           error instanceof Error ? error.message : String(error)
-        }`
+        }`,
       );
     }
   },
@@ -118,22 +114,19 @@ export const remove_s = mutation({
   },
   handler: async <T extends keyof DataModel>(
     ctx: any,
-    args: RemoveArgs<T> & { tenantId: Id<"tenants">; secret: string }
+    args: RemoveArgs<T> & { tenantId: Id<"tenants">; secret: string },
   ): Promise<RemoveResult<T>> => {
     await isValidSecret(args.secret);
-    const {
-      tableName,
-      ids,
-      tenantId,
-      hard = false,
-    } = args;
+    const { tableName, ids, tenantId, hard = false } = args;
     const now = Date.now();
 
     // Normalize to array for consistent processing
     const idsArray = (Array.isArray(ids) ? ids : [ids]) as Id<T>[];
 
     if (idsArray.length === 0) {
-      throw new Error("Remove failed: ids must be a non-empty array or a single ID");
+      throw new Error(
+        "Remove failed: ids must be a non-empty array or a single ID",
+      );
     }
 
     try {
@@ -144,9 +137,7 @@ export const remove_s = mutation({
             const record = await ctx.db.get(id);
 
             if (!record) {
-              throw new Error(
-                `Record not found with id "${id}"`
-              );
+              throw new Error(`Record not found with id "${id}"`);
             }
 
             if ((record as any).tenantId !== tenantId) {
@@ -166,10 +157,10 @@ export const remove_s = mutation({
             throw new Error(
               `Delete failed at index ${index} in table "${String(tableName)}" (id: ${id}): ${
                 error instanceof Error ? error.message : String(error)
-              }`
+              }`,
             );
           }
-        })
+        }),
       );
 
       return idsArray;
@@ -178,7 +169,7 @@ export const remove_s = mutation({
       throw new Error(
         `Batch ${hard ? "hard" : "soft"} delete failed for table "${String(tableName)}" (attempted ${idsArray.length} records): ${
           error instanceof Error ? error.message : String(error)
-        }`
+        }`,
       );
     }
   },

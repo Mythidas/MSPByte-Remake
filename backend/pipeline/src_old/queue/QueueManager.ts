@@ -1,9 +1,9 @@
-import { Queue, Worker, Job, QueueEvents } from 'bullmq';
-import RedisManager from '../lib/redis.js';
-import Logger from '../lib/logger.js';
-import TracingManager from '../lib/tracing.js';
-import { natsClient } from '../lib/nats.js';
-import { SyncEventPayload } from '@workspace/shared/types/integrations/index';
+import { Queue, Worker, Job, QueueEvents } from "bullmq";
+import RedisManager from "../lib/redis.js";
+import Logger from "../lib/logger.js";
+import TracingManager from "../lib/tracing.js";
+import { natsClient } from "../lib/nats.js";
+import { SyncEventPayload } from "@workspace/shared/types/integrations/index";
 
 interface JobData {
   action: string;
@@ -39,12 +39,12 @@ class QueueManager {
     const connection = await RedisManager.getConnection();
 
     // Create queue
-    this.queue = new Queue('pipeline-jobs', {
+    this.queue = new Queue("pipeline-jobs", {
       connection,
       defaultJobOptions: {
         attempts: 3,
         backoff: {
-          type: 'exponential',
+          type: "exponential",
           delay: 5000,
         },
         removeOnComplete: {
@@ -59,38 +59,38 @@ class QueueManager {
     });
 
     // Create worker with configurable concurrency
-    const concurrency = parseInt(process.env.QUEUE_CONCURRENCY || '20', 10);
+    const concurrency = parseInt(process.env.QUEUE_CONCURRENCY || "20", 10);
     this.worker = new Worker(
-      'pipeline-jobs',
+      "pipeline-jobs",
       async (job: Job<JobData>) => {
         return await this.processJob(job);
       },
       {
         connection,
         concurrency,
-      }
+      },
     );
 
     // Queue events for monitoring
-    this.queueEvents = new QueueEvents('pipeline-jobs', { connection });
+    this.queueEvents = new QueueEvents("pipeline-jobs", { connection });
 
     this.setupEventListeners();
 
     this.isInitialized = true;
 
     Logger.log({
-      module: 'QueueManager',
-      context: 'initialize',
-      message: 'QueueManager initialized successfully',
+      module: "QueueManager",
+      context: "initialize",
+      message: "QueueManager initialized successfully",
     });
   }
 
   private setupEventListeners(): void {
     // Worker events
-    this.worker.on('completed', (job: Job) => {
+    this.worker.on("completed", (job: Job) => {
       Logger.log({
-        module: 'QueueManager',
-        context: 'worker.completed',
+        module: "QueueManager",
+        context: "worker.completed",
         message: `Job ${job.id} completed`,
         metadata: {
           jobName: job.name,
@@ -99,12 +99,12 @@ class QueueManager {
       });
     });
 
-    this.worker.on('failed', (job: Job | undefined, error: Error) => {
+    this.worker.on("failed", (job: Job | undefined, error: Error) => {
       Logger.log({
-        module: 'QueueManager',
-        context: 'worker.failed',
+        module: "QueueManager",
+        context: "worker.failed",
         message: `Job ${job?.id} failed: ${error.message}`,
-        level: 'error',
+        level: "error",
         error,
         metadata: {
           jobName: job?.name,
@@ -113,21 +113,21 @@ class QueueManager {
       });
     });
 
-    this.worker.on('error', (error: Error) => {
+    this.worker.on("error", (error: Error) => {
       Logger.log({
-        module: 'QueueManager',
-        context: 'worker.error',
+        module: "QueueManager",
+        context: "worker.error",
         message: `Worker error: ${error.message}`,
-        level: 'error',
+        level: "error",
         error,
       });
     });
 
     // Queue events
-    this.queueEvents.on('waiting', ({ jobId }) => {
+    this.queueEvents.on("waiting", ({ jobId }) => {
       Logger.log({
-        module: 'QueueManager',
-        context: 'queue.waiting',
+        module: "QueueManager",
+        context: "queue.waiting",
         message: `Job ${jobId} is waiting`,
       });
     });
@@ -141,7 +141,7 @@ class QueueManager {
       syncId: syncId || `job_${job.id}`,
       tenantId,
       dataSourceId,
-      stage: 'queue',
+      stage: "queue",
       metadata: {
         action,
         jobId: job.id,
@@ -150,8 +150,8 @@ class QueueManager {
     });
 
     Logger.log({
-      module: 'QueueManager',
-      context: 'processJob',
+      module: "QueueManager",
+      context: "processJob",
       message: `Processing job ${job.id}: ${action}`,
       metadata: {
         tenantId,
@@ -173,17 +173,17 @@ class QueueManager {
       } as SyncEventPayload);
 
       Logger.log({
-        module: 'QueueManager',
-        context: 'processJob',
+        module: "QueueManager",
+        context: "processJob",
         message: `Published ${action} to NATS`,
         metadata: { jobId: job.id, syncId },
       });
     } catch (error) {
       Logger.log({
-        module: 'QueueManager',
-        context: 'processJob',
+        module: "QueueManager",
+        context: "processJob",
         message: `Failed to process job ${job.id}`,
-        level: 'error',
+        level: "error",
         error: error as Error,
       });
       throw error;
@@ -213,12 +213,12 @@ class QueueManager {
         priority: params.priority,
         delay: params.delay,
         jobId: params.jobId,
-      }
+      },
     );
 
     Logger.log({
-      module: 'QueueManager',
-      context: 'scheduleJob',
+      module: "QueueManager",
+      context: "scheduleJob",
       message: `Scheduled job ${job.id}: ${params.action}`,
       metadata: {
         tenantId: params.tenantId,
@@ -258,8 +258,8 @@ class QueueManager {
       config.name,
       {
         action: config.action,
-        tenantId: config.tenantId || '',
-        dataSourceId: config.dataSourceId || '',
+        tenantId: config.tenantId || "",
+        dataSourceId: config.dataSourceId || "",
         metadata: config.metadata,
       },
       {
@@ -267,12 +267,12 @@ class QueueManager {
           pattern: config.pattern,
         },
         priority: config.priority || 5,
-      }
+      },
     );
 
     Logger.log({
-      module: 'QueueManager',
-      context: 'scheduleRecurringJob',
+      module: "QueueManager",
+      context: "scheduleRecurringJob",
       message: `Registered recurring job: ${config.name}`,
       metadata: {
         pattern: config.pattern,
@@ -354,13 +354,13 @@ class QueueManager {
     return {
       activeCount,
       waitingCount,
-      concurrency: parseInt(process.env.QUEUE_CONCURRENCY || '20', 10),
+      concurrency: parseInt(process.env.QUEUE_CONCURRENCY || "20", 10),
     };
   }
 
   async getJobs(
-    status?: 'waiting' | 'active' | 'completed' | 'failed',
-    limit: number = 50
+    status?: "waiting" | "active" | "completed" | "failed",
+    limit: number = 50,
   ): Promise<any[]> {
     let jobs: Job[] = [];
 
@@ -375,16 +375,16 @@ class QueueManager {
       jobs = [...waiting, ...active, ...completed, ...failed];
     } else {
       switch (status) {
-        case 'waiting':
+        case "waiting":
           jobs = await this.queue.getWaiting(0, limit);
           break;
-        case 'active':
+        case "active":
           jobs = await this.queue.getActive(0, limit);
           break;
-        case 'completed':
+        case "completed":
           jobs = await this.queue.getCompleted(0, limit);
           break;
-        case 'failed':
+        case "failed":
           jobs = await this.queue.getFailed(0, limit);
           break;
       }
@@ -401,7 +401,7 @@ class QueueManager {
         timestamp: job.timestamp,
         processedOn: job.processedOn,
         finishedOn: job.finishedOn,
-      }))
+      })),
     );
   }
 
@@ -413,17 +413,17 @@ class QueueManager {
     }
 
     Logger.log({
-      module: 'QueueManager',
-      context: 'clearRepeatableJobs',
+      module: "QueueManager",
+      context: "clearRepeatableJobs",
       message: `Cleared ${repeatableJobs.length} repeatable jobs`,
     });
   }
 
   async shutdown(): Promise<void> {
     Logger.log({
-      module: 'QueueManager',
-      context: 'shutdown',
-      message: 'Shutting down QueueManager',
+      module: "QueueManager",
+      context: "shutdown",
+      message: "Shutting down QueueManager",
     });
 
     await this.worker?.close();

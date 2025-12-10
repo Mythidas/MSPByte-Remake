@@ -161,6 +161,7 @@
 **Symptom**: "No MFA" tags get cleared but alerts persist, creating confusing state
 
 **Root Cause**:
+
 1. MFA Analyzer emits to BOTH TagManager and AlertManager (lines 291-326)
 2. When full MFA coverage achieved:
    - Analyzer emits tag findings with `tagsToRemove: ["No MFA"]` ✓
@@ -170,6 +171,7 @@
 3. Result: Tags cleared, alerts orphaned
 
 **Code Evidence**:
+
 ```typescript
 // Microsoft365IdentitySecurityAnalyzer.ts:291-326
 // Emits findings for alerts
@@ -182,11 +184,12 @@ await this.emitTagAnalysis(event, "mfa", tagFindings); // Explicitly removes tag
 // Only resolves if analysis type was included
 const ownerAnalysisType = this.getAlertOwnerType(existing.alertType);
 if (!includedAnalysisTypes.has(ownerAnalysisType)) {
-    continue; // SKIPS resolution if MFA analysis didn't run!
+  continue; // SKIPS resolution if MFA analysis didn't run!
 }
 ```
 
 **Why It Happens**:
+
 - Identity syncs without policy sync → MFA analyzer runs with stale policy data
 - Tags get updated (explicit remove) but alerts don't resolve (implicit no-findings)
 - Or: MFA analyzer doesn't run at all, tags cleared by old analysis, alerts persist
@@ -202,6 +205,7 @@ if (!includedAnalysisTypes.has(ownerAnalysisType)) {
 **The Problem**: Each worker independently fetches the same data
 
 **Example Timeline** (after identity sync completes):
+
 ```
 T+0min:   MFA Analyzer triggers
           - Query 150 identities
@@ -233,11 +237,15 @@ WASTE:       99% of operations are redundant
 ```
 
 **Code Evidence**:
+
 ```typescript
 // MFA Analyzer (lines 87-171)
 const identitiesToAnalyze = await client.query(api.helpers.orm.list_s, {
-    tableName: "entities",
-    index: { name: "by_data_source_type", params: { dataSourceId, entityType: "identities" } }
+  tableName: "entities",
+  index: {
+    name: "by_data_source_type",
+    params: { dataSourceId, entityType: "identities" },
+  },
 });
 const allGroups = await client.query(/* ALL groups */);
 // ... fetches all group memberships
@@ -245,7 +253,7 @@ const allGroups = await client.query(/* ALL groups */);
 // Policy Analyzer (lines 75-168) - SAME DATA!
 const identitiesToAnalyze = await client.query(/* SAME QUERY */);
 for (const identity of identitiesToAnalyze) {
-    const userGroups = await client.query(/* PER IDENTITY! */);
+  const userGroups = await client.query(/* PER IDENTITY! */);
 }
 
 // License Analyzer (lines 56-88) - SAME DATA!
@@ -256,6 +264,7 @@ const identitiesToAnalyze = await client.query(/* SAME QUERY */);
 ```
 
 **Impact**:
+
 - Analysis takes 15+ minutes that could take 30 seconds
 - Database overload with redundant queries
 - Wasted compute resources
@@ -270,6 +279,7 @@ const identitiesToAnalyze = await client.query(/* SAME QUERY */);
 **The Problem**: Jobs are scheduled by polling database every 60 seconds
 
 **Code**:
+
 ```typescript
 // Line 30
 this.pollInterval = 60000; // 60 seconds
@@ -298,6 +308,7 @@ private async pollJobs(): Promise<void> {
 ```
 
 **Problems**:
+
 1. **High Latency**: Jobs wait up to 60s before execution (average 30s delay)
 2. **Inefficient**: Queries entire jobs table every 60s even if no jobs due
 3. **Database Load**: Constant polling creates unnecessary load
@@ -305,6 +316,7 @@ private async pollJobs(): Promise<void> {
 5. **Scalability**: Polling doesn't scale well with many jobs
 
 **Impact**:
+
 - Slow response to events (alerts delayed by up to 60s)
 - Database becomes bottleneck
 - Hard to implement advanced scheduling features
@@ -316,42 +328,45 @@ private async pollJobs(): Promise<void> {
 **File**: `src/linkers/Microsoft365Linker.ts` + `src/workers/Microsoft365PolicyAnalyzer.ts`
 
 **Linker Example** (lines 122-134):
+
 ```typescript
-for (const group of groups) { // 50 groups
-    // API call per group
-    const { data: members } = await connector.getGroupMembers(group.externalId);
+for (const group of groups) {
+  // 50 groups
+  // API call per group
+  const { data: members } = await connector.getGroupMembers(group.externalId);
 
-    for (const member of members) { // 300 total members
-        // Query per member to check if relationship exists
-        const existingRelationships = await client.query(
-            api.helpers.orm.list_s,
-            {
-                tableName: "entity_relationships",
-                index: { name: "by_parent", params: { parentEntityId: group._id } }
-            }
-        );
+  for (const member of members) {
+    // 300 total members
+    // Query per member to check if relationship exists
+    const existingRelationships = await client.query(api.helpers.orm.list_s, {
+      tableName: "entity_relationships",
+      index: { name: "by_parent", params: { parentEntityId: group._id } },
+    });
 
-        const relationshipExists = existingRelationships.some(/* check */);
-        // ... create if not exists
-    }
+    const relationshipExists = existingRelationships.some(/* check */);
+    // ... create if not exists
+  }
 }
 ```
 
 **Problem**: For 50 groups with average 6 members each = 50 API calls + 300 database queries
 
 **Better Approach**:
+
 ```typescript
 // Fetch ALL relationships upfront (1 query)
 const allRelationships = await client.query(/* all group memberships */);
-const existingSet = new Set(allRelationships.map(r => `${r.parent}:${r.child}`));
+const existingSet = new Set(
+  allRelationships.map((r) => `${r.parent}:${r.child}`),
+);
 
 for (const group of groups) {
-    const { data: members } = await connector.getGroupMembers(group.externalId);
-    for (const member of members) {
-        if (!existingSet.has(`${group._id}:${member._id}`)) {
-            // O(1) lookup instead of query
-        }
+  const { data: members } = await connector.getGroupMembers(group.externalId);
+  for (const member of members) {
+    if (!existingSet.has(`${group._id}:${member._id}`)) {
+      // O(1) lookup instead of query
     }
+  }
 }
 ```
 
@@ -366,24 +381,26 @@ for (const group of groups) {
 **The Problem**: LicenseAnalyzer creates some alerts directly, bypassing AlertManager
 
 **Code** (lines 177-241):
+
 ```typescript
 // License waste alerts → Emitted to AlertManager (correct)
 await this.emitAnalysis(event, "license", findings);
 
 // BUT: License overuse alerts → Created directly (wrong!)
 if (consumedUnits > totalUnits) {
-    await client.mutation(api.helpers.orm.insert_s, {
-        tableName: "entity_alerts",
-        record: {
-            entityId: license._id,
-            alertType: "license_overuse",
-            // ... creates alert directly, bypassing AlertManager
-        }
-    });
+  await client.mutation(api.helpers.orm.insert_s, {
+    tableName: "entity_alerts",
+    record: {
+      entityId: license._id,
+      alertType: "license_overuse",
+      // ... creates alert directly, bypassing AlertManager
+    },
+  });
 }
 ```
 
 **Problems**:
+
 1. AlertManager doesn't know about these alerts (can't aggregate)
 2. No alert history tracked for license_overuse
 3. Duplicate alert creation logic
@@ -399,6 +416,7 @@ if (consumedUnits > totalUnits) {
 **Files**: Throughout codebase
 
 **Problems**:
+
 1. **No Trace IDs**: Can't follow a single sync job through pipeline stages
 2. **No Timing Metrics**: Don't know where time is spent
 3. **Disconnected Logs**: Each worker logs independently, hard to correlate
@@ -406,6 +424,7 @@ if (consumedUnits > totalUnits) {
 5. **No Error Aggregation**: Errors logged but not tracked systematically
 
 **Example**: User reports "Alert not resolving"
+
 ```
 Current debugging process:
 1. Check entity_alerts table → See alert is active
@@ -415,6 +434,7 @@ Current debugging process:
 ```
 
 **What's Missing**:
+
 - Trace ID linking scheduler → adapter → processor → linker → worker → alert
 - Timing breakdown: "Sync took 10min, where? Fetch: 2min, Process: 1min, Link: 5min, Analyze: 2min"
 - Alert state transitions: "Created 2024-12-01, Resolved 2024-12-02, Re-opened 2024-12-03"
@@ -428,6 +448,7 @@ Current debugging process:
 **Problem**: Related data sources sync at different times, triggering redundant analysis
 
 **Example**:
+
 ```
 1:00 PM - Identities sync completes
           ↓ Triggers MFA Analyzer (uses policies from 12:00 PM - stale!)
@@ -447,6 +468,7 @@ Result: MFA analysis runs 3 times in 10 minutes with partially stale data
 **Root Cause**: No coordination between related syncs
 
 **Better Approach**:
+
 - Batch related syncs together (identities + policies + groups)
 - Or: Debounce analysis until all required data is fresh
 - Or: Check data freshness before running analysis
@@ -460,6 +482,7 @@ Result: MFA analysis runs 3 times in 10 minutes with partially stale data
 ### Current State Assessment
 
 **What Works**:
+
 - ✅ Event-driven architecture (NATS pub/sub)
 - ✅ BaseWorker pattern provides good abstractions
 - ✅ AlertManager aggregation reduces alert noise
@@ -468,6 +491,7 @@ Result: MFA analysis runs 3 times in 10 minutes with partially stale data
 - ✅ Recent improvements (TagManager, consolidated alert logic)
 
 **What Doesn't Work**:
+
 - ❌ Database polling causes high latency
 - ❌ Massive data redundancy (same data fetched 4+ times)
 - ❌ N+1 query patterns in multiple places
@@ -481,6 +505,7 @@ Result: MFA analysis runs 3 times in 10 minutes with partially stale data
 **Your original insight was correct**: The system pulls the same data multiple times instead of loading once and running all analysis.
 
 This isn't just inefficient—it's architecturally limiting:
+
 - Can't easily add new analysis types (would add more redundancy)
 - Can't implement tenant alert preferences (inconsistent alert creation)
 - Can't scale to larger tenants (query load grows exponentially)
@@ -506,6 +531,7 @@ DataContext.load() → {
 ```
 
 Plus:
+
 - Replace polling with push-based queue (BullMQ)
 - Add comprehensive tracing and logging
 - Track alert history for debugging
@@ -517,13 +543,13 @@ Plus:
 
 ### Performance Improvements
 
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| Job latency | 30-60s | <1s | 30-60x |
-| DB queries per analysis | 800-1400 | 7-10 | 99% |
-| Analysis runtime | 15+ min | 30s | 30x |
-| Data fetching | 4x redundant | 1x | 75% reduction |
-| N+1 queries | 300+ | 0 | 100% reduction |
+| Metric                  | Before       | After | Improvement    |
+| ----------------------- | ------------ | ----- | -------------- |
+| Job latency             | 30-60s       | <1s   | 30-60x         |
+| DB queries per analysis | 800-1400     | 7-10  | 99%            |
+| Analysis runtime        | 15+ min      | 30s   | 30x            |
+| Data fetching           | 4x redundant | 1x    | 75% reduction  |
+| N+1 queries             | 300+         | 0     | 100% reduction |
 
 ### Operational Improvements
 
@@ -543,6 +569,7 @@ Plus:
 ### Foundation for Features
 
 Once refactor complete, enables:
+
 - **Tenant alert preferences**: Enable/disable alert types
 - **Real-time analysis**: Webhook-triggered syncs
 - **Advanced scheduling**: Dependency-aware, smart batching
@@ -555,6 +582,7 @@ Once refactor complete, enables:
 ### Alternatives Considered
 
 **1. Keep Current Architecture, Fix Issues Piecemeal**
+
 - Fix MFA bug by explicit findings
 - Add caching layer for queries
 - Optimize indexes
@@ -564,6 +592,7 @@ Once refactor complete, enables:
 **Cons**: Doesn't address root cause (redundancy), will accumulate more technical debt
 
 **2. Microservices Architecture**
+
 - Separate service per analysis type
 - Shared data cache service
 - Message queue between services
@@ -572,6 +601,7 @@ Once refactor complete, enables:
 **Cons**: Over-engineered for current scale, operational complexity
 
 **3. This Refactor: Unified Analysis with Modern Queue**
+
 - Single analyzer with shared context
 - BullMQ for job scheduling
 - Enhanced observability
@@ -582,6 +612,7 @@ Once refactor complete, enables:
 ### Decision: Go with Option 3
 
 **Rationale**:
+
 - You have no users yet (perfect time for breaking changes)
 - Current architecture prevents scaling
 - Technical debt will compound if not addressed
@@ -622,6 +653,7 @@ Once refactor complete, enables:
 ### Rollback Strategy
 
 Each phase designed to be reversible:
+
 - Feature flags control old vs new code paths
 - Old scheduler kept until BullMQ proven
 - Database changes are additive (don't drop old tables)
@@ -679,6 +711,7 @@ Read the implementation phases in order:
 4. **Continue through remaining phases...**
 
 Each phase is self-contained with:
+
 - Prerequisites
 - Step-by-step implementation
 - Testing procedures

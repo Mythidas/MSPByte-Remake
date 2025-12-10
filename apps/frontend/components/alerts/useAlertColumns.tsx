@@ -31,9 +31,18 @@ export function useAlertColumns(): DataTableColumn<Alert>[] {
       cell: ({ row }) => {
         const severityConfig = {
           low: { color: "bg-blue-500/50 border-blue-500/50", label: "Low" },
-          medium: { color: "bg-yellow-500/50 border-yellow-500/50", label: "Medium" },
-          high: { color: "bg-orange-500/50 border-orange-500/50", label: "High" },
-          critical: { color: "bg-red-500/50 border-red-500/50", label: "Critical" },
+          medium: {
+            color: "bg-yellow-500/50 border-yellow-500/50",
+            label: "Medium",
+          },
+          high: {
+            color: "bg-orange-500/50 border-orange-500/50",
+            label: "High",
+          },
+          critical: {
+            color: "bg-red-500/50 border-red-500/50",
+            label: "Critical",
+          },
         };
         const config = severityConfig[row.severity];
 
@@ -80,17 +89,17 @@ export function useAlertColumns(): DataTableColumn<Alert>[] {
           active: {
             color: "bg-green-500/50 border-green-500/50",
             label: "Active",
-            icon: AlertCircle
+            icon: AlertCircle,
           },
           suppressed: {
             color: "bg-gray-500/50 border-gray-500/50",
             label: "Suppressed",
-            icon: EyeOff
+            icon: EyeOff,
           },
           resolved: {
             color: "bg-blue-500/50 border-blue-500/50",
             label: "Resolved",
-            icon: CheckCircle
+            icon: CheckCircle,
           },
         };
         const config = statusConfig[row.status];
@@ -125,11 +134,13 @@ export function useAlertColumns(): DataTableColumn<Alert>[] {
         const date = new Date(row._creationTime);
         return (
           <div className="text-sm">
-            <div>{date.toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            })}</div>
+            <div>
+              {date.toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              })}
+            </div>
             <div className="text-xs text-muted-foreground">
               {date.toLocaleTimeString("en-US", {
                 hour: "2-digit",

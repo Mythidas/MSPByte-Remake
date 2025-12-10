@@ -12,11 +12,14 @@
  * UnifiedAnalyzer → analysis.unified event → AlertManager → entity_alerts table
  */
 
-import { natsClient } from '../lib/nats.js';
-import { client } from '@workspace/shared/lib/convex.js';
-import { api } from '@workspace/database/convex/_generated/api.js';
-import type { Doc, Id } from '@workspace/database/convex/_generated/dataModel.js';
-import Logger from '../lib/logger.js';
+import { natsClient } from "../lib/nats.js";
+import { client } from "@workspace/shared/lib/convex.js";
+import { api } from "@workspace/database/convex/_generated/api.js";
+import type {
+  Doc,
+  Id,
+} from "@workspace/database/convex/_generated/dataModel.js";
+import Logger from "../lib/logger.js";
 import type {
   UnifiedAnalysisEvent,
   Finding,
@@ -24,26 +27,32 @@ import type {
   LicenseWasteFinding,
   LicenseOveruseFinding,
   AnalysisType,
-} from './types.js';
+} from "./types.js";
 
-type CreateType = Partial<Doc<'entity_alerts'>>;
-type UpdateType = { id: Id<'entity_alerts'>; updates: Partial<Doc<'entity_alerts'>> };
+type CreateType = Partial<Doc<"entity_alerts">>;
+type UpdateType = {
+  id: Id<"entity_alerts">;
+  updates: Partial<Doc<"entity_alerts">>;
+};
 
 export class AlertManager {
   async start(): Promise<void> {
     Logger.log({
-      module: 'AlertManager',
-      context: 'start',
-      message: 'Starting AlertManager (Phase 5)',
+      module: "AlertManager",
+      context: "start",
+      message: "Starting AlertManager (Phase 5)",
     });
 
     // Subscribe to unified analysis events
-    await natsClient.subscribe('analysis.unified', this.handleUnifiedAnalysis.bind(this));
+    await natsClient.subscribe(
+      "analysis.unified",
+      this.handleUnifiedAnalysis.bind(this),
+    );
 
     Logger.log({
-      module: 'AlertManager',
-      context: 'start',
-      message: 'AlertManager started, subscribed to analysis.unified events',
+      module: "AlertManager",
+      context: "start",
+      message: "AlertManager started, subscribed to analysis.unified events",
     });
   }
 
@@ -53,10 +62,12 @@ export class AlertManager {
    * Key improvement: No aggregation needed! UnifiedAnalyzer already ran all analyses
    * and provides explicit analysisTypes array to fix MFA bug.
    */
-  private async handleUnifiedAnalysis(event: UnifiedAnalysisEvent): Promise<void> {
+  private async handleUnifiedAnalysis(
+    event: UnifiedAnalysisEvent,
+  ): Promise<void> {
     Logger.log({
-      module: 'AlertManager',
-      context: 'handleUnifiedAnalysis',
+      module: "AlertManager",
+      context: "handleUnifiedAnalysis",
       message: `Processing unified analysis for tenant ${event.tenantId}`,
       metadata: {
         analysisTypes: event.analysisTypes,
@@ -76,7 +87,7 @@ export class AlertManager {
       ];
 
       // Group findings by entity
-      const findingsByEntity = new Map<Id<'entities'>, Finding[]>();
+      const findingsByEntity = new Map<Id<"entities">, Finding[]>();
       for (const finding of allFindings) {
         if (!findingsByEntity.has(finding.entityId)) {
           findingsByEntity.set(finding.entityId, []);
@@ -85,8 +96,8 @@ export class AlertManager {
       }
 
       Logger.log({
-        module: 'AlertManager',
-        context: 'handleUnifiedAnalysis',
+        module: "AlertManager",
+        context: "handleUnifiedAnalysis",
         message: `Grouped ${allFindings.length} findings for ${findingsByEntity.size} entities`,
       });
 
@@ -100,7 +111,7 @@ export class AlertManager {
           entityId,
           findings,
           event,
-          new Set(event.analysisTypes)
+          new Set(event.analysisTypes),
         );
         createAlerts.push(...result.created);
         updateAlerts.push(...result.updated);
@@ -110,16 +121,14 @@ export class AlertManager {
       // CRITICAL FIX: Also resolve alerts for entities with NO findings
       // This fixes the MFA alert bug - if MFA analysis ran but found no issues,
       // we need to resolve old MFA alerts
-      const resolvedFromMissingEntities = await this.resolveAlertsForMissingEntities(
-        event,
-        findingsByEntity
-      );
+      const resolvedFromMissingEntities =
+        await this.resolveAlertsForMissingEntities(event, findingsByEntity);
       resolveAlerts.push(...resolvedFromMissingEntities);
 
       // Batch database operations
       if (createAlerts.length > 0) {
         await client.mutation(api.helpers.orm.insert_s, {
-          tableName: 'entity_alerts',
+          tableName: "entity_alerts",
           secret: process.env.CONVEX_API_KEY!,
           tenantId: event.tenantId,
           data: createAlerts,
@@ -128,7 +137,7 @@ export class AlertManager {
 
       if (updateAlerts.length > 0) {
         await client.mutation(api.helpers.orm.update_s, {
-          tableName: 'entity_alerts',
+          tableName: "entity_alerts",
           secret: process.env.CONVEX_API_KEY!,
           data: updateAlerts,
         });
@@ -136,16 +145,16 @@ export class AlertManager {
 
       if (resolveAlerts.length > 0) {
         await client.mutation(api.helpers.orm.update_s, {
-          tableName: 'entity_alerts',
+          tableName: "entity_alerts",
           secret: process.env.CONVEX_API_KEY!,
           data: resolveAlerts,
         });
       }
 
       Logger.log({
-        module: 'AlertManager',
-        context: 'handleUnifiedAnalysis',
-        message: 'Alert operations complete',
+        module: "AlertManager",
+        context: "handleUnifiedAnalysis",
+        message: "Alert operations complete",
         metadata: {
           created: createAlerts.length,
           updated: updateAlerts.length,
@@ -156,18 +165,23 @@ export class AlertManager {
       // Update entity states for all affected entities
       const affectedEntityIds = new Set([
         ...findingsByEntity.keys(),
-        ...resolveAlerts.map((r) => r.updates.entityId as Id<'entities'>).filter(Boolean),
+        ...resolveAlerts
+          .map((r) => r.updates.entityId as Id<"entities">)
+          .filter(Boolean),
       ]);
 
       if (affectedEntityIds.size > 0) {
-        await this.updateEntityStates(Array.from(affectedEntityIds), event.tenantId);
+        await this.updateEntityStates(
+          Array.from(affectedEntityIds),
+          event.tenantId,
+        );
       }
     } catch (error) {
       Logger.log({
-        module: 'AlertManager',
-        context: 'handleUnifiedAnalysis',
-        message: 'Failed to process unified analysis',
-        level: 'error',
+        module: "AlertManager",
+        context: "handleUnifiedAnalysis",
+        message: "Failed to process unified analysis",
+        level: "error",
         error: error as Error,
       });
     }
@@ -179,24 +193,28 @@ export class AlertManager {
    * Creates/updates expected alerts, resolves alerts that should no longer exist
    */
   private async processEntityFindings(
-    entityId: Id<'entities'>,
+    entityId: Id<"entities">,
     findings: Finding[],
     event: UnifiedAnalysisEvent,
-    includedAnalysisTypes: Set<AnalysisType>
-  ): Promise<{ created: CreateType[]; updated: UpdateType[]; resolved: UpdateType[] }> {
+    includedAnalysisTypes: Set<AnalysisType>,
+  ): Promise<{
+    created: CreateType[];
+    updated: UpdateType[];
+    resolved: UpdateType[];
+  }> {
     // Fetch entity data
     const entity = (await client.query(api.helpers.orm.get_s, {
-      tableName: 'entities',
+      tableName: "entities",
       id: entityId,
       secret: process.env.CONVEX_API_KEY!,
-    })) as Doc<'entities'> | null;
+    })) as Doc<"entities"> | null;
 
     if (!entity) {
       Logger.log({
-        module: 'AlertManager',
-        context: 'processEntityFindings',
+        module: "AlertManager",
+        context: "processEntityFindings",
         message: `Entity ${entityId} not found, skipping`,
-        level: 'warn',
+        level: "warn",
       });
       return { created: [], updated: [], resolved: [] };
     }
@@ -210,17 +228,17 @@ export class AlertManager {
 
     // Get existing active alerts for this entity
     const existingAlerts = (await client.query(api.helpers.orm.list_s, {
-      tableName: 'entity_alerts',
+      tableName: "entity_alerts",
       secret: process.env.CONVEX_API_KEY!,
       index: {
-        name: 'by_entity_status',
+        name: "by_entity_status",
         params: {
           entityId,
-          status: 'active',
+          status: "active",
         },
       },
       tenantId: event.tenantId,
-    })) as Doc<'entity_alerts'>[];
+    })) as Doc<"entity_alerts">[];
 
     const creates: CreateType[] = [];
     const updates: UpdateType[] = [];
@@ -237,7 +255,10 @@ export class AlertManager {
           updates: {
             severity: finding.severity,
             message: finding.message,
-            metadata: { ...finding.metadata, ...this.getEntityMetadata(entity) },
+            metadata: {
+              ...finding.metadata,
+              ...this.getEntityMetadata(entity),
+            },
             updatedAt: Date.now(),
           },
         });
@@ -253,7 +274,7 @@ export class AlertManager {
           severity: finding.severity,
           message: finding.message,
           metadata: { ...finding.metadata, ...this.getEntityMetadata(entity) },
-          status: 'active',
+          status: "active",
           updatedAt: Date.now(),
         });
       }
@@ -274,7 +295,7 @@ export class AlertManager {
         resolves.push({
           id: existing._id,
           updates: {
-            status: 'resolved',
+            status: "resolved",
             resolvedAt: Date.now(),
             updatedAt: Date.now(),
           },
@@ -294,7 +315,7 @@ export class AlertManager {
    */
   private async resolveAlertsForMissingEntities(
     event: UnifiedAnalysisEvent,
-    entitiesWithFindings: Map<Id<'entities'>, Finding[]>
+    entitiesWithFindings: Map<Id<"entities">, Finding[]>,
   ): Promise<UpdateType[]> {
     const resolves: UpdateType[] = [];
 
@@ -305,20 +326,21 @@ export class AlertManager {
       // Query all active alerts for this data source
       // Note: Using by_data_source index, will add composite index in Phase 6.1
       const allAlerts = (await client.query(api.helpers.orm.list_s, {
-        tableName: 'entity_alerts',
+        tableName: "entity_alerts",
         secret: process.env.CONVEX_API_KEY!,
         index: {
-          name: 'by_data_source',
+          name: "by_data_source",
           params: {
             dataSourceId: event.dataSourceId,
           },
         },
         tenantId: event.tenantId,
-      })) as Doc<'entity_alerts'>[];
+      })) as Doc<"entity_alerts">[];
 
       // Filter for relevant alert types and active status
       const relevantAlerts = allAlerts.filter(
-        (alert) => alertTypes.includes(alert.alertType) && alert.status === 'active'
+        (alert) =>
+          alertTypes.includes(alert.alertType) && alert.status === "active",
       );
 
       // Resolve alerts for entities that had no findings
@@ -327,7 +349,7 @@ export class AlertManager {
           resolves.push({
             id: alert._id,
             updates: {
-              status: 'resolved',
+              status: "resolved",
               resolvedAt: Date.now(),
               updatedAt: Date.now(),
             },
@@ -343,10 +365,11 @@ export class AlertManager {
    * Get unique key for a finding (handles multiple license_waste per entity)
    */
   private getAlertKey(finding: Finding): string {
-    if (finding.alertType === 'license_waste') {
+    if (finding.alertType === "license_waste") {
       const wasteFinding = finding as LicenseWasteFinding;
       // Use first license SKU ID as key (findings should have one license per alert)
-      const licenseSkuId = wasteFinding.metadata.wastedLicenses[0]?.licenseSkuId;
+      const licenseSkuId =
+        wasteFinding.metadata.wastedLicenses[0]?.licenseSkuId;
       return `${finding.alertType}:${licenseSkuId}`;
     }
     return finding.alertType;
@@ -355,8 +378,8 @@ export class AlertManager {
   /**
    * Get unique key for an existing alert
    */
-  private getExistingAlertKey(alert: Doc<'entity_alerts'>): string {
-    if (alert.alertType === 'license_waste' && alert.metadata?.licenseSkuId) {
+  private getExistingAlertKey(alert: Doc<"entity_alerts">): string {
+    if (alert.alertType === "license_waste" && alert.metadata?.licenseSkuId) {
       return `${alert.alertType}:${alert.metadata.licenseSkuId}`;
     }
     return alert.alertType;
@@ -366,14 +389,17 @@ export class AlertManager {
    * Find existing alert matching a finding
    */
   private findExistingAlert(
-    existingAlerts: Doc<'entity_alerts'>[],
-    finding: Finding
-  ): Doc<'entity_alerts'> | undefined {
-    if (finding.alertType === 'license_waste') {
+    existingAlerts: Doc<"entity_alerts">[],
+    finding: Finding,
+  ): Doc<"entity_alerts"> | undefined {
+    if (finding.alertType === "license_waste") {
       const wasteFinding = finding as LicenseWasteFinding;
-      const licenseSkuId = wasteFinding.metadata.wastedLicenses[0]?.licenseSkuId;
+      const licenseSkuId =
+        wasteFinding.metadata.wastedLicenses[0]?.licenseSkuId;
       return existingAlerts.find(
-        (a) => a.alertType === 'license_waste' && a.metadata?.licenseSkuId === licenseSkuId
+        (a) =>
+          a.alertType === "license_waste" &&
+          a.metadata?.licenseSkuId === licenseSkuId,
       );
     }
     return existingAlerts.find((a) => a.alertType === finding.alertType);
@@ -382,7 +408,7 @@ export class AlertManager {
   /**
    * Extract entity metadata for alert
    */
-  private getEntityMetadata(entity: Doc<'entities'>): Record<string, any> {
+  private getEntityMetadata(entity: Doc<"entities">): Record<string, any> {
     return {
       email: entity.normalizedData.email || entity.normalizedData.name,
       name: entity.normalizedData.name,
@@ -394,18 +420,18 @@ export class AlertManager {
    */
   private getAlertOwnerType(alertType: string): AnalysisType {
     switch (alertType) {
-      case 'mfa_not_enforced':
-      case 'mfa_partial_enforced':
-        return 'mfa';
-      case 'stale_user':
-        return 'stale';
-      case 'license_waste':
-      case 'license_overuse':
-        return 'license';
-      case 'policy_gap':
-        return 'policy';
+      case "mfa_not_enforced":
+      case "mfa_partial_enforced":
+        return "mfa";
+      case "stale_user":
+        return "stale";
+      case "license_waste":
+      case "license_overuse":
+        return "license";
+      case "policy_gap":
+        return "policy";
       default:
-        return 'mfa'; // Default fallback
+        return "mfa"; // Default fallback
     }
   }
 
@@ -414,14 +440,14 @@ export class AlertManager {
    */
   private getAlertTypesForAnalysis(analysisType: AnalysisType): string[] {
     switch (analysisType) {
-      case 'mfa':
-        return ['mfa_not_enforced', 'mfa_partial_enforced'];
-      case 'stale':
-        return ['stale_user'];
-      case 'license':
-        return ['license_waste', 'license_overuse'];
-      case 'policy':
-        return ['policy_gap'];
+      case "mfa":
+        return ["mfa_not_enforced", "mfa_partial_enforced"];
+      case "stale":
+        return ["stale_user"];
+      case "license":
+        return ["license_waste", "license_overuse"];
+      case "policy":
+        return ["policy_gap"];
       default:
         return [];
     }
@@ -431,16 +457,19 @@ export class AlertManager {
    * Update entity states based on active alerts
    */
   private async updateEntityStates(
-    entityIds: Id<'entities'>[],
-    tenantId: Id<'tenants'>
+    entityIds: Id<"entities">[],
+    tenantId: Id<"tenants">,
   ): Promise<void> {
     Logger.log({
-      module: 'AlertManager',
-      context: 'updateEntityStates',
+      module: "AlertManager",
+      context: "updateEntityStates",
       message: `Updating states for ${entityIds.length} entities`,
     });
 
-    const stateUpdates: { id: Id<'entities'>; updates: Partial<Doc<'entities'>> }[] = [];
+    const stateUpdates: {
+      id: Id<"entities">;
+      updates: Partial<Doc<"entities">>;
+    }[] = [];
 
     for (const entityId of entityIds) {
       const newState = await this.calculateEntityState(entityId, tenantId);
@@ -455,15 +484,15 @@ export class AlertManager {
 
     if (stateUpdates.length > 0) {
       await client.mutation(api.helpers.orm.update_s, {
-        tableName: 'entities',
+        tableName: "entities",
         secret: process.env.CONVEX_API_KEY!,
         data: stateUpdates,
       });
     }
 
     Logger.log({
-      module: 'AlertManager',
-      context: 'updateEntityStates',
+      module: "AlertManager",
+      context: "updateEntityStates",
       message: `Updated ${stateUpdates.length} entity states`,
     });
   }
@@ -472,51 +501,51 @@ export class AlertManager {
    * Calculate entity state based on active alerts
    */
   private async calculateEntityState(
-    entityId: Id<'entities'>,
-    tenantId: Id<'tenants'>
-  ): Promise<'normal' | 'low' | 'warn' | 'critical'> {
+    entityId: Id<"entities">,
+    tenantId: Id<"tenants">,
+  ): Promise<"normal" | "low" | "warn" | "critical"> {
     try {
       const alerts = (await client.query(api.helpers.orm.list_s, {
-        tableName: 'entity_alerts',
+        tableName: "entity_alerts",
         secret: process.env.CONVEX_API_KEY!,
         index: {
-          name: 'by_entity_status',
+          name: "by_entity_status",
           params: {
             entityId,
-            status: 'active',
+            status: "active",
           },
         },
         tenantId,
-      })) as Doc<'entity_alerts'>[];
+      })) as Doc<"entity_alerts">[];
 
       // Determine state based on highest severity
       const hasCriticalOrHigh = alerts.some(
-        (alert) => alert.severity === 'critical' || alert.severity === 'high'
+        (alert) => alert.severity === "critical" || alert.severity === "high",
       );
       if (hasCriticalOrHigh) {
-        return 'critical';
+        return "critical";
       }
 
-      const hasMedium = alerts.some((alert) => alert.severity === 'medium');
+      const hasMedium = alerts.some((alert) => alert.severity === "medium");
       if (hasMedium) {
-        return 'warn';
+        return "warn";
       }
 
-      const hasLow = alerts.some((alert) => alert.severity === 'low');
+      const hasLow = alerts.some((alert) => alert.severity === "low");
       if (hasLow) {
-        return 'low';
+        return "low";
       }
 
-      return 'normal';
+      return "normal";
     } catch (error) {
       Logger.log({
-        module: 'AlertManager',
-        context: 'calculateEntityState',
-        message: 'Failed to calculate state',
-        level: 'error',
+        module: "AlertManager",
+        context: "calculateEntityState",
+        message: "Failed to calculate state",
+        level: "error",
         error: error as Error,
       });
-      return 'normal';
+      return "normal";
     }
   }
 }

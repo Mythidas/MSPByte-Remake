@@ -11,6 +11,7 @@
 **Duration**: 1-2 days
 
 **Key Deliverables**:
+
 - Redis installed and configured with persistence
 - BullMQ integrated into project
 - QueueManager class replacing Scheduler
@@ -122,7 +123,7 @@ npm install -D @types/ioredis
 {
   "dependencies": {
     "bullmq": "^5.0.0",
-    "ioredis": "^5.0.0",
+    "ioredis": "^5.0.0"
     // ... existing dependencies
   }
 }
@@ -135,21 +136,21 @@ npm install -D @types/ioredis
 **File**: `src/lib/redis.ts`
 
 ```typescript
-import IORedis from 'ioredis';
-import Debug from './debug';
+import IORedis from "ioredis";
+import Debug from "./debug";
 
 class RedisManager {
   private static connection: IORedis | null = null;
   private static isConnecting = false;
 
   static async getConnection(): Promise<IORedis> {
-    if (this.connection && this.connection.status === 'ready') {
+    if (this.connection && this.connection.status === "ready") {
       return this.connection;
     }
 
     if (this.isConnecting) {
       // Wait for existing connection attempt
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
       return this.getConnection();
     }
 
@@ -157,8 +158,8 @@ class RedisManager {
 
     try {
       const config = {
-        host: process.env.REDIS_HOST || 'localhost',
-        port: parseInt(process.env.REDIS_PORT || '6379'),
+        host: process.env.REDIS_HOST || "localhost",
+        port: parseInt(process.env.REDIS_PORT || "6379"),
         password: process.env.REDIS_PASSWORD,
         maxRetriesPerRequest: null, // Required for BullMQ
         retryStrategy: (times: number) => {
@@ -169,43 +170,43 @@ class RedisManager {
 
       this.connection = new IORedis(config);
 
-      this.connection.on('connect', () => {
+      this.connection.on("connect", () => {
         Debug.log({
-          module: 'RedisManager',
-          context: 'connection',
-          message: 'Connected to Redis',
+          module: "RedisManager",
+          context: "connection",
+          message: "Connected to Redis",
         });
       });
 
-      this.connection.on('error', (error) => {
+      this.connection.on("error", (error) => {
         Debug.error({
-          module: 'RedisManager',
-          context: 'connection',
+          module: "RedisManager",
+          context: "connection",
           message: `Redis error: ${error.message}`,
           error,
         });
       });
 
-      this.connection.on('close', () => {
+      this.connection.on("close", () => {
         Debug.log({
-          module: 'RedisManager',
-          context: 'connection',
-          message: 'Redis connection closed',
+          module: "RedisManager",
+          context: "connection",
+          message: "Redis connection closed",
         });
       });
 
       // Wait for connection
       await new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => {
-          reject(new Error('Redis connection timeout'));
+          reject(new Error("Redis connection timeout"));
         }, 5000);
 
-        this.connection!.once('ready', () => {
+        this.connection!.once("ready", () => {
           clearTimeout(timeout);
           resolve();
         });
 
-        this.connection!.once('error', (error) => {
+        this.connection!.once("error", (error) => {
           clearTimeout(timeout);
           reject(error);
         });
@@ -231,7 +232,7 @@ class RedisManager {
     try {
       const conn = await this.getConnection();
       const result = await conn.ping();
-      return result === 'PONG';
+      return result === "PONG";
     } catch (error) {
       return false;
     }
@@ -264,18 +265,18 @@ REDIS_PASSWORD=  # Leave empty for local dev
 **File**: `src/queue/QueueManager.ts`
 
 ```typescript
-import { Queue, Worker, Job, QueueEvents } from 'bullmq';
-import { ConvexHttpClient } from 'convex/browser';
-import { api } from '../../convex/_generated/api';
-import { Id } from '../../convex/_generated/dataModel';
-import RedisManager from '../lib/redis';
-import Debug from '../lib/debug';
-import NatsClient from '../lib/nats';
+import { Queue, Worker, Job, QueueEvents } from "bullmq";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "../../convex/_generated/api";
+import { Id } from "../../convex/_generated/dataModel";
+import RedisManager from "../lib/redis";
+import Debug from "../lib/debug";
+import NatsClient from "../lib/nats";
 
 interface JobData {
   action: string;
-  tenantId: Id<'tenants'>;
-  dataSourceId: Id<'data_sources'>;
+  tenantId: Id<"tenants">;
+  dataSourceId: Id<"data_sources">;
   metadata?: Record<string, any>;
   syncId?: string;
   cursor?: string;
@@ -311,12 +312,12 @@ class QueueManager {
     const connection = await RedisManager.getConnection();
 
     // Create queue
-    this.queue = new Queue('pipeline-jobs', {
+    this.queue = new Queue("pipeline-jobs", {
       connection,
       defaultJobOptions: {
         attempts: 3,
         backoff: {
-          type: 'exponential',
+          type: "exponential",
           delay: 5000,
         },
         removeOnComplete: {
@@ -332,18 +333,18 @@ class QueueManager {
 
     // Create worker
     this.worker = new Worker(
-      'pipeline-jobs',
+      "pipeline-jobs",
       async (job: Job<JobData>) => {
         return await this.processJob(job);
       },
       {
         connection,
         concurrency: 10,
-      }
+      },
     );
 
     // Queue events for monitoring
-    this.queueEvents = new QueueEvents('pipeline-jobs', { connection });
+    this.queueEvents = new QueueEvents("pipeline-jobs", { connection });
 
     this.setupEventListeners();
     await this.registerRecurringJobs();
@@ -351,18 +352,18 @@ class QueueManager {
     this.isInitialized = true;
 
     Debug.log({
-      module: 'QueueManager',
-      context: 'initialize',
-      message: 'QueueManager initialized successfully',
+      module: "QueueManager",
+      context: "initialize",
+      message: "QueueManager initialized successfully",
     });
   }
 
   private setupEventListeners(): void {
     // Worker events
-    this.worker.on('completed', (job: Job) => {
+    this.worker.on("completed", (job: Job) => {
       Debug.log({
-        module: 'QueueManager',
-        context: 'worker.completed',
+        module: "QueueManager",
+        context: "worker.completed",
         message: `Job ${job.id} completed`,
         metadata: {
           jobName: job.name,
@@ -371,10 +372,10 @@ class QueueManager {
       });
     });
 
-    this.worker.on('failed', (job: Job | undefined, error: Error) => {
+    this.worker.on("failed", (job: Job | undefined, error: Error) => {
       Debug.error({
-        module: 'QueueManager',
-        context: 'worker.failed',
+        module: "QueueManager",
+        context: "worker.failed",
         message: `Job ${job?.id} failed: ${error.message}`,
         error,
         metadata: {
@@ -384,20 +385,20 @@ class QueueManager {
       });
     });
 
-    this.worker.on('error', (error: Error) => {
+    this.worker.on("error", (error: Error) => {
       Debug.error({
-        module: 'QueueManager',
-        context: 'worker.error',
+        module: "QueueManager",
+        context: "worker.error",
         message: `Worker error: ${error.message}`,
         error,
       });
     });
 
     // Queue events
-    this.queueEvents.on('waiting', ({ jobId }) => {
+    this.queueEvents.on("waiting", ({ jobId }) => {
       Debug.log({
-        module: 'QueueManager',
-        context: 'queue.waiting',
+        module: "QueueManager",
+        context: "queue.waiting",
         message: `Job ${jobId} is waiting`,
       });
     });
@@ -407,8 +408,8 @@ class QueueManager {
     const { action, tenantId, dataSourceId, metadata, syncId } = job.data;
 
     Debug.log({
-      module: 'QueueManager',
-      context: 'processJob',
+      module: "QueueManager",
+      context: "processJob",
       message: `Processing job ${job.id}: ${action}`,
       metadata: {
         tenantId,
@@ -428,8 +429,8 @@ class QueueManager {
     });
 
     Debug.log({
-      module: 'QueueManager',
-      context: 'processJob',
+      module: "QueueManager",
+      context: "processJob",
       message: `Published ${action} to NATS`,
       metadata: { jobId: job.id, syncId },
     });
@@ -437,8 +438,8 @@ class QueueManager {
 
   async scheduleJob(params: {
     action: string;
-    tenantId: Id<'tenants'>;
-    dataSourceId: Id<'data_sources'>;
+    tenantId: Id<"tenants">;
+    dataSourceId: Id<"data_sources">;
     priority?: number;
     delay?: number;
     metadata?: Record<string, any>;
@@ -458,12 +459,12 @@ class QueueManager {
         priority: params.priority,
         delay: params.delay,
         jobId: params.jobId,
-      }
+      },
     );
 
     Debug.log({
-      module: 'QueueManager',
-      context: 'scheduleJob',
+      module: "QueueManager",
+      context: "scheduleJob",
       message: `Scheduled job ${job.id}: ${params.action}`,
       metadata: {
         tenantId: params.tenantId,
@@ -477,8 +478,8 @@ class QueueManager {
 
   async scheduleNextBatch(params: {
     action: string;
-    tenantId: Id<'tenants'>;
-    dataSourceId: Id<'data_sources'>;
+    tenantId: Id<"tenants">;
+    dataSourceId: Id<"data_sources">;
     syncId: string;
     cursor: string;
     batchNumber: number;
@@ -501,37 +502,37 @@ class QueueManager {
   private async registerRecurringJobs(): Promise<void> {
     const recurringJobs: RecurringJobConfig[] = [
       {
-        name: 'sync-identities',
-        pattern: '0 */1 * * *', // Every hour
-        action: 'microsoft-365.sync.identities',
+        name: "sync-identities",
+        pattern: "0 */1 * * *", // Every hour
+        action: "microsoft-365.sync.identities",
         perTenant: true,
         priority: 5,
       },
       {
-        name: 'sync-policies',
-        pattern: '0 */1 * * *',
-        action: 'microsoft-365.sync.policies',
+        name: "sync-policies",
+        pattern: "0 */1 * * *",
+        action: "microsoft-365.sync.policies",
         perTenant: true,
         priority: 5,
       },
       {
-        name: 'sync-groups',
-        pattern: '0 */1 * * *',
-        action: 'microsoft-365.sync.groups',
+        name: "sync-groups",
+        pattern: "0 */1 * * *",
+        action: "microsoft-365.sync.groups",
         perTenant: true,
         priority: 5,
       },
       {
-        name: 'sync-roles',
-        pattern: '0 */1 * * *',
-        action: 'microsoft-365.sync.roles',
+        name: "sync-roles",
+        pattern: "0 */1 * * *",
+        action: "microsoft-365.sync.roles",
         perTenant: true,
         priority: 5,
       },
       {
-        name: 'sync-licenses',
-        pattern: '0 */1 * * *',
-        action: 'microsoft-365.sync.licenses',
+        name: "sync-licenses",
+        pattern: "0 */1 * * *",
+        action: "microsoft-365.sync.licenses",
         perTenant: true,
         priority: 5,
       },
@@ -546,24 +547,26 @@ class QueueManager {
     }
 
     Debug.log({
-      module: 'QueueManager',
-      context: 'registerRecurringJobs',
+      module: "QueueManager",
+      context: "registerRecurringJobs",
       message: `Registered ${recurringJobs.length} recurring job types`,
     });
   }
 
-  private async registerPerTenantJob(config: RecurringJobConfig): Promise<void> {
+  private async registerPerTenantJob(
+    config: RecurringJobConfig,
+  ): Promise<void> {
     const tenants = await this.client.query(api.helpers.orm.list_s, {
-      tableName: 'tenants',
+      tableName: "tenants",
     });
 
     for (const tenant of tenants) {
       const dataSource = await this.client.query(api.helpers.orm.get_s, {
-        tableName: 'data_sources',
+        tableName: "data_sources",
         id: tenant.dataSourceId,
       });
 
-      if (!dataSource || dataSource.type !== 'microsoft-365') {
+      if (!dataSource || dataSource.type !== "microsoft-365") {
         continue;
       }
 
@@ -580,7 +583,7 @@ class QueueManager {
           },
           jobId: `recurring-${config.name}-${tenant._id}`,
           priority: config.priority,
-        }
+        },
       );
     }
   }
@@ -590,8 +593,8 @@ class QueueManager {
       config.name,
       {
         action: config.action,
-        tenantId: '' as Id<'tenants'>,
-        dataSourceId: '' as Id<'data_sources'>,
+        tenantId: "" as Id<"tenants">,
+        dataSourceId: "" as Id<"data_sources">,
       },
       {
         repeat: {
@@ -599,7 +602,7 @@ class QueueManager {
         },
         jobId: `recurring-${config.name}`,
         priority: config.priority,
-      }
+      },
     );
   }
 
@@ -642,9 +645,9 @@ class QueueManager {
 
   async shutdown(): Promise<void> {
     Debug.log({
-      module: 'QueueManager',
-      context: 'shutdown',
-      message: 'Shutting down QueueManager',
+      module: "QueueManager",
+      context: "shutdown",
+      message: "Shutting down QueueManager",
     });
 
     await this.worker?.close();
@@ -672,8 +675,8 @@ interface FeatureFlags {
 }
 
 const flags: FeatureFlags = {
-  USE_BULLMQ: process.env.USE_BULLMQ === 'true',
-  BULLMQ_TENANTS: (process.env.BULLMQ_TENANTS || '').split(',').filter(Boolean),
+  USE_BULLMQ: process.env.USE_BULLMQ === "true",
+  BULLMQ_TENANTS: (process.env.BULLMQ_TENANTS || "").split(",").filter(Boolean),
 };
 
 export function shouldUseBullMQ(tenantId?: string): boolean {
@@ -700,19 +703,19 @@ export default flags;
 **File**: `src/index.ts`
 
 ```typescript
-import { ConvexHttpClient } from 'convex/browser';
-import { api } from '../convex/_generated/api';
-import NatsClient from './lib/nats';
-import Scheduler from './scheduler'; // Old scheduler
-import QueueManager from './queue/QueueManager'; // New queue
-import { shouldUseBullMQ } from './lib/featureFlags';
-import Debug from './lib/debug';
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "../convex/_generated/api";
+import NatsClient from "./lib/nats";
+import Scheduler from "./scheduler"; // Old scheduler
+import QueueManager from "./queue/QueueManager"; // New queue
+import { shouldUseBullMQ } from "./lib/featureFlags";
+import Debug from "./lib/debug";
 
 async function main() {
   Debug.log({
-    module: 'Main',
-    context: 'startup',
-    message: 'Starting MSPByte Pipeline',
+    module: "Main",
+    context: "startup",
+    message: "Starting MSPByte Pipeline",
   });
 
   // Initialize clients
@@ -724,9 +727,9 @@ async function main() {
 
   if (useBullMQ) {
     Debug.log({
-      module: 'Main',
-      context: 'startup',
-      message: 'Initializing BullMQ queue system',
+      module: "Main",
+      context: "startup",
+      message: "Initializing BullMQ queue system",
     });
 
     const queueManager = new QueueManager(client, NatsClient);
@@ -737,9 +740,9 @@ async function main() {
       const health = await queueManager.healthCheck();
       if (!health.healthy) {
         Debug.error({
-          module: 'Main',
-          context: 'healthCheck',
-          message: 'QueueManager unhealthy',
+          module: "Main",
+          context: "healthCheck",
+          message: "QueueManager unhealthy",
           metadata: health,
         });
 
@@ -748,9 +751,9 @@ async function main() {
     }, 30000); // Every 30 seconds
   } else {
     Debug.log({
-      module: 'Main',
-      context: 'startup',
-      message: 'Using legacy database polling scheduler',
+      module: "Main",
+      context: "startup",
+      message: "Using legacy database polling scheduler",
     });
 
     const scheduler = new Scheduler(client, NatsClient);
@@ -761,18 +764,18 @@ async function main() {
   // ...
 
   Debug.log({
-    module: 'Main',
-    context: 'startup',
-    message: 'Pipeline started successfully',
+    module: "Main",
+    context: "startup",
+    message: "Pipeline started successfully",
     metadata: { useBullMQ },
   });
 
   // Graceful shutdown
-  process.on('SIGTERM', async () => {
+  process.on("SIGTERM", async () => {
     Debug.log({
-      module: 'Main',
-      context: 'shutdown',
-      message: 'Received SIGTERM, shutting down gracefully',
+      module: "Main",
+      context: "shutdown",
+      message: "Received SIGTERM, shutting down gracefully",
     });
 
     if (useBullMQ) {
@@ -786,7 +789,7 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error('Fatal error:', error);
+  console.error("Fatal error:", error);
   process.exit(1);
 });
 ```
@@ -800,17 +803,17 @@ main().catch((error) => {
 **File**: `tests/queue/QueueManager.test.ts`
 
 ```typescript
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
-import QueueManager from '../../src/queue/QueueManager';
-import RedisManager from '../../src/lib/redis';
+import { describe, it, expect, beforeAll, afterAll } from "@jest/globals";
+import QueueManager from "../../src/queue/QueueManager";
+import RedisManager from "../../src/lib/redis";
 
-describe('QueueManager', () => {
+describe("QueueManager", () => {
   let queueManager: QueueManager;
 
   beforeAll(async () => {
     // Use test Redis instance
-    process.env.REDIS_HOST = 'localhost';
-    process.env.REDIS_PORT = '6379';
+    process.env.REDIS_HOST = "localhost";
+    process.env.REDIS_PORT = "6379";
 
     queueManager = new QueueManager(mockClient, mockNatsClient);
     await queueManager.initialize();
@@ -820,11 +823,11 @@ describe('QueueManager', () => {
     await queueManager.shutdown();
   });
 
-  it('should schedule a job', async () => {
+  it("should schedule a job", async () => {
     const jobId = await queueManager.scheduleJob({
-      action: 'test.action',
-      tenantId: 'test-tenant',
-      dataSourceId: 'test-datasource',
+      action: "test.action",
+      tenantId: "test-tenant",
+      dataSourceId: "test-datasource",
       priority: 5,
     });
 
@@ -832,26 +835,26 @@ describe('QueueManager', () => {
 
     const status = await queueManager.getJobStatus(jobId);
     expect(status).toBeTruthy();
-    expect(status.name).toBe('test.action');
+    expect(status.name).toBe("test.action");
   });
 
-  it('should process jobs in priority order', async () => {
+  it("should process jobs in priority order", async () => {
     const lowPriority = await queueManager.scheduleJob({
-      action: 'low',
-      tenantId: 'test',
-      dataSourceId: 'test',
+      action: "low",
+      tenantId: "test",
+      dataSourceId: "test",
       priority: 1,
     });
 
     const highPriority = await queueManager.scheduleJob({
-      action: 'high',
-      tenantId: 'test',
-      dataSourceId: 'test',
+      action: "high",
+      tenantId: "test",
+      dataSourceId: "test",
       priority: 10,
     });
 
     // Wait for processing
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // High priority should complete first
     const lowStatus = await queueManager.getJobStatus(lowPriority);
@@ -860,21 +863,21 @@ describe('QueueManager', () => {
     expect(highStatus.finishedOn).toBeLessThan(lowStatus.finishedOn);
   });
 
-  it('should handle job failures and retries', async () => {
+  it("should handle job failures and retries", async () => {
     const jobId = await queueManager.scheduleJob({
-      action: 'failing.action',
-      tenantId: 'test',
-      dataSourceId: 'test',
+      action: "failing.action",
+      tenantId: "test",
+      dataSourceId: "test",
     });
 
     // Wait for retries
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
     const status = await queueManager.getJobStatus(jobId);
     expect(status.attemptsMade).toBeGreaterThan(1);
   });
 
-  it('should pass health check', async () => {
+  it("should pass health check", async () => {
     const health = await queueManager.healthCheck();
     expect(health.healthy).toBe(true);
     expect(health.redis).toBe(true);
@@ -924,20 +927,20 @@ describe('QueueManager Integration', () => {
 **File**: `src/api/health.ts`
 
 ```typescript
-import express from 'express';
-import QueueManager from '../queue/QueueManager';
+import express from "express";
+import QueueManager from "../queue/QueueManager";
 
 const router = express.Router();
 
-router.get('/health', async (req, res) => {
+router.get("/health", async (req, res) => {
   const health = await queueManager.healthCheck();
 
   res.status(health.healthy ? 200 : 503).json({
-    status: health.healthy ? 'healthy' : 'unhealthy',
+    status: health.healthy ? "healthy" : "unhealthy",
     components: {
-      redis: health.redis ? 'up' : 'down',
-      queue: health.queue ? 'up' : 'down',
-      worker: health.worker ? 'up' : 'down',
+      redis: health.redis ? "up" : "down",
+      queue: health.queue ? "up" : "down",
+      worker: health.worker ? "up" : "down",
     },
     timestamp: new Date().toISOString(),
   });
@@ -950,26 +953,26 @@ export default router;
 
 ```typescript
 // Future: Add Prometheus metrics
-import { register, Counter, Histogram } from 'prom-client';
+import { register, Counter, Histogram } from "prom-client";
 
 const jobsProcessed = new Counter({
-  name: 'pipeline_jobs_processed_total',
-  help: 'Total number of jobs processed',
-  labelNames: ['action', 'status'],
+  name: "pipeline_jobs_processed_total",
+  help: "Total number of jobs processed",
+  labelNames: ["action", "status"],
 });
 
 const jobDuration = new Histogram({
-  name: 'pipeline_job_duration_seconds',
-  help: 'Job processing duration',
-  labelNames: ['action'],
+  name: "pipeline_job_duration_seconds",
+  help: "Job processing duration",
+  labelNames: ["action"],
   buckets: [0.1, 0.5, 1, 5, 10, 30, 60],
 });
 
 // In worker.on('completed'):
-jobsProcessed.inc({ action: job.name, status: 'completed' });
+jobsProcessed.inc({ action: job.name, status: "completed" });
 jobDuration.observe(
   { action: job.name },
-  (Date.now() - job.processedOn!) / 1000
+  (Date.now() - job.processedOn!) / 1000,
 );
 ```
 
@@ -980,16 +983,19 @@ jobDuration.observe(
 If issues arise:
 
 1. **Set feature flag**:
+
    ```bash
    export USE_BULLMQ=false
    ```
 
 2. **Restart application**:
+
    ```bash
    npm restart
    ```
 
 3. **Verify old scheduler running**:
+
    ```bash
    # Check logs for "Using legacy database polling scheduler"
    ```
@@ -1022,6 +1028,7 @@ If issues arise:
 **Symptom**: "Redis connection timeout"
 
 **Solutions**:
+
 1. Check Redis is running: `docker ps | grep redis`
 2. Test connection: `redis-cli ping`
 3. Check environment variables
@@ -1032,6 +1039,7 @@ If issues arise:
 **Symptom**: Jobs added but never complete
 
 **Solutions**:
+
 1. Check worker is running: `queueManager.healthCheck()`
 2. Look for worker errors in logs
 3. Verify NATS is connected
@@ -1042,6 +1050,7 @@ If issues arise:
 **Symptom**: Redis using too much memory
 
 **Solutions**:
+
 1. Adjust `removeOnComplete` and `removeOnFail` settings
 2. Lower retention counts
 3. Increase `maxmemory` in redis.conf
@@ -1060,6 +1069,7 @@ Once Phase 1 is complete and tested:
 ## Notes for Future Claude Sessions
 
 ### Context about this phase:
+
 - We're replacing database polling (60s latency) with BullMQ (push-based, <1s)
 - Redis provides job queue + persistence
 - QueueManager wraps BullMQ with our business logic
@@ -1067,23 +1077,28 @@ Once Phase 1 is complete and tested:
 - Old scheduler kept as fallback
 
 ### Key files created:
+
 - `src/lib/redis.ts` - Redis connection management
 - `src/queue/QueueManager.ts` - BullMQ wrapper with recurring jobs
 - `src/lib/featureFlags.ts` - Toggle old vs new
 - Updated `src/index.ts` - Initialize based on flag
 
 ### Integration points:
+
 - QueueManager publishes to NATS (same as old Scheduler)
 - Adapters subscribe to NATS (no change needed)
 - Database still used for audit trail (optional job_history table)
 
 ### Known limitations:
+
 - Requires Redis infrastructure
 - Need to migrate recurring job definitions from DB to code
 - Health check is simple (could be more comprehensive)
 
 ### Extension for Phase 7:
+
 When adding tenant-specific queues (if needed for 1000+ tenants):
+
 ```typescript
 // Create queue per tenant
 const tenantQueue = new Queue(`pipeline-jobs-${tenantId}`, { ... });

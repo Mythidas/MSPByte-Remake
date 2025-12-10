@@ -77,7 +77,8 @@ export default async function (fastify: FastifyInstance) {
     } else {
       return {
         success: false,
-        message: "Garbage collection not available. Start Node with --expose-gc",
+        message:
+          "Garbage collection not available. Start Node with --expose-gc",
       };
     }
   });

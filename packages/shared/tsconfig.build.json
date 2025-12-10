@@ -22,7 +22,7 @@
       "@workspace/database/*": ["../database/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.js", "src/**/*.tsx"],
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": [
     "node_modules",
     "dist",

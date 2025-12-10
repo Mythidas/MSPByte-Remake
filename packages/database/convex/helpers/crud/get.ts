@@ -36,14 +36,14 @@ export const get = query({
       v.object({
         name: v.string(),
         params: v.any(), // Any object shape for index params
-      })
+      }),
     ),
     filters: v.optional(v.any()), // Any object shape for filters
     includeSoftDeleted: v.optional(v.boolean()),
   },
   handler: async <T extends keyof DataModel>(
     ctx: any,
-    args: GetArgs<T>
+    args: GetArgs<T>,
   ): Promise<GetResult<T>> => {
     const identity = await isAuthenticated(ctx);
 
@@ -75,7 +75,7 @@ export const get = query({
       queryBuilder = ctx.db
         .query(tableName)
         .withIndex("by_tenant" as any, (q: any) =>
-          q.eq("tenantId", identity.tenantId)
+          q.eq("tenantId", identity.tenantId),
         );
     }
 
@@ -112,14 +112,14 @@ export const get_s = query({
       v.object({
         name: v.string(),
         params: v.any(),
-      })
+      }),
     ),
     filters: v.optional(v.any()),
     includeSoftDeleted: v.optional(v.boolean()),
   },
   handler: async <T extends keyof DataModel>(
     ctx: any,
-    args: GetArgs<T> & { secret: string; tenantId?: Id<"tenants"> }
+    args: GetArgs<T> & { secret: string; tenantId?: Id<"tenants"> },
   ): Promise<GetResult<T>> => {
     await isValidSecret(args.secret);
 

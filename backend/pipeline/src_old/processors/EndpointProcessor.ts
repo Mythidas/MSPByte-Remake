@@ -1,7 +1,4 @@
-import {
-  BaseProcessor,
-  EndpointData,
-} from "./BaseProcessor.js";
+import { BaseProcessor, EndpointData } from "./BaseProcessor.js";
 import Logger from "../lib/logger.js";
 import { SophosPartnerEndpoint } from "@workspace/shared/types/integrations/sophos-partner/endpoints.js";
 import {
@@ -16,7 +13,7 @@ export class EndpointProcessor extends BaseProcessor {
 
   protected normalizeData(
     integrationType: IntegrationType,
-    data: DataFetchPayload[]
+    data: DataFetchPayload[],
   ): EndpointData[] {
     switch (integrationType) {
       case "sophos-partner":
@@ -58,9 +55,11 @@ export class EndpointProcessor extends BaseProcessor {
           mac_address: rawData.macAddresses?.[0] || "",
 
           last_check_in: rawData.lastSeenAt,
-          protectionUpgradable: rawData.packages?.protection?.status === "upgradable" ||
-                                (rawData.packages?.protection?.available && rawData.packages.protection.available.length > 0) ||
-                                false,
+          protectionUpgradable:
+            rawData.packages?.protection?.status === "upgradable" ||
+            (rawData.packages?.protection?.available &&
+              rawData.packages.protection.available.length > 0) ||
+            false,
         },
       } as EndpointData;
     });

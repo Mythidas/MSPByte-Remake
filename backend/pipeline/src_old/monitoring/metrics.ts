@@ -73,12 +73,15 @@ export interface MetricsSummary {
   alertsBySeverity: Record<string, number>;
 
   // By stage
-  metricsByStage: Record<PipelineStage, {
-    count: number;
-    successCount: number;
-    errorCount: number;
-    averageDurationMs: number;
-  }>;
+  metricsByStage: Record<
+    PipelineStage,
+    {
+      count: number;
+      successCount: number;
+      errorCount: number;
+      averageDurationMs: number;
+    }
+  >;
 
   // Time range
   collectionStartTime: number;
@@ -139,7 +142,7 @@ export class MetricsCollector {
       tenantId?: Id<"tenants">;
       dataSourceId?: Id<"data_sources">;
       errorMessage?: string;
-    }
+    },
   ): void {
     const metric: PipelineMetric = {
       stage,
@@ -193,7 +196,7 @@ export class MetricsCollector {
     action: "created" | "resolved" | "suppressed",
     alertType: string,
     severity: "low" | "medium" | "high" | "critical",
-    tenantId?: Id<"tenants">
+    tenantId?: Id<"tenants">,
   ): void {
     const metric: AlertMetric = {
       action,
@@ -212,42 +215,79 @@ export class MetricsCollector {
   public getSummary(): MetricsSummary {
     // Pipeline metrics
     const totalPipelineExecutions = this.pipelineMetrics.length;
-    const pipelineSuccessCount = this.pipelineMetrics.filter((m) => m.status === "success").length;
-    const pipelineErrorCount = this.pipelineMetrics.filter((m) => m.status === "error").length;
-    const pipelineTimeoutCount = this.pipelineMetrics.filter((m) => m.status === "timeout").length;
+    const pipelineSuccessCount = this.pipelineMetrics.filter(
+      (m) => m.status === "success",
+    ).length;
+    const pipelineErrorCount = this.pipelineMetrics.filter(
+      (m) => m.status === "error",
+    ).length;
+    const pipelineTimeoutCount = this.pipelineMetrics.filter(
+      (m) => m.status === "timeout",
+    ).length;
 
-    const totalPipelineDuration = this.pipelineMetrics.reduce((sum, m) => sum + m.durationMs, 0);
+    const totalPipelineDuration = this.pipelineMetrics.reduce(
+      (sum, m) => sum + m.durationMs,
+      0,
+    );
     const averagePipelineDurationMs =
-      totalPipelineExecutions > 0 ? totalPipelineDuration / totalPipelineExecutions : 0;
+      totalPipelineExecutions > 0
+        ? totalPipelineDuration / totalPipelineExecutions
+        : 0;
 
     // Query metrics
     const totalQueries = this.queryMetrics.length;
     const slowQueryCount = this.queryMetrics.filter((m) => m.isSlow).length;
-    const totalQueryDuration = this.queryMetrics.reduce((sum, m) => sum + m.durationMs, 0);
-    const averageQueryDurationMs = totalQueries > 0 ? totalQueryDuration / totalQueries : 0;
+    const totalQueryDuration = this.queryMetrics.reduce(
+      (sum, m) => sum + m.durationMs,
+      0,
+    );
+    const averageQueryDurationMs =
+      totalQueries > 0 ? totalQueryDuration / totalQueries : 0;
 
     // Alert metrics
-    const totalAlertsCreated = this.alertMetrics.filter((m) => m.action === "created").length;
-    const totalAlertsResolved = this.alertMetrics.filter((m) => m.action === "resolved").length;
-    const totalAlertsSuppressed = this.alertMetrics.filter((m) => m.action === "suppressed").length;
+    const totalAlertsCreated = this.alertMetrics.filter(
+      (m) => m.action === "created",
+    ).length;
+    const totalAlertsResolved = this.alertMetrics.filter(
+      (m) => m.action === "resolved",
+    ).length;
+    const totalAlertsSuppressed = this.alertMetrics.filter(
+      (m) => m.action === "suppressed",
+    ).length;
 
     const alertsBySeverity: Record<string, number> = {
       low: this.alertMetrics.filter((m) => m.severity === "low").length,
       medium: this.alertMetrics.filter((m) => m.severity === "medium").length,
       high: this.alertMetrics.filter((m) => m.severity === "high").length,
-      critical: this.alertMetrics.filter((m) => m.severity === "critical").length,
+      critical: this.alertMetrics.filter((m) => m.severity === "critical")
+        .length,
     };
 
     // Metrics by stage
-    const stages: PipelineStage[] = ["adapter", "processor", "linker", "analyzer", "alert"];
+    const stages: PipelineStage[] = [
+      "adapter",
+      "processor",
+      "linker",
+      "analyzer",
+      "alert",
+    ];
     const metricsByStage: Record<PipelineStage, any> = {} as any;
 
     for (const stage of stages) {
-      const stageMetrics = this.pipelineMetrics.filter((m) => m.stage === stage);
+      const stageMetrics = this.pipelineMetrics.filter(
+        (m) => m.stage === stage,
+      );
       const count = stageMetrics.length;
-      const successCount = stageMetrics.filter((m) => m.status === "success").length;
-      const errorCount = stageMetrics.filter((m) => m.status === "error").length;
-      const totalDuration = stageMetrics.reduce((sum, m) => sum + m.durationMs, 0);
+      const successCount = stageMetrics.filter(
+        (m) => m.status === "success",
+      ).length;
+      const errorCount = stageMetrics.filter(
+        (m) => m.status === "error",
+      ).length;
+      const totalDuration = stageMetrics.reduce(
+        (sum, m) => sum + m.durationMs,
+        0,
+      );
       const averageDurationMs = count > 0 ? totalDuration / count : 0;
 
       metricsByStage[stage] = {
@@ -288,68 +328,110 @@ export class MetricsCollector {
     const metrics: string[] = [];
 
     // Pipeline execution metrics
-    metrics.push("# HELP mspbyte_pipeline_executions_total Total number of pipeline executions");
+    metrics.push(
+      "# HELP mspbyte_pipeline_executions_total Total number of pipeline executions",
+    );
     metrics.push("# TYPE mspbyte_pipeline_executions_total counter");
-    metrics.push(`mspbyte_pipeline_executions_total{status="success"} ${summary.pipelineSuccessCount}`);
-    metrics.push(`mspbyte_pipeline_executions_total{status="error"} ${summary.pipelineErrorCount}`);
-    metrics.push(`mspbyte_pipeline_executions_total{status="timeout"} ${summary.pipelineTimeoutCount}`);
+    metrics.push(
+      `mspbyte_pipeline_executions_total{status="success"} ${summary.pipelineSuccessCount}`,
+    );
+    metrics.push(
+      `mspbyte_pipeline_executions_total{status="error"} ${summary.pipelineErrorCount}`,
+    );
+    metrics.push(
+      `mspbyte_pipeline_executions_total{status="timeout"} ${summary.pipelineTimeoutCount}`,
+    );
     metrics.push("");
 
     // Pipeline duration
-    metrics.push("# HELP mspbyte_pipeline_duration_ms Average pipeline execution duration in milliseconds");
+    metrics.push(
+      "# HELP mspbyte_pipeline_duration_ms Average pipeline execution duration in milliseconds",
+    );
     metrics.push("# TYPE mspbyte_pipeline_duration_ms gauge");
-    metrics.push(`mspbyte_pipeline_duration_ms ${summary.averagePipelineDurationMs.toFixed(2)}`);
+    metrics.push(
+      `mspbyte_pipeline_duration_ms ${summary.averagePipelineDurationMs.toFixed(2)}`,
+    );
     metrics.push("");
 
     // Query metrics
-    metrics.push("# HELP mspbyte_queries_total Total number of database queries");
+    metrics.push(
+      "# HELP mspbyte_queries_total Total number of database queries",
+    );
     metrics.push("# TYPE mspbyte_queries_total counter");
     metrics.push(`mspbyte_queries_total ${summary.totalQueries}`);
     metrics.push("");
 
-    metrics.push("# HELP mspbyte_slow_queries_total Total number of slow queries (>100ms)");
+    metrics.push(
+      "# HELP mspbyte_slow_queries_total Total number of slow queries (>100ms)",
+    );
     metrics.push("# TYPE mspbyte_slow_queries_total counter");
     metrics.push(`mspbyte_slow_queries_total ${summary.slowQueryCount}`);
     metrics.push("");
 
-    metrics.push("# HELP mspbyte_query_duration_ms Average query duration in milliseconds");
+    metrics.push(
+      "# HELP mspbyte_query_duration_ms Average query duration in milliseconds",
+    );
     metrics.push("# TYPE mspbyte_query_duration_ms gauge");
-    metrics.push(`mspbyte_query_duration_ms ${summary.averageQueryDurationMs.toFixed(2)}`);
+    metrics.push(
+      `mspbyte_query_duration_ms ${summary.averageQueryDurationMs.toFixed(2)}`,
+    );
     metrics.push("");
 
     // Alert metrics
-    metrics.push("# HELP mspbyte_alerts_total Total number of alerts by action");
+    metrics.push(
+      "# HELP mspbyte_alerts_total Total number of alerts by action",
+    );
     metrics.push("# TYPE mspbyte_alerts_total counter");
-    metrics.push(`mspbyte_alerts_total{action="created"} ${summary.totalAlertsCreated}`);
-    metrics.push(`mspbyte_alerts_total{action="resolved"} ${summary.totalAlertsResolved}`);
-    metrics.push(`mspbyte_alerts_total{action="suppressed"} ${summary.totalAlertsSuppressed}`);
+    metrics.push(
+      `mspbyte_alerts_total{action="created"} ${summary.totalAlertsCreated}`,
+    );
+    metrics.push(
+      `mspbyte_alerts_total{action="resolved"} ${summary.totalAlertsResolved}`,
+    );
+    metrics.push(
+      `mspbyte_alerts_total{action="suppressed"} ${summary.totalAlertsSuppressed}`,
+    );
     metrics.push("");
 
     metrics.push("# HELP mspbyte_alerts_by_severity Total alerts by severity");
     metrics.push("# TYPE mspbyte_alerts_by_severity counter");
     for (const [severity, count] of Object.entries(summary.alertsBySeverity)) {
-      metrics.push(`mspbyte_alerts_by_severity{severity="${severity}"} ${count}`);
+      metrics.push(
+        `mspbyte_alerts_by_severity{severity="${severity}"} ${count}`,
+      );
     }
     metrics.push("");
 
     // Stage metrics
-    metrics.push("# HELP mspbyte_stage_executions_total Pipeline stage executions by status");
+    metrics.push(
+      "# HELP mspbyte_stage_executions_total Pipeline stage executions by status",
+    );
     metrics.push("# TYPE mspbyte_stage_executions_total counter");
     for (const [stage, data] of Object.entries(summary.metricsByStage)) {
-      metrics.push(`mspbyte_stage_executions_total{stage="${stage}",status="success"} ${data.successCount}`);
-      metrics.push(`mspbyte_stage_executions_total{stage="${stage}",status="error"} ${data.errorCount}`);
+      metrics.push(
+        `mspbyte_stage_executions_total{stage="${stage}",status="success"} ${data.successCount}`,
+      );
+      metrics.push(
+        `mspbyte_stage_executions_total{stage="${stage}",status="error"} ${data.errorCount}`,
+      );
     }
     metrics.push("");
 
-    metrics.push("# HELP mspbyte_stage_duration_ms Average stage duration in milliseconds");
+    metrics.push(
+      "# HELP mspbyte_stage_duration_ms Average stage duration in milliseconds",
+    );
     metrics.push("# TYPE mspbyte_stage_duration_ms gauge");
     for (const [stage, data] of Object.entries(summary.metricsByStage)) {
-      metrics.push(`mspbyte_stage_duration_ms{stage="${stage}"} ${data.averageDurationMs.toFixed(2)}`);
+      metrics.push(
+        `mspbyte_stage_duration_ms{stage="${stage}"} ${data.averageDurationMs.toFixed(2)}`,
+      );
     }
     metrics.push("");
 
     // Feature flag metrics
-    metrics.push("# HELP mspbyte_feature_flags Feature flag status (1=enabled, 0=disabled)");
+    metrics.push(
+      "# HELP mspbyte_feature_flags Feature flag status (1=enabled, 0=disabled)",
+    );
     metrics.push("# TYPE mspbyte_feature_flags gauge");
     for (const flag of flagStatuses) {
       const enabled = flag.globalEnabled ? 1 : 0;
@@ -357,16 +439,22 @@ export class MetricsCollector {
     }
     metrics.push("");
 
-    metrics.push("# HELP mspbyte_feature_rollout_percentage Feature flag rollout percentage");
+    metrics.push(
+      "# HELP mspbyte_feature_rollout_percentage Feature flag rollout percentage",
+    );
     metrics.push("# TYPE mspbyte_feature_rollout_percentage gauge");
     for (const flag of flagStatuses) {
-      metrics.push(`mspbyte_feature_rollout_percentage{flag="${flag.name}"} ${flag.rolloutPercentage}`);
+      metrics.push(
+        `mspbyte_feature_rollout_percentage{flag="${flag.name}"} ${flag.rolloutPercentage}`,
+      );
     }
     metrics.push("");
 
     // Uptime
     const uptimeSeconds = (Date.now() - this.collectionStartTime) / 1000;
-    metrics.push("# HELP mspbyte_uptime_seconds Time since metrics collection started");
+    metrics.push(
+      "# HELP mspbyte_uptime_seconds Time since metrics collection started",
+    );
     metrics.push("# TYPE mspbyte_uptime_seconds counter");
     metrics.push(`mspbyte_uptime_seconds ${uptimeSeconds.toFixed(0)}`);
     metrics.push("");
@@ -410,9 +498,15 @@ export class MetricsCollector {
     const alertBeforeCount = this.alertMetrics.length;
 
     // Remove metrics older than maxAge
-    this.pipelineMetrics = this.pipelineMetrics.filter((m) => now - m.timestamp < maxAge);
-    this.queryMetrics = this.queryMetrics.filter((m) => now - m.timestamp < maxAge);
-    this.alertMetrics = this.alertMetrics.filter((m) => now - m.timestamp < maxAge);
+    this.pipelineMetrics = this.pipelineMetrics.filter(
+      (m) => now - m.timestamp < maxAge,
+    );
+    this.queryMetrics = this.queryMetrics.filter(
+      (m) => now - m.timestamp < maxAge,
+    );
+    this.alertMetrics = this.alertMetrics.filter(
+      (m) => now - m.timestamp < maxAge,
+    );
 
     // If still too many, keep only most recent
     if (this.pipelineMetrics.length > this.maxMetricsCount) {

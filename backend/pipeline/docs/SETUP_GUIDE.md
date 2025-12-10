@@ -116,6 +116,7 @@ docker-compose logs -f
 ### Manual Start (Alternative)
 
 **Redis**:
+
 ```bash
 docker run -d \
   --name mspbyte-redis \
@@ -126,6 +127,7 @@ docker run -d \
 ```
 
 **NATS**:
+
 ```bash
 docker run -d \
   --name mspbyte-nats \
@@ -246,6 +248,7 @@ curl http://localhost:3001/health
 ```
 
 **Expected Response**:
+
 ```json
 {
   "status": "healthy",
@@ -269,6 +272,7 @@ curl http://localhost:3001/metrics
 ```
 
 **Expected Response** (sample):
+
 ```
 # HELP mspbyte_pipeline_executions_total Total number of pipeline executions
 # TYPE mspbyte_pipeline_executions_total counter
@@ -289,6 +293,7 @@ curl http://localhost:3001/api/feature-flags
 ```
 
 **Expected Response**:
+
 ```json
 {
   "tenantId": null,
@@ -314,6 +319,7 @@ curl http://localhost:3001/api/feature-flags
 The JobScheduler automatically registers recurring jobs based on `integrations.supportedTypes.rateMinutes`.
 
 **Example**:
+
 - Integration: `microsoft-365`
 - Entity Types: `identities`, `groups`, `roles`, `policies`, `licenses`
 - Rate: 60 minutes (from DB)
@@ -335,6 +341,7 @@ curl -X POST http://localhost:3001/api/jobs/schedule \
 ```
 
 **Response**:
+
 ```json
 {
   "jobId": "12345",
@@ -352,6 +359,7 @@ curl http://localhost:3001/api/jobs/12345
 ```
 
 **Response**:
+
 ```json
 {
   "id": "12345",
@@ -579,6 +587,7 @@ docker run -d \
 **Error**: `NATS connection failed`
 
 **Solution**:
+
 ```bash
 # Check if NATS is running
 docker ps | grep nats
@@ -593,6 +602,7 @@ curl http://localhost:8222/healthz
 **Error**: `Redis connection refused`
 
 **Solution**:
+
 ```bash
 # Check if Redis is running
 docker ps | grep redis
@@ -607,6 +617,7 @@ redis-cli ping
 **Error**: `Convex API key invalid`
 
 **Solution**:
+
 1. Go to Convex dashboard: https://dashboard.convex.dev
 2. Settings → API Keys
 3. Copy API key
@@ -618,6 +629,7 @@ redis-cli ping
 **Issue**: JobScheduler shows 0 repeatable jobs
 
 **Solution**:
+
 ```bash
 # Check database for active integrations
 # In Convex dashboard:
@@ -634,6 +646,7 @@ redis-cli ping
 **Issue**: Jobs scheduled but not executing
 
 **Solution**:
+
 ```bash
 # Check worker status
 curl http://localhost:3001/health
@@ -654,6 +667,7 @@ KEYS *
 **Issue**: Pipeline taking >2 minutes
 
 **Solution**:
+
 ```bash
 # Check slow queries
 curl http://localhost:3001/api/metrics/summary
@@ -668,6 +682,7 @@ curl http://localhost:3001/api/metrics/summary
 **Issue**: High memory usage
 
 **Solution**:
+
 ```bash
 # Check worker count
 # Lower QUEUE_CONCURRENCY from 20 to 10
@@ -684,6 +699,7 @@ curl http://localhost:3001/api/metrics/summary
 **Issue**: Alerts stay active after issues fixed
 
 **Solution**:
+
 ```bash
 # Verify AlertManager is enabled
 # In .env:

@@ -1,92 +1,100 @@
-import {
-  BaseAdapter,
-  RawDataProps,
-  RawDataResult,
-} from './BaseAdapter.js';
-import type { Doc } from '@workspace/database/convex/_generated/dataModel.js';
-import Logger from '../lib/logger.js';
-import Encryption from '@workspace/shared/lib/Encryption.js';
-import Microsoft365Connector from '@workspace/shared/lib/connectors/Microsoft365Connector.js';
-import { APIResponse } from '@workspace/shared/types/api.js';
-import { DataFetchPayload } from '@workspace/shared/types/pipeline/events.js';
-import { Microsoft365DataSourceConfig } from '@workspace/shared/types/integrations/microsoft-365/index.js';
+import { BaseAdapter, RawDataProps, RawDataResult } from "./BaseAdapter.js";
+import type { Doc } from "@workspace/database/convex/_generated/dataModel.js";
+import Logger from "../lib/logger.js";
+import Encryption from "@workspace/shared/lib/Encryption.js";
+import Microsoft365Connector from "@workspace/shared/lib/connectors/Microsoft365Connector.js";
+import { APIResponse } from "@workspace/shared/types/api.js";
+import { DataFetchPayload } from "@workspace/shared/types/pipeline/events.js";
+import { Microsoft365DataSourceConfig } from "@workspace/shared/types/integrations/microsoft-365/index.js";
 
 export class Microsoft365Adapter extends BaseAdapter {
   private licenseCatalog: Map<string, string> = new Map();
   private catalogLoaded = false;
 
   constructor() {
-    super('microsoft-365', ['identities', 'groups', 'roles', 'policies', 'licenses']);
+    super("microsoft-365", [
+      "identities",
+      "groups",
+      "roles",
+      "policies",
+      "licenses",
+    ]);
   }
 
   protected async getRawData(
-    props: RawDataProps
+    props: RawDataProps,
   ): Promise<APIResponse<RawDataResult>> {
     if (!props.dataSource) {
       Logger.log({
-        module: 'Microsoft365Adapter',
-        context: 'getRawData',
-        message: 'Microsoft365 does not support global syncs',
-        level: 'error',
+        module: "Microsoft365Adapter",
+        context: "getRawData",
+        message: "Microsoft365 does not support global syncs",
+        level: "error",
       });
-      return { error: { message: 'Microsoft365 does not support global syncs' } };
+      return {
+        error: { message: "Microsoft365 does not support global syncs" },
+      };
     }
 
     switch (props.eventData.entityType) {
-      case 'identities': {
+      case "identities": {
         return await this.handleIdentitySync(props.dataSource, props.cursor);
       }
-      case 'groups': {
+      case "groups": {
         return await this.handleGroupSync(props.dataSource);
       }
-      case 'roles': {
+      case "roles": {
         return await this.handleRoleSync(props.dataSource);
       }
-      case 'policies': {
+      case "policies": {
         return await this.handlePolicySync(props.dataSource);
       }
-      case 'licenses': {
+      case "licenses": {
         return await this.handleLicenseSync(props.dataSource);
       }
     }
 
     Logger.log({
-      module: 'Microsoft365Adapter',
-      context: 'getRawData',
+      module: "Microsoft365Adapter",
+      context: "getRawData",
       message: `Entity type not supported: ${props.eventData.entityType}`,
-      level: 'error',
+      level: "error",
     });
     return {
-      error: { message: `Entity type not supported: ${props.eventData.entityType}` },
+      error: {
+        message: `Entity type not supported: ${props.eventData.entityType}`,
+      },
     };
   }
 
   private async handleIdentitySync(
-    dataSource: Doc<'data_sources'>,
-    cursor?: string
+    dataSource: Doc<"data_sources">,
+    cursor?: string,
   ): Promise<APIResponse<RawDataResult>> {
     const config = dataSource.config as Microsoft365DataSourceConfig;
 
     if (!config?.domainMappings?.length) {
       Logger.log({
-        module: 'Microsoft365Adapter',
-        context: 'handleIdentitySync',
-        message: 'Data source has no mapped domains or sites',
-        level: 'error',
+        module: "Microsoft365Adapter",
+        context: "handleIdentitySync",
+        message: "Data source has no mapped domains or sites",
+        level: "error",
       });
-      return { error: { message: 'Data source has no mapped domains or sites' } };
+      return {
+        error: { message: "Data source has no mapped domains or sites" },
+      };
     }
 
     const connector = new Microsoft365Connector(config);
     const health = await connector.checkHealth();
     if (!health) {
       Logger.log({
-        module: 'Microsoft365Adapter',
-        context: 'handleIdentitySync',
+        module: "Microsoft365Adapter",
+        context: "handleIdentitySync",
         message: `Connector failed health check: ${dataSource._id}`,
-        level: 'error',
+        level: "error",
       });
-      return { error: { message: 'Connector health check failed' } };
+      return { error: { message: "Connector health check failed" } };
     }
 
     // Call connector with cursor support
@@ -106,10 +114,10 @@ export class Microsoft365Adapter extends BaseAdapter {
             JSON.stringify({
               ...rawData,
               signInActivity: undefined,
-            })
+            }),
           );
           const siteID = config.domainMappings.find((map) =>
-            rawData.userPrincipalName.endsWith(map.domain)
+            rawData.userPrincipalName.endsWith(map.domain),
           )?.siteId;
 
           return {
@@ -126,7 +134,7 @@ export class Microsoft365Adapter extends BaseAdapter {
   }
 
   private async handleGroupSync(
-    dataSource: Doc<'data_sources'>
+    dataSource: Doc<"data_sources">,
   ): Promise<APIResponse<RawDataResult>> {
     const config = dataSource.config as Microsoft365DataSourceConfig;
 
@@ -134,12 +142,12 @@ export class Microsoft365Adapter extends BaseAdapter {
     const health = await connector.checkHealth();
     if (!health) {
       Logger.log({
-        module: 'Microsoft365Adapter',
-        context: 'handleGroupSync',
+        module: "Microsoft365Adapter",
+        context: "handleGroupSync",
         message: `Connector failed health check: ${dataSource._id}`,
-        level: 'error',
+        level: "error",
       });
-      return { error: { message: 'Connector health check failed' } };
+      return { error: { message: "Connector health check failed" } };
     }
 
     const { data: groups, error } = await connector.getGroups();
@@ -154,7 +162,7 @@ export class Microsoft365Adapter extends BaseAdapter {
             JSON.stringify({
               ...rawData,
               signInActivity: undefined,
-            })
+            }),
           );
 
           return {
@@ -169,7 +177,7 @@ export class Microsoft365Adapter extends BaseAdapter {
   }
 
   private async handlePolicySync(
-    dataSource: Doc<'data_sources'>
+    dataSource: Doc<"data_sources">,
   ): Promise<APIResponse<RawDataResult>> {
     const config = dataSource.config as Microsoft365DataSourceConfig;
 
@@ -177,22 +185,24 @@ export class Microsoft365Adapter extends BaseAdapter {
     const health = await connector.checkHealth();
     if (!health) {
       Logger.log({
-        module: 'Microsoft365Adapter',
-        context: 'handlePolicySync',
+        module: "Microsoft365Adapter",
+        context: "handlePolicySync",
         message: `Connector failed health check: ${dataSource._id}`,
-        level: 'error',
+        level: "error",
       });
-      return { error: { message: 'Connector health check failed' } };
+      return { error: { message: "Connector health check failed" } };
     }
 
-    const { data: policies, error } = await connector.getConditionalAccessPolicies();
+    const { data: policies, error } =
+      await connector.getConditionalAccessPolicies();
     if (error) {
       return { error };
     }
 
-    const { data: securityDefaults } = await connector.getSecurityDefaultsEnabled();
+    const { data: securityDefaults } =
+      await connector.getSecurityDefaultsEnabled();
     const sdPolicy = {
-      externalID: 'security-defaults',
+      externalID: "security-defaults",
       dataHash: Encryption.sha256(String(securityDefaults || false)),
       rawData: securityDefaults,
     };
@@ -206,7 +216,7 @@ export class Microsoft365Adapter extends BaseAdapter {
                 ...rawData,
                 createdDateTime: undefined,
                 modifiedDataTime: undefined,
-              })
+              }),
             );
 
             return {
@@ -223,7 +233,7 @@ export class Microsoft365Adapter extends BaseAdapter {
   }
 
   private async handleRoleSync(
-    dataSource: Doc<'data_sources'>
+    dataSource: Doc<"data_sources">,
   ): Promise<APIResponse<RawDataResult>> {
     const config = dataSource.config as Microsoft365DataSourceConfig;
 
@@ -231,12 +241,12 @@ export class Microsoft365Adapter extends BaseAdapter {
     const health = await connector.checkHealth();
     if (!health) {
       Logger.log({
-        module: 'Microsoft365Adapter',
-        context: 'handleRoleSync',
+        module: "Microsoft365Adapter",
+        context: "handleRoleSync",
         message: `Connector failed health check: ${dataSource._id}`,
-        level: 'error',
+        level: "error",
       });
-      return { error: { message: 'Connector health check failed' } };
+      return { error: { message: "Connector health check failed" } };
     }
 
     const { data: roles, error } = await connector.getRoles();
@@ -250,7 +260,7 @@ export class Microsoft365Adapter extends BaseAdapter {
           const dataHash = Encryption.sha256(
             JSON.stringify({
               ...rawData,
-            })
+            }),
           );
 
           return {
@@ -272,18 +282,18 @@ export class Microsoft365Adapter extends BaseAdapter {
     if (this.catalogLoaded) return;
 
     const csvUrl =
-      'https://download.microsoft.com/download/e/3/e/e3e9faf2-f28b-490a-9ada-c6089a1fc5b0/Product%20names%20and%20service%20plan%20identifiers%20for%20licensing.csv';
+      "https://download.microsoft.com/download/e/3/e/e3e9faf2-f28b-490a-9ada-c6089a1fc5b0/Product%20names%20and%20service%20plan%20identifiers%20for%20licensing.csv";
 
     try {
       Logger.log({
-        module: 'Microsoft365Adapter',
-        context: 'loadLicenseCatalog',
-        message: 'Loading license catalog from Microsoft CSV...',
+        module: "Microsoft365Adapter",
+        context: "loadLicenseCatalog",
+        message: "Loading license catalog from Microsoft CSV...",
       });
 
       const response = await fetch(csvUrl);
       const csvText = await response.text();
-      const lines = csvText.split('\n');
+      const lines = csvText.split("\n");
 
       // Skip header row
       for (let i = 1; i < lines.length; i++) {
@@ -301,16 +311,16 @@ export class Microsoft365Adapter extends BaseAdapter {
       this.catalogLoaded = true;
 
       Logger.log({
-        module: 'Microsoft365Adapter',
-        context: 'loadLicenseCatalog',
+        module: "Microsoft365Adapter",
+        context: "loadLicenseCatalog",
         message: `Loaded ${this.licenseCatalog.size / 2} license SKUs from Microsoft CSV`,
       });
     } catch (err) {
       Logger.log({
-        module: 'Microsoft365Adapter',
-        context: 'loadLicenseCatalog',
+        module: "Microsoft365Adapter",
+        context: "loadLicenseCatalog",
         message: `Error loading license catalog: ${err}. Will use SKU IDs as fallback.`,
-        level: 'warn',
+        level: "warn",
       });
       // Don't set catalogLoaded to true so it can retry on next sync
     }
@@ -321,7 +331,7 @@ export class Microsoft365Adapter extends BaseAdapter {
    */
   private parseCSVLine(line: string): string[] {
     const fields: string[] = [];
-    let currentField = '';
+    let currentField = "";
     let insideQuotes = false;
 
     for (let i = 0; i < line.length; i++) {
@@ -329,9 +339,9 @@ export class Microsoft365Adapter extends BaseAdapter {
 
       if (char === '"') {
         insideQuotes = !insideQuotes;
-      } else if (char === ',' && !insideQuotes) {
+      } else if (char === "," && !insideQuotes) {
         fields.push(currentField.trim());
-        currentField = '';
+        currentField = "";
       } else {
         currentField += char;
       }
@@ -346,7 +356,7 @@ export class Microsoft365Adapter extends BaseAdapter {
   }
 
   private async handleLicenseSync(
-    dataSource: Doc<'data_sources'>
+    dataSource: Doc<"data_sources">,
   ): Promise<APIResponse<RawDataResult>> {
     const config = dataSource.config as Microsoft365DataSourceConfig;
 
@@ -354,12 +364,12 @@ export class Microsoft365Adapter extends BaseAdapter {
     const health = await connector.checkHealth();
     if (!health) {
       Logger.log({
-        module: 'Microsoft365Adapter',
-        context: 'handleLicenseSync',
+        module: "Microsoft365Adapter",
+        context: "handleLicenseSync",
         message: `Connector failed health check: ${dataSource._id}`,
-        level: 'error',
+        level: "error",
       });
-      return { error: { message: 'Connector health check failed' } };
+      return { error: { message: "Connector health check failed" } };
     }
 
     // Load catalog from Microsoft's CSV on first license sync
@@ -376,7 +386,7 @@ export class Microsoft365Adapter extends BaseAdapter {
           const dataHash = Encryption.sha256(
             JSON.stringify({
               ...rawData,
-            })
+            }),
           );
 
           // Try to get friendly name from catalog

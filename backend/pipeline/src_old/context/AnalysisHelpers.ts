@@ -9,7 +9,10 @@
  *   const hasM FA = isInGroup(context, identityId, mfaGroupId);
  */
 
-import type { Doc, Id } from "@workspace/database/convex/_generated/dataModel.js";
+import type {
+  Doc,
+  Id,
+} from "@workspace/database/convex/_generated/dataModel.js";
 import type { AnalysisContext } from "./AnalysisContext.js";
 
 /**
@@ -17,9 +20,10 @@ import type { AnalysisContext } from "./AnalysisContext.js";
  */
 export function getGroupsForIdentity(
   context: AnalysisContext,
-  identityId: Id<"entities">
+  identityId: Id<"entities">,
 ): Doc<"entities">[] {
-  const groupIds = context.relationshipMaps.identityToGroups.get(identityId) || [];
+  const groupIds =
+    context.relationshipMaps.identityToGroups.get(identityId) || [];
   return groupIds
     .map((id) => context.entityMaps.groupsById.get(id))
     .filter((g): g is Doc<"entities"> => g !== undefined);
@@ -31,9 +35,10 @@ export function getGroupsForIdentity(
 export function isInGroup(
   context: AnalysisContext,
   identityId: Id<"entities">,
-  groupId: Id<"entities">
+  groupId: Id<"entities">,
 ): boolean {
-  const groupIds = context.relationshipMaps.identityToGroups.get(identityId) || [];
+  const groupIds =
+    context.relationshipMaps.identityToGroups.get(identityId) || [];
   return groupIds.includes(groupId);
 }
 
@@ -42,9 +47,10 @@ export function isInGroup(
  */
 export function getRolesForIdentity(
   context: AnalysisContext,
-  identityId: Id<"entities">
+  identityId: Id<"entities">,
 ): Doc<"entities">[] {
-  const roleIds = context.relationshipMaps.identityToRoles.get(identityId) || [];
+  const roleIds =
+    context.relationshipMaps.identityToRoles.get(identityId) || [];
   return roleIds
     .map((id) => context.entityMaps.rolesById.get(id))
     .filter((r): r is Doc<"entities"> => r !== undefined);
@@ -56,9 +62,10 @@ export function getRolesForIdentity(
 export function hasRole(
   context: AnalysisContext,
   identityId: Id<"entities">,
-  roleId: Id<"entities">
+  roleId: Id<"entities">,
 ): boolean {
-  const roleIds = context.relationshipMaps.identityToRoles.get(identityId) || [];
+  const roleIds =
+    context.relationshipMaps.identityToRoles.get(identityId) || [];
   return roleIds.includes(roleId);
 }
 
@@ -67,7 +74,7 @@ export function hasRole(
  */
 export function isAdmin(
   context: AnalysisContext,
-  identityId: Id<"entities">
+  identityId: Id<"entities">,
 ): boolean {
   const roles = getRolesForIdentity(context, identityId);
   return roles.some((role) => {
@@ -81,9 +88,10 @@ export function isAdmin(
  */
 export function getLicensesForIdentity(
   context: AnalysisContext,
-  identityId: Id<"entities">
+  identityId: Id<"entities">,
 ): Doc<"entities">[] {
-  const licenseIds = context.relationshipMaps.identityToLicenses.get(identityId) || [];
+  const licenseIds =
+    context.relationshipMaps.identityToLicenses.get(identityId) || [];
   return licenseIds
     .map((id) => context.entityMaps.licensesById.get(id))
     .filter((l): l is Doc<"entities"> => l !== undefined);
@@ -95,9 +103,10 @@ export function getLicensesForIdentity(
 export function hasLicense(
   context: AnalysisContext,
   identityId: Id<"entities">,
-  licenseId: Id<"entities">
+  licenseId: Id<"entities">,
 ): boolean {
-  const licenseIds = context.relationshipMaps.identityToLicenses.get(identityId) || [];
+  const licenseIds =
+    context.relationshipMaps.identityToLicenses.get(identityId) || [];
   return licenseIds.includes(licenseId);
 }
 
@@ -106,19 +115,24 @@ export function hasLicense(
  */
 export function getPoliciesForIdentity(
   context: AnalysisContext,
-  identityId: Id<"entities">
+  identityId: Id<"entities">,
 ): Doc<"entities">[] {
   const policyIds = new Set<Id<"entities">>();
 
   // Direct policies
-  const directPolicyIds = context.relationshipMaps.identityToPolicies.get(identityId) || [];
+  const directPolicyIds =
+    context.relationshipMaps.identityToPolicies.get(identityId) || [];
   directPolicyIds.forEach((id) => policyIds.add(id));
 
   // Policies via groups
-  const groupIds = context.relationshipMaps.identityToGroups.get(identityId) || [];
+  const groupIds =
+    context.relationshipMaps.identityToGroups.get(identityId) || [];
   for (const groupId of groupIds) {
     // Find policies that target this group
-    for (const [policyId, targets] of context.relationshipMaps.policyToTargets.entries()) {
+    for (const [
+      policyId,
+      targets,
+    ] of context.relationshipMaps.policyToTargets.entries()) {
       if (targets.includes(groupId)) {
         policyIds.add(policyId);
       }
@@ -136,7 +150,7 @@ export function getPoliciesForIdentity(
 export function doesPolicyApply(
   context: AnalysisContext,
   policyId: Id<"entities">,
-  identityId: Id<"entities">
+  identityId: Id<"entities">,
 ): boolean {
   const targets = context.relationshipMaps.policyToTargets.get(policyId) || [];
 
@@ -146,7 +160,8 @@ export function doesPolicyApply(
   }
 
   // Check via group membership
-  const groupIds = context.relationshipMaps.identityToGroups.get(identityId) || [];
+  const groupIds =
+    context.relationshipMaps.identityToGroups.get(identityId) || [];
   return groupIds.some((groupId) => targets.includes(groupId));
 }
 
@@ -155,7 +170,7 @@ export function doesPolicyApply(
  */
 export function getGroupMembers(
   context: AnalysisContext,
-  groupId: Id<"entities">
+  groupId: Id<"entities">,
 ): Doc<"entities">[] {
   const memberIds = context.relationshipMaps.groupToMembers.get(groupId) || [];
   return memberIds
@@ -168,9 +183,10 @@ export function getGroupMembers(
  */
 export function getRoleAssignees(
   context: AnalysisContext,
-  roleId: Id<"entities">
+  roleId: Id<"entities">,
 ): Doc<"entities">[] {
-  const assigneeIds = context.relationshipMaps.roleToAssignees.get(roleId) || [];
+  const assigneeIds =
+    context.relationshipMaps.roleToAssignees.get(roleId) || [];
   return assigneeIds
     .map((id) => context.entityMaps.identitiesById.get(id))
     .filter((i): i is Doc<"entities"> => i !== undefined);
@@ -181,9 +197,10 @@ export function getRoleAssignees(
  */
 export function getLicenseHolders(
   context: AnalysisContext,
-  licenseId: Id<"entities">
+  licenseId: Id<"entities">,
 ): Doc<"entities">[] {
-  const holderIds = context.relationshipMaps.licenseToHolders.get(licenseId) || [];
+  const holderIds =
+    context.relationshipMaps.licenseToHolders.get(licenseId) || [];
   return holderIds
     .map((id) => context.entityMaps.identitiesById.get(id))
     .filter((i): i is Doc<"entities"> => i !== undefined);
@@ -194,16 +211,22 @@ export function getLicenseHolders(
  */
 export function getIdentitiesToAnalyze(
   context: AnalysisContext,
-  analyzeOnlyChanged: boolean = true
+  analyzeOnlyChanged: boolean = true,
 ): Doc<"entities">[] {
-  if (!analyzeOnlyChanged || !context.changedEntityIds || context.changedEntityIds.length === 0) {
+  if (
+    !analyzeOnlyChanged ||
+    !context.changedEntityIds ||
+    context.changedEntityIds.length === 0
+  ) {
     // Analyze all identities
     return context.identities;
   }
 
   // Analyze only changed identities
   const changedIdSet = new Set(context.changedEntityIds);
-  return context.identities.filter((identity) => changedIdSet.has(identity._id));
+  return context.identities.filter((identity) =>
+    changedIdSet.has(identity._id),
+  );
 }
 
 /**
@@ -211,7 +234,7 @@ export function getIdentitiesToAnalyze(
  */
 export function getEntityByExternalId(
   context: AnalysisContext,
-  externalId: string
+  externalId: string,
 ): Doc<"entities"> | undefined {
   return context.entityMaps.entitiesByExternalId.get(externalId);
 }
@@ -221,7 +244,7 @@ export function getEntityByExternalId(
  */
 export function getEntityById(
   context: AnalysisContext,
-  entityId: Id<"entities">
+  entityId: Id<"entities">,
 ): Doc<"entities"> | undefined {
   return context.entityMaps.entitiesById.get(entityId);
 }
@@ -244,7 +267,9 @@ export function isGuestUser(identity: Doc<"entities">): boolean {
 /**
  * Get all enabled identities from context
  */
-export function getEnabledIdentities(context: AnalysisContext): Doc<"entities">[] {
+export function getEnabledIdentities(
+  context: AnalysisContext,
+): Doc<"entities">[] {
   return context.identities.filter(isIdentityEnabled);
 }
 
@@ -253,9 +278,10 @@ export function getEnabledIdentities(context: AnalysisContext): Doc<"entities">[
  */
 export function getCompanyEndpoints(
   context: AnalysisContext,
-  companyId: Id<"entities">
+  companyId: Id<"entities">,
 ): Doc<"entities">[] {
-  const endpointIds = context.relationshipMaps.companyToEndpoints.get(companyId) || [];
+  const endpointIds =
+    context.relationshipMaps.companyToEndpoints.get(companyId) || [];
   return endpointIds
     .map((id) => context.entityMaps.endpointsById.get(id))
     .filter((e): e is Doc<"entities"> => e !== undefined);
@@ -266,9 +292,10 @@ export function getCompanyEndpoints(
  */
 export function getCompanyFirewalls(
   context: AnalysisContext,
-  companyId: Id<"entities">
+  companyId: Id<"entities">,
 ): Doc<"entities">[] {
-  const firewallIds = context.relationshipMaps.companyToFirewalls.get(companyId) || [];
+  const firewallIds =
+    context.relationshipMaps.companyToFirewalls.get(companyId) || [];
   return firewallIds
     .map((id) => context.entityMaps.firewallsById.get(id))
     .filter((f): f is Doc<"entities"> => f !== undefined);

@@ -44,7 +44,7 @@ class NatsClient {
 
   async subscribe(
     subject: string,
-    handler: (data: any) => Promise<void>
+    handler: (data: any) => Promise<void>,
   ): Promise<Subscription> {
     if (!this.connection) {
       throw new Error("NATS not connected");

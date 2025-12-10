@@ -70,12 +70,14 @@ class TenantMigration {
   private static config: MigrationConfig;
 
   static initialize(): void {
-    const tenantList = (process.env.BULLMQ_TENANTS || '').split(',').filter(Boolean);
-    const percentage = parseInt(process.env.MIGRATION_PERCENTAGE || '0');
+    const tenantList = (process.env.BULLMQ_TENANTS || "")
+      .split(",")
+      .filter(Boolean);
+    const percentage = parseInt(process.env.MIGRATION_PERCENTAGE || "0");
 
     this.config = {
-      bullmqEnabled: process.env.USE_BULLMQ === 'true',
-      unifiedAnalyzerEnabled: process.env.USE_UNIFIED_ANALYZER === 'true',
+      bullmqEnabled: process.env.USE_BULLMQ === "true",
+      unifiedAnalyzerEnabled: process.env.USE_UNIFIED_ANALYZER === "true",
       tenantIds: new Set(tenantList),
       percentage,
     };
@@ -107,7 +109,7 @@ class TenantMigration {
   private static isInPercentage(tenantId: string, percentage: number): boolean {
     // Consistent hash-based selection
     const hash = this.hashString(tenantId);
-    return (hash % 100) < percentage;
+    return hash % 100 < percentage;
   }
 
   private static hashString(str: string): number {
@@ -166,7 +168,7 @@ async function main() {
   ];
 
   // Comparison mode: Run both, compare outputs
-  if (process.env.COMPARE_ANALYZERS === 'true') {
+  if (process.env.COMPARE_ANALYZERS === "true") {
     await setupComparisonMode(unifiedAnalyzer, legacyAnalyzers);
   }
 
@@ -178,9 +180,9 @@ async function main() {
   }
 
   Logger.log({
-    module: 'Main',
-    context: 'startup',
-    message: 'Pipeline started in migration mode',
+    module: "Main",
+    context: "startup",
+    message: "Pipeline started in migration mode",
     metadata: {
       bullmqEnabled: process.env.USE_BULLMQ,
       unifiedAnalyzerEnabled: process.env.USE_UNIFIED_ANALYZER,
@@ -195,14 +197,14 @@ async function main() {
 ```typescript
 async function setupComparisonMode(
   unifiedAnalyzer: UnifiedAnalyzer,
-  legacyAnalyzers: any[]
+  legacyAnalyzers: any[],
 ): Promise<void> {
   // Intercept analysis events
-  await NatsClient.subscribe('linked.>', async (event) => {
+  await NatsClient.subscribe("linked.>", async (event) => {
     Logger.log({
-      module: 'ComparisonMode',
-      context: 'intercept',
-      message: 'Running both analyzers for comparison',
+      module: "ComparisonMode",
+      context: "intercept",
+      message: "Running both analyzers for comparison",
     });
 
     // Run both in parallel
@@ -216,10 +218,10 @@ async function setupComparisonMode(
 
     if (!comparison.match) {
       Logger.log({
-        module: 'ComparisonMode',
-        context: 'mismatch',
-        message: 'Findings mismatch detected!',
-        level: 'warn',
+        module: "ComparisonMode",
+        context: "mismatch",
+        message: "Findings mismatch detected!",
+        level: "warn",
         metadata: {
           unified: unifiedResults,
           legacy: legacyResults,
@@ -229,14 +231,17 @@ async function setupComparisonMode(
 
       // Alert ops team about mismatch
       await alertOpsteam({
-        subject: 'Analyzer Comparison Mismatch',
+        subject: "Analyzer Comparison Mismatch",
         details: comparison,
       });
     }
   });
 }
 
-function compareFindings(unified: any[], legacy: any[]): {
+function compareFindings(
+  unified: any[],
+  legacy: any[],
+): {
   match: boolean;
   differences: string[];
 } {
@@ -249,9 +254,7 @@ function compareFindings(unified: any[], legacy: any[]): {
   for (const [type, count] of Object.entries(unifiedCounts)) {
     const legacyCount = legacyCounts[type] || 0;
     if (count !== legacyCount) {
-      differences.push(
-        `${type}: unified=${count}, legacy=${legacyCount}`
-      );
+      differences.push(`${type}: unified=${count}, legacy=${legacyCount}`);
     }
   }
 
@@ -289,6 +292,7 @@ npm run loadtest:staging
 ```
 
 **Success Criteria**:
+
 - No errors in logs
 - Comparison mode shows 100% match
 - Performance meets targets (<60s analysis)
@@ -310,6 +314,7 @@ npm run logs:production -- --filter tenantId=test_tenant_id
 ```
 
 **Success Criteria**:
+
 - Test tenant working normally
 - No customer complaints
 - Alerts accurate
@@ -328,6 +333,7 @@ npm run deploy:production
 ```
 
 **Monitor**:
+
 - Error rates
 - Performance metrics
 - Customer support tickets
@@ -399,6 +405,7 @@ npm run deploy:production
 ### Rollback Triggers
 
 Rollback if:
+
 - Error rate increases >10%
 - Customer complaints increase
 - Performance degrades
@@ -450,29 +457,29 @@ npm run deploy:production
 // Prometheus metrics (if using)
 const metrics = {
   // Queue metrics
-  queue_depth: new Gauge({ name: 'pipeline_queue_depth' }),
-  queue_latency: new Histogram({ name: 'pipeline_queue_latency_seconds' }),
+  queue_depth: new Gauge({ name: "pipeline_queue_depth" }),
+  queue_latency: new Histogram({ name: "pipeline_queue_latency_seconds" }),
 
   // Analysis metrics
   analysis_duration: new Histogram({
-    name: 'pipeline_analysis_duration_seconds',
-    labelNames: ['analyzer_type'],
+    name: "pipeline_analysis_duration_seconds",
+    labelNames: ["analyzer_type"],
   }),
   findings_count: new Counter({
-    name: 'pipeline_findings_total',
-    labelNames: ['alert_type', 'severity'],
+    name: "pipeline_findings_total",
+    labelNames: ["alert_type", "severity"],
   }),
 
   // Error metrics
   errors_total: new Counter({
-    name: 'pipeline_errors_total',
-    labelNames: ['module', 'error_type'],
+    name: "pipeline_errors_total",
+    labelNames: ["module", "error_type"],
   }),
 
   // Database metrics
   query_duration: new Histogram({
-    name: 'pipeline_query_duration_seconds',
-    labelNames: ['table', 'operation'],
+    name: "pipeline_query_duration_seconds",
+    labelNames: ["table", "operation"],
   }),
 };
 ```
@@ -551,7 +558,9 @@ async function validateAlertCounts() {
 
     if (delta > 0.1) {
       // >10% change
-      console.warn(`Alert count changed significantly for ${type}: ${previousCount} → ${count}`);
+      console.warn(
+        `Alert count changed significantly for ${type}: ${previousCount} → ${count}`,
+      );
     }
   }
 }
@@ -576,15 +585,19 @@ async function validateAlertCounts() {
 After migration, document:
 
 ### What Went Well
+
 - ...
 
 ### What Didn't Go Well
+
 - ...
 
 ### Unexpected Issues
+
 - ...
 
 ### Improvements for Next Time
+
 - ...
 
 ---

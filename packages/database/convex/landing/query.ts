@@ -19,7 +19,7 @@ export const getLandingMetrics = query({
       .collect();
 
     const totalSites = sites.length;
-    const activeSites = sites.filter(site => site.status === "active").length;
+    const activeSites = sites.filter((site) => site.status === "active").length;
 
     // Get data sources (integrations) count
     const dataSources = await ctx.db
@@ -28,7 +28,9 @@ export const getLandingMetrics = query({
       .collect();
 
     const totalIntegrations = dataSources.length;
-    const activeIntegrations = dataSources.filter(ds => ds.status === "active").length;
+    const activeIntegrations = dataSources.filter(
+      (ds) => ds.status === "active",
+    ).length;
 
     // Get agents count and status breakdown
     const agents = await ctx.db
@@ -37,9 +39,15 @@ export const getLandingMetrics = query({
       .collect();
 
     const totalAgents = agents.length;
-    const onlineAgents = agents.filter(agent => agent.status === "online").length;
-    const offlineAgents = agents.filter(agent => agent.status === "offline").length;
-    const unknownAgents = agents.filter(agent => agent.status === "unknown" || !agent.status).length;
+    const onlineAgents = agents.filter(
+      (agent) => agent.status === "online",
+    ).length;
+    const offlineAgents = agents.filter(
+      (agent) => agent.status === "offline",
+    ).length;
+    const unknownAgents = agents.filter(
+      (agent) => agent.status === "unknown" || !agent.status,
+    ).length;
 
     // Get alert counts by severity
     const alerts = await ctx.db
@@ -48,13 +56,25 @@ export const getLandingMetrics = query({
       .collect();
 
     const alertCounts = {
-      critical: alerts.filter(alert => alert.severity === "critical" && alert.status === "active").length,
-      high: alerts.filter(alert => alert.severity === "high" && alert.status === "active").length,
-      medium: alerts.filter(alert => alert.severity === "medium" && alert.status === "active").length,
-      low: alerts.filter(alert => alert.severity === "low" && alert.status === "active").length,
+      critical: alerts.filter(
+        (alert) => alert.severity === "critical" && alert.status === "active",
+      ).length,
+      high: alerts.filter(
+        (alert) => alert.severity === "high" && alert.status === "active",
+      ).length,
+      medium: alerts.filter(
+        (alert) => alert.severity === "medium" && alert.status === "active",
+      ).length,
+      low: alerts.filter(
+        (alert) => alert.severity === "low" && alert.status === "active",
+      ).length,
     };
 
-    const totalAlerts = alertCounts.critical + alertCounts.high + alertCounts.medium + alertCounts.low;
+    const totalAlerts =
+      alertCounts.critical +
+      alertCounts.high +
+      alertCounts.medium +
+      alertCounts.low;
 
     // Get entity counts (total entities across all types)
     const entities = await ctx.db

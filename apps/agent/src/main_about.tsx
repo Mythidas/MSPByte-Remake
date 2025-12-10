@@ -8,5 +8,5 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <About />
     <Toaster position="bottom-right" />
-  </React.StrictMode>
+  </React.StrictMode>,
 );

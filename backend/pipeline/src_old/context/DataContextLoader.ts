@@ -18,7 +18,10 @@
  */
 
 import { api } from "@workspace/database/convex/_generated/api.js";
-import type { Doc, Id } from "@workspace/database/convex/_generated/dataModel.js";
+import type {
+  Doc,
+  Id,
+} from "@workspace/database/convex/_generated/dataModel.js";
 import { client } from "@workspace/shared/lib/convex.js";
 import Logger from "../lib/logger.js";
 import TracingManager from "../lib/tracing.js";
@@ -41,7 +44,7 @@ export class DataContextLoader {
   async load(
     tenantId: Id<"tenants">,
     dataSourceId: Id<"data_sources">,
-    options: LoadContextOptions = {}
+    options: LoadContextOptions = {},
   ): Promise<AnalysisContext> {
     const startTime = Date.now();
     this.queryCount = 0;
@@ -63,7 +66,8 @@ export class DataContextLoader {
 
     try {
       // Get data source to determine integration type
-      const { dataSource, integrationType } = await this.queryDataSource(dataSourceId);
+      const { dataSource, integrationType } =
+        await this.queryDataSource(dataSourceId);
 
       // Load all entities in parallel
       const [
@@ -87,7 +91,11 @@ export class DataContextLoader {
       ]);
 
       // Load all relationships
-      const relationships = await this.loadRelationships(tenantId, dataSourceId, options);
+      const relationships = await this.loadRelationships(
+        tenantId,
+        dataSourceId,
+        options,
+      );
 
       // Build relationship maps
       const relationshipMaps = this.buildRelationshipMaps(
@@ -99,7 +107,7 @@ export class DataContextLoader {
         companies,
         endpoints,
         firewalls,
-        relationships
+        relationships,
       );
 
       // Build entity maps
@@ -111,7 +119,7 @@ export class DataContextLoader {
         licenses,
         companies,
         endpoints,
-        firewalls
+        firewalls,
       );
 
       const loadTimeMs = Date.now() - startTime;
@@ -177,7 +185,9 @@ export class DataContextLoader {
   /**
    * Query for data source details and integration type
    */
-  private async queryDataSource(dataSourceId: Id<"data_sources">): Promise<{ dataSource: Doc<"data_sources">; integrationType: string }> {
+  private async queryDataSource(
+    dataSourceId: Id<"data_sources">,
+  ): Promise<{ dataSource: Doc<"data_sources">; integrationType: string }> {
     this.queryCount++;
 
     const dataSource = (await client.query(api.helpers.orm.get_s, {
@@ -211,7 +221,7 @@ export class DataContextLoader {
     tenantId: Id<"tenants">,
     dataSourceId: Id<"data_sources">,
     entityType: string,
-    options: LoadContextOptions
+    options: LoadContextOptions,
   ): Promise<Doc<"entities">[]> {
     // Skip if entity type not in filter
     if (options.entityTypes && !options.entityTypes.includes(entityType)) {
@@ -275,7 +285,7 @@ export class DataContextLoader {
   private async loadRelationships(
     tenantId: Id<"tenants">,
     dataSourceId: Id<"data_sources">,
-    options: LoadContextOptions
+    options: LoadContextOptions,
   ): Promise<Doc<"entity_relationships">[]> {
     if (options.includeRelationships === false) {
       return [];
@@ -316,7 +326,7 @@ export class DataContextLoader {
     companies: Doc<"entities">[],
     endpoints: Doc<"entities">[],
     firewalls: Doc<"entities">[],
-    relationships: Doc<"entity_relationships">[]
+    relationships: Doc<"entity_relationships">[],
   ): RelationshipMaps {
     // Initialize maps
     const maps: RelationshipMaps = {
@@ -383,7 +393,10 @@ export class DataContextLoader {
 
         case "has_license":
           // Identity has license
-          if (licenseIds.has(parentEntityId) && identityIds.has(childEntityId)) {
+          if (
+            licenseIds.has(parentEntityId) &&
+            identityIds.has(childEntityId)
+          ) {
             // Add to identityToLicenses
             if (!maps.identityToLicenses.has(childEntityId)) {
               maps.identityToLicenses.set(childEntityId, []);
@@ -462,7 +475,7 @@ export class DataContextLoader {
     licenses: Doc<"entities">[],
     companies: Doc<"entities">[],
     endpoints: Doc<"entities">[],
-    firewalls: Doc<"entities">[]
+    firewalls: Doc<"entities">[],
   ): EntityMaps {
     const maps: EntityMaps = {
       entitiesById: new Map(),
@@ -480,7 +493,7 @@ export class DataContextLoader {
     // Helper to add entities to maps
     const addToMaps = (
       entities: Doc<"entities">[],
-      typeMap: Map<Id<"entities">, Doc<"entities">>
+      typeMap: Map<Id<"entities">, Doc<"entities">>,
     ) => {
       for (const entity of entities) {
         maps.entitiesById.set(entity._id, entity);
@@ -518,7 +531,8 @@ export class DataContextLoader {
     return {
       queryCount: this.queryCount,
       totalQueryTime: this.totalQueryTime,
-      averageQueryTime: this.queryCount > 0 ? this.totalQueryTime / this.queryCount : 0,
+      averageQueryTime:
+        this.queryCount > 0 ? this.totalQueryTime / this.queryCount : 0,
       slowQueries: this.slowQueries,
       slowQueryCount: this.slowQueries.length,
     };

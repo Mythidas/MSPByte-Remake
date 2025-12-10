@@ -23,19 +23,24 @@
 ## Quick Start
 
 ### Read First
+
 Start with [00_OVERVIEW.md](./00_OVERVIEW.md) to understand:
+
 - Current architecture and identified problems
 - Why this refactor is necessary
 - High-level solution approach
 - Expected benefits
 
 ### Implementation Order
+
 Follow phases **sequentially** (1 → 7):
+
 - Each phase builds on the previous
 - Includes testing/validation before moving forward
 - Can pause between phases safely
 
 ### Prerequisites
+
 - Node.js 18+
 - Access to Redis instance (local or cloud)
 - Convex database access
@@ -46,6 +51,7 @@ Follow phases **sequentially** (1 → 7):
 ## Key Architectural Changes
 
 ### Before
+
 ```
 Scheduler (DB polling every 60s)
   ↓
@@ -57,6 +63,7 @@ AlertManager / TagManager (dual system)
 ```
 
 ### After
+
 ```
 BullMQ Queue (push-based, <1s latency)
   ↓
@@ -97,26 +104,29 @@ AlertManager (unified, with history)
 
 ## Performance Improvements Expected
 
-| Metric | Current | After Refactor | Improvement |
-|--------|---------|----------------|-------------|
-| Job latency | 60s avg | <1s | 60x faster |
-| DB queries per analysis | 800+ | 7-10 | 99% reduction |
-| Analysis runtime | 15+ min | 30s | 30x faster |
-| Data fetching redundancy | 4x duplicate | 1x | 75% reduction |
-| Debugging capability | Poor | Full tracing | Complete visibility |
+| Metric                   | Current      | After Refactor | Improvement         |
+| ------------------------ | ------------ | -------------- | ------------------- |
+| Job latency              | 60s avg      | <1s            | 60x faster          |
+| DB queries per analysis  | 800+         | 7-10           | 99% reduction       |
+| Analysis runtime         | 15+ min      | 30s            | 30x faster          |
+| Data fetching redundancy | 4x duplicate | 1x             | 75% reduction       |
+| Debugging capability     | Poor         | Full tracing   | Complete visibility |
 
 ---
 
 ## Migration Strategy
 
 ### Safe Rollout
+
 1. **Parallel Running**: Keep old system running during migration
 2. **Feature Flags**: Toggle between old/new per tenant
 3. **Gradual Migration**: Move tenants one at a time
 4. **Rollback Plan**: Can revert at any point
 
 ### Testing Checkpoints
+
 Each phase includes:
+
 - Unit tests
 - Integration tests
 - Performance validation
@@ -155,6 +165,7 @@ Once core refactor is complete, the new architecture enables:
 ### Architecture Decisions Made
 
 **Why BullMQ over alternatives?**
+
 - Industry standard with excellent TypeScript support
 - Rich feature set (priorities, retries, rate limiting, flows)
 - Redis persistence handles crash recovery
@@ -162,6 +173,7 @@ Once core refactor is complete, the new architecture enables:
 - Better than database polling or pure NATS
 
 **Why UnifiedAnalyzer over separate workers?**
+
 - Eliminates redundant data fetching (primary goal)
 - Ensures consistent data snapshot across all analysis
 - Simplifies debugging (single execution path)
@@ -169,12 +181,14 @@ Once core refactor is complete, the new architecture enables:
 - Coordinates dependent analysis types
 
 **Why keep NATS for events?**
+
 - NATS excellent for pub/sub event distribution
 - BullMQ excellent for job queuing
 - Use each for its strength (not replacing, complementing)
 - Allows future real-time event streaming
 
 **Why alert history table?**
+
 - Critical for debugging alert lifecycle issues
 - Enables audit trail for compliance
 - Foundation for alert flapping detection
@@ -183,16 +197,19 @@ Once core refactor is complete, the new architecture enables:
 ### Key Trade-offs
 
 **Redis Infrastructure**
+
 - Pro: Fast, reliable, feature-rich
 - Con: Additional infrastructure to maintain
 - Decision: Worth it for performance gains and reliability
 
 **Single vs Multiple Workers**
+
 - Pro (single): Eliminates redundancy, simpler debugging
 - Con (single): Less modularity, larger file
 - Decision: Performance and consistency trump modularity
 
 **Database as Audit Trail**
+
 - Pro: Complete history, queryable, permanent
 - Con: Additional writes on every job
 - Decision: Worth it for debugging and compliance
@@ -231,6 +248,7 @@ Location: `AlertManager.processAnalysisBatch()` after line 250 (filtering step)
 ## Getting Help
 
 ### Documentation Structure
+
 - Each phase file is self-contained
 - Code examples are complete and runnable
 - Includes testing and validation steps
@@ -301,6 +319,7 @@ Location: `AlertManager.processAnalysisBatch()` after line 250 (filtering step)
 ### Success Criteria
 
 **Must achieve before considering complete:**
+
 1. MFA alert bug no longer reproduces
 2. Analysis completes in <60s (vs 15min currently)
 3. DB queries reduced by >90%

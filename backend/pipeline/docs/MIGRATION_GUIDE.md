@@ -23,36 +23,43 @@ This guide covers the complete migration from the old backend architecture to th
 The MSPByte Pipeline has been completely refactored across 7 phases:
 
 **Phase 1: Infrastructure & Event Flow**
+
 - Replaced direct database calls with NATS event bus
 - Introduced BullMQ job queue with Redis
 - Event-driven architecture for decoupling
 
 **Phase 2: Adapters & Processors**
+
 - Standardized data source adapters
 - Unified entity processing pipeline
 - Consistent error handling and retry logic
 
 **Phase 3: Context Loading**
+
 - Eliminated redundant queries (1400+ → 7-10 queries)
 - Pre-loaded relationship maps for O(1) lookups
 - Massive performance improvement in data loading
 
 **Phase 4: Unified Analyzer**
+
 - Consolidated individual analyzers into unified system
 - Event debouncing (5-minute window)
 - Single analysis pass instead of multiple
 
 **Phase 5: Alert System Integration**
+
 - New AlertManager for centralized alert handling
 - Fixed MFA alert bug with explicit analysis types
 - 80% reduction in events, 10-20x faster alerts
 
 **Phase 6: Database Optimizations**
+
 - Composite indexes for query performance
 - Batch loading pattern (97% query reduction in linkers)
 - Real-time slow query detection
 
 **Phase 7: Migration & Deployment** (Current)
+
 - Feature flags for safe rollout
 - Comparison mode for validation
 - Prometheus metrics for monitoring
@@ -140,31 +147,37 @@ Global Flag (lowest priority)
 ### Available Flags
 
 **`new_pipeline`** (Master Switch)
+
 - Controls entire new pipeline architecture
 - When disabled, falls back to old system (if available)
 - Recommended: Start at 0%, increase gradually
 
 **`unified_analyzer`**
+
 - Controls unified analysis system (Phase 4)
 - When disabled, uses individual analyzers
 - Recommended: 100% once new_pipeline is enabled
 
 **`alert_manager`**
+
 - Controls new alert manager (Phase 5)
 - When disabled, uses old alert system
 - Recommended: 100% once new_pipeline is enabled
 
 **`batch_loading`**
+
 - Controls optimized batch loading in linkers (Phase 6)
 - When disabled, uses N+1 query pattern
 - Recommended: 100% (massive performance gain)
 
 **`performance_monitoring`**
+
 - Controls query performance tracking (Phase 6)
 - When disabled, no metrics collection
 - Recommended: 100% (no performance impact)
 
 **`comparison_mode`**
+
 - Runs both old and new pipelines, compares results
 - Use ONLY for validation, never in production
 - Recommended: Enable per-tenant for testing only
@@ -172,21 +185,21 @@ Global Flag (lowest priority)
 ### Setting Flags Programmatically
 
 ```typescript
-import { FeatureFlagManager } from './lib/featureFlags.js';
+import { FeatureFlagManager } from "./lib/featureFlags.js";
 
 const flags = FeatureFlagManager.getInstance();
 
 // Enable for specific tenant
-flags.setTenantOverride('new_pipeline', tenantId, true);
+flags.setTenantOverride("new_pipeline", tenantId, true);
 
 // Adjust rollout percentage
-flags.setRolloutPercentage('new_pipeline', 25); // 25% of tenants
+flags.setRolloutPercentage("new_pipeline", 25); // 25% of tenants
 
 // Disable globally
-flags.setGlobalFlag('new_pipeline', false);
+flags.setGlobalFlag("new_pipeline", false);
 
 // Check status
-const status = flags.getStatus('new_pipeline', tenantId);
+const status = flags.getStatus("new_pipeline", tenantId);
 console.log(status.effectiveForTenant); // true/false
 ```
 
@@ -197,25 +210,30 @@ console.log(status.effectiveForTenant); // true/false
 ### Recommended Phased Rollout
 
 **Week 1: Internal Testing (0% rollout)**
+
 ```bash
 FEATURE_NEW_PIPELINE=true
 FEATURE_NEW_PIPELINE_ROLLOUT=0
 ```
+
 - Enable for 1-2 internal test tenants using tenant overrides
 - Run comparison mode to validate results
 - Monitor metrics and logs closely
 - Fix any critical issues
 
 **Week 2: Pilot (1% rollout)**
+
 ```bash
 FEATURE_NEW_PIPELINE_ROLLOUT=1
 ```
+
 - Enable for 1% of production tenants
 - Monitor for 3-5 days
 - Validate performance improvements
 - Collect feedback
 
 **Week 3: Gradual Increase (5% → 25% → 50%)**
+
 ```bash
 # Day 1-2: 5%
 FEATURE_NEW_PIPELINE_ROLLOUT=5
@@ -226,14 +244,17 @@ FEATURE_NEW_PIPELINE_ROLLOUT=25
 # Day 6-7: 50%
 FEATURE_NEW_PIPELINE_ROLLOUT=50
 ```
+
 - Increase rollout every 2-3 days
 - Monitor error rates and performance
 - Address any issues before continuing
 
 **Week 4: Full Rollout (100%)**
+
 ```bash
 FEATURE_NEW_PIPELINE_ROLLOUT=100
 ```
+
 - Enable for all tenants
 - Monitor for 1 week
 - Confirm all metrics are healthy
@@ -245,10 +266,10 @@ For high-value or sensitive tenants:
 
 ```typescript
 // Force enable for beta testers
-flags.setTenantOverride('new_pipeline', 'tenant_abc', true);
+flags.setTenantOverride("new_pipeline", "tenant_abc", true);
 
 // Keep VIP customers on old system initially
-flags.setTenantOverride('new_pipeline', 'tenant_vip', false);
+flags.setTenantOverride("new_pipeline", "tenant_vip", false);
 ```
 
 ---
@@ -271,29 +292,37 @@ mspbyte_alerts_total{action="created"} 567
 ### Key Metrics to Monitor
 
 **Success Rate**
+
 ```promql
 rate(mspbyte_pipeline_executions_total{status="success"}[5m])
 /
 rate(mspbyte_pipeline_executions_total[5m])
 ```
+
 Target: >99.5%
 
 **Pipeline Duration**
+
 ```promql
 mspbyte_pipeline_duration_ms
 ```
+
 Target: <60,000ms (1 minute)
 
 **Query Performance**
+
 ```promql
 mspbyte_slow_queries_total
 ```
+
 Target: <1% of total queries
 
 **Alert Processing**
+
 ```promql
 rate(mspbyte_alerts_total{action="created"}[5m])
 ```
+
 Monitor for anomalies
 
 ### Logging
@@ -307,6 +336,7 @@ Key log messages to watch:
 ```
 
 Filter logs by module:
+
 - `DataContextLoader`: Query performance
 - `UnifiedAnalyzer`: Analysis execution
 - `AlertManager`: Alert processing
@@ -317,7 +347,7 @@ Filter logs by module:
 For testing, enable comparison mode:
 
 ```typescript
-import ComparisonMode from './migration/ComparisonMode.js';
+import ComparisonMode from "./migration/ComparisonMode.js";
 
 const comparison = new ComparisonMode();
 const result = await comparison.compare(tenantId, dataSourceId);
@@ -337,25 +367,30 @@ if (result.hasDiscrepancies) {
 If critical issues are discovered:
 
 **Option 1: Disable Globally**
+
 ```bash
 # Set in environment or runtime
 FEATURE_NEW_PIPELINE=false
 ```
+
 - Takes effect immediately
 - All tenants revert to old system
 
 **Option 2: Reduce Rollout**
+
 ```bash
 # Reduce to 0%
 FEATURE_NEW_PIPELINE_ROLLOUT=0
 ```
+
 - Existing sessions continue on new system
 - New sessions use old system
 
 **Option 3: Tenant-Specific Rollback**
+
 ```typescript
 // Disable for specific tenant
-flags.setTenantOverride('new_pipeline', tenantId, false);
+flags.setTenantOverride("new_pipeline", tenantId, false);
 ```
 
 ### Partial Rollback (Individual Features)
@@ -418,8 +453,8 @@ For high-volume tenants, test with realistic data:
 
 ```typescript
 // Simulate large dataset
-const tenantId = 'high_volume_tenant';
-const dataSourceId = 'data_source_id';
+const tenantId = "high_volume_tenant";
+const dataSourceId = "data_source_id";
 
 // Trigger sync
 await triggerSync(tenantId, dataSourceId);
@@ -442,11 +477,13 @@ console.log(`Slow queries: ${summary.slowQueryCount}`);
 **Symptoms**: No jobs being processed, no events in logs
 
 **Diagnosis**:
+
 1. Check feature flag: `flags.getStatus('new_pipeline', tenantId)`
 2. Verify infrastructure: Redis and NATS running
 3. Check job queue: `bull-board` dashboard
 
 **Solution**:
+
 ```bash
 # Verify infrastructure
 docker ps | grep redis
@@ -461,11 +498,13 @@ flags.getStatus('new_pipeline', tenantId)
 **Symptoms**: Pipeline taking >2 minutes, many slow queries
 
 **Diagnosis**:
+
 1. Check if batch loading is enabled
 2. Review slow query logs
 3. Verify composite indexes exist
 
 **Solution**:
+
 ```bash
 # Enable batch loading
 FEATURE_BATCH_LOADING=true
@@ -479,11 +518,13 @@ metrics.getSummary().slowQueryCount
 **Symptoms**: Alerts remain active after issues are fixed
 
 **Diagnosis**:
+
 1. Check if AlertManager is enabled
 2. Verify analysisTypes array is populated
 3. Review alert resolution logic
 
 **Solution**:
+
 ```typescript
 // Ensure analysisTypes is explicit in events
 {
@@ -497,11 +538,13 @@ metrics.getSummary().slowQueryCount
 **Symptoms**: Comparison mode shows differences between old and new
 
 **Diagnosis**:
+
 1. Review comparison report details
 2. Check if differences are expected (e.g., performance vs. functionality)
 3. Validate against known data
 
 **Solution**:
+
 - If critical discrepancies: Investigate and fix before rollout
 - If minor differences: Document and accept if intentional
 
@@ -585,6 +628,7 @@ For issues during migration:
 4. **Rollback**: Use emergency procedures if critical
 
 **Emergency Contacts**:
+
 - Infrastructure Team: infra@example.com
 - Backend Team: backend@example.com
 - On-Call: oncall@example.com

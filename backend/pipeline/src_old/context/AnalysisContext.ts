@@ -10,29 +10,32 @@
  *   const groups = getGroupsForIdentity(context, identityId);
  */
 
-import type { Doc, Id } from "@workspace/database/convex/_generated/dataModel.js";
+import type {
+  Doc,
+  Id,
+} from "@workspace/database/convex/_generated/dataModel.js";
 
 /**
  * Pre-computed relationship maps for O(1) lookups
  */
 export interface RelationshipMaps {
   // Identity relationships
-  identityToGroups: Map<Id<"entities">, Id<"entities">[]>;  // identity → groups they're in
-  identityToRoles: Map<Id<"entities">, Id<"entities">[]>;   // identity → roles they have
+  identityToGroups: Map<Id<"entities">, Id<"entities">[]>; // identity → groups they're in
+  identityToRoles: Map<Id<"entities">, Id<"entities">[]>; // identity → roles they have
   identityToLicenses: Map<Id<"entities">, Id<"entities">[]>; // identity → licenses assigned
   identityToPolicies: Map<Id<"entities">, Id<"entities">[]>; // identity → policies that apply
 
   // Group relationships
-  groupToMembers: Map<Id<"entities">, Id<"entities">[]>;    // group → member identities
+  groupToMembers: Map<Id<"entities">, Id<"entities">[]>; // group → member identities
 
   // Role relationships
-  roleToAssignees: Map<Id<"entities">, Id<"entities">[]>;   // role → identities with this role
+  roleToAssignees: Map<Id<"entities">, Id<"entities">[]>; // role → identities with this role
 
   // Policy relationships
-  policyToTargets: Map<Id<"entities">, Id<"entities">[]>;   // policy → identities/groups it applies to
+  policyToTargets: Map<Id<"entities">, Id<"entities">[]>; // policy → identities/groups it applies to
 
   // License relationships
-  licenseToHolders: Map<Id<"entities">, Id<"entities">[]>;  // license → identities that have it
+  licenseToHolders: Map<Id<"entities">, Id<"entities">[]>; // license → identities that have it
 
   // Company relationships (for multi-entity scenarios)
   companyToEndpoints: Map<Id<"entities">, Id<"entities">[]>; // company → endpoints

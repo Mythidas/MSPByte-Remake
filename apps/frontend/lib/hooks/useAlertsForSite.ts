@@ -11,7 +11,7 @@ import { api, Doc } from "@/lib/api";
  */
 export function useAlertsForSite(
   siteId: string | null,
-  integrationSlug?: string
+  integrationId?: string,
 ) {
   return useQuery(
     api.helpers.orm.list,
@@ -22,8 +22,10 @@ export function useAlertsForSite(
             name: "by_site",
             params: { siteId },
           },
-          filters: integrationSlug ? { integrationSlug } : undefined,
+          filters: integrationId
+            ? { integrationId: integrationId as any }
+            : undefined,
         }
-      : "skip"
+      : "skip",
   ) as Doc<"entity_alerts">[] | undefined;
 }

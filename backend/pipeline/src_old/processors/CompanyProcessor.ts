@@ -1,7 +1,4 @@
-import {
-  BaseProcessor,
-  CompanyData,
-} from "./BaseProcessor.js";
+import { BaseProcessor, CompanyData } from "./BaseProcessor.js";
 import Logger from "../lib/logger.js";
 import { AutoTaskCompany } from "@workspace/shared/types/integrations/autotask/company.js";
 import { HaloPSASite } from "@workspace/shared/types/integrations/halopsa/sites.js";
@@ -19,7 +16,7 @@ export class CompanyProcessor extends BaseProcessor {
 
   protected normalizeData(
     integrationType: IntegrationType,
-    data: DataFetchPayload[]
+    data: DataFetchPayload[],
   ): CompanyData[] {
     switch (integrationType) {
       case "autotask":

@@ -16,17 +16,20 @@
  *   await scheduler.initialize();
  */
 
-import { api } from '@workspace/database/convex/_generated/api.js';
-import type { Doc, Id } from '@workspace/database/convex/_generated/dataModel.js';
-import { client } from '@workspace/shared/lib/convex.js';
-import Logger from '../lib/logger.js';
-import type { QueueManager } from '../queue/QueueManager.js';
+import { api } from "@workspace/database/convex/_generated/api.js";
+import type {
+  Doc,
+  Id,
+} from "@workspace/database/convex/_generated/dataModel.js";
+import { client } from "@workspace/shared/lib/convex.js";
+import Logger from "../lib/logger.js";
+import type { QueueManager } from "../queue/QueueManager.js";
 
 export interface ScheduledJobConfig {
   name: string; // Unique name for the repeatable job
   action: string; // NATS action (e.g., "microsoft-365.sync.identities")
-  tenantId: Id<'tenants'>;
-  dataSourceId: Id<'data_sources'>;
+  tenantId: Id<"tenants">;
+  dataSourceId: Id<"data_sources">;
   integrationSlug: string;
   entityType: string;
   pattern: string; // Cron pattern
@@ -47,57 +50,66 @@ export class JobScheduler {
    */
   public async initialize(): Promise<void> {
     Logger.log({
-      module: 'JobScheduler',
-      context: 'initialize',
-      message: 'Initializing job scheduler...',
+      module: "JobScheduler",
+      context: "initialize",
+      message: "Initializing job scheduler...",
     });
 
     // Check for required environment variables
     if (!process.env.CONVEX_URL) {
-      throw new Error('CONVEX_URL environment variable is required for JobScheduler');
+      throw new Error(
+        "CONVEX_URL environment variable is required for JobScheduler",
+      );
     }
     if (!process.env.CONVEX_API_KEY) {
-      throw new Error('CONVEX_API_KEY environment variable is required for JobScheduler');
+      throw new Error(
+        "CONVEX_API_KEY environment variable is required for JobScheduler",
+      );
     }
 
     try {
       // 1. Load all active integrations
       const integrations = await this.loadActiveIntegrations();
       Logger.log({
-        module: 'JobScheduler',
-        context: 'initialize',
+        module: "JobScheduler",
+        context: "initialize",
         message: `Loaded ${integrations.length} active integrations`,
       });
 
       // 2. Load all active data sources
       const dataSources = await this.loadActiveDataSources();
       Logger.log({
-        module: 'JobScheduler',
-        context: 'initialize',
+        module: "JobScheduler",
+        context: "initialize",
         message: `Loaded ${dataSources.length} active data sources`,
       });
 
       // 3. Register jobs for each data source + entity type combination
       let registeredCount = 0;
       for (const dataSource of dataSources) {
-        const integration = integrations.find((i) => i._id === dataSource.integrationId);
+        const integration = integrations.find(
+          (i) => i._id === dataSource.integrationId,
+        );
         if (!integration) {
           Logger.log({
-            module: 'JobScheduler',
-            context: 'initialize',
+            module: "JobScheduler",
+            context: "initialize",
             message: `Skipping data source ${dataSource._id}: integration not found`,
-            level: 'warn',
+            level: "warn",
           });
           continue;
         }
 
-        const jobsForSource = await this.registerJobsForDataSource(dataSource, integration);
+        const jobsForSource = await this.registerJobsForDataSource(
+          dataSource,
+          integration,
+        );
         registeredCount += jobsForSource;
       }
 
       Logger.log({
-        module: 'JobScheduler',
-        context: 'initialize',
+        module: "JobScheduler",
+        context: "initialize",
         message: `Job scheduler initialized: ${registeredCount} repeatable jobs registered`,
         metadata: {
           totalJobs: registeredCount,
@@ -107,10 +119,10 @@ export class JobScheduler {
       });
     } catch (error) {
       Logger.log({
-        module: 'JobScheduler',
-        context: 'initialize',
+        module: "JobScheduler",
+        context: "initialize",
         message: `Failed to initialize job scheduler: ${error}`,
-        level: 'error',
+        level: "error",
         error: error as Error,
       });
       throw error;
@@ -120,14 +132,14 @@ export class JobScheduler {
   /**
    * Load all active integrations from database
    */
-  private async loadActiveIntegrations(): Promise<Doc<'integrations'>[]> {
+  private async loadActiveIntegrations(): Promise<Doc<"integrations">[]> {
     const integrations = (await client.query(api.helpers.orm.list_s, {
-      tableName: 'integrations',
+      tableName: "integrations",
       secret: process.env.CONVEX_API_KEY!,
       filters: {
         isActive: true,
       },
-    })) as Doc<'integrations'>[];
+    })) as Doc<"integrations">[];
 
     return integrations;
   }
@@ -135,14 +147,14 @@ export class JobScheduler {
   /**
    * Load all active data sources from database
    */
-  private async loadActiveDataSources(): Promise<Doc<'data_sources'>[]> {
+  private async loadActiveDataSources(): Promise<Doc<"data_sources">[]> {
     const dataSources = (await client.query(api.helpers.orm.list_s, {
-      tableName: 'data_sources',
+      tableName: "data_sources",
       secret: process.env.CONVEX_API_KEY!,
       filters: {
-        status: 'active',
+        status: "active",
       },
-    })) as Doc<'data_sources'>[];
+    })) as Doc<"data_sources">[];
 
     return dataSources;
   }
@@ -151,8 +163,8 @@ export class JobScheduler {
    * Register repeatable jobs for a data source
    */
   private async registerJobsForDataSource(
-    dataSource: Doc<'data_sources'>,
-    integration: Doc<'integrations'>
+    dataSource: Doc<"data_sources">,
+    integration: Doc<"integrations">,
   ): Promise<number> {
     let count = 0;
 
@@ -176,10 +188,10 @@ export class JobScheduler {
         count++;
       } catch (error) {
         Logger.log({
-          module: 'JobScheduler',
-          context: 'registerJobsForDataSource',
+          module: "JobScheduler",
+          context: "registerJobsForDataSource",
           message: `Failed to register job for ${supportedType.type}: ${error}`,
-          level: 'error',
+          level: "error",
           error: error as Error,
         });
       }
@@ -191,7 +203,9 @@ export class JobScheduler {
   /**
    * Register a repeatable job with BullMQ
    */
-  private async registerRepeatableJob(config: ScheduledJobConfig): Promise<void> {
+  private async registerRepeatableJob(
+    config: ScheduledJobConfig,
+  ): Promise<void> {
     await this.queueManager.scheduleRecurringJob({
       name: config.name,
       pattern: config.pattern,
@@ -207,8 +221,8 @@ export class JobScheduler {
     });
 
     Logger.log({
-      module: 'JobScheduler',
-      context: 'registerRepeatableJob',
+      module: "JobScheduler",
+      context: "registerRepeatableJob",
       message: `Registered repeatable job: ${config.name}`,
       metadata: {
         action: config.action,
@@ -230,15 +244,15 @@ export class JobScheduler {
   private convertMinutesToCron(minutes: number): string {
     // Special cases
     if (minutes === 60) {
-      return '0 * * * *'; // Hourly
+      return "0 * * * *"; // Hourly
     }
 
     if (minutes === 1440) {
-      return '0 0 * * *'; // Daily at midnight
+      return "0 0 * * *"; // Daily at midnight
     }
 
     if (minutes === 10080) {
-      return '0 0 * * 0'; // Weekly on Sunday at midnight
+      return "0 0 * * 0"; // Weekly on Sunday at midnight
     }
 
     // For intervals that divide evenly into 60 minutes
@@ -247,7 +261,7 @@ export class JobScheduler {
       for (let i = 0; i < 60; i += minutes) {
         intervals.push(i);
       }
-      return `${intervals.join(',')} * * * *`;
+      return `${intervals.join(",")} * * * *`;
     }
 
     // For intervals that divide evenly into a day (1440 minutes)
@@ -257,7 +271,7 @@ export class JobScheduler {
       for (let i = 0; i < 24; i += hoursInterval) {
         hours.push(i);
       }
-      return `0 ${hours.join(',')} * * *`;
+      return `0 ${hours.join(",")} * * *`;
     }
 
     // Fallback: Convert to hours if possible, otherwise default to hourly
@@ -289,9 +303,9 @@ export class JobScheduler {
    */
   public async reload(): Promise<void> {
     Logger.log({
-      module: 'JobScheduler',
-      context: 'reload',
-      message: 'Reloading job scheduler...',
+      module: "JobScheduler",
+      context: "reload",
+      message: "Reloading job scheduler...",
     });
 
     // Clear existing jobs
@@ -306,9 +320,9 @@ export class JobScheduler {
    */
   public async stop(): Promise<void> {
     Logger.log({
-      module: 'JobScheduler',
-      context: 'stop',
-      message: 'Stopping job scheduler...',
+      module: "JobScheduler",
+      context: "stop",
+      message: "Stopping job scheduler...",
     });
 
     // BullMQ's repeatable jobs are stored in Redis
@@ -318,9 +332,9 @@ export class JobScheduler {
     this.scheduledJobs.clear();
 
     Logger.log({
-      module: 'JobScheduler',
-      context: 'stop',
-      message: 'Job scheduler stopped',
+      module: "JobScheduler",
+      context: "stop",
+      message: "Job scheduler stopped",
     });
   }
 }

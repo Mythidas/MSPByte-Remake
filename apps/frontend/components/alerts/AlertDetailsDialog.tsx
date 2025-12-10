@@ -28,9 +28,21 @@ export function AlertDetailsDialog({
 
   const severityConfig = {
     low: { color: "text-blue-500", bgColor: "bg-blue-500/10", label: "Low" },
-    medium: { color: "text-yellow-500", bgColor: "bg-yellow-500/10", label: "Medium" },
-    high: { color: "text-orange-500", bgColor: "bg-orange-500/10", label: "High" },
-    critical: { color: "text-red-500", bgColor: "bg-red-500/10", label: "Critical" },
+    medium: {
+      color: "text-yellow-500",
+      bgColor: "bg-yellow-500/10",
+      label: "Medium",
+    },
+    high: {
+      color: "text-orange-500",
+      bgColor: "bg-orange-500/10",
+      label: "High",
+    },
+    critical: {
+      color: "text-red-500",
+      bgColor: "bg-red-500/10",
+      label: "Critical",
+    },
   };
 
   const statusConfig = {
@@ -51,22 +63,26 @@ export function AlertDetailsDialog({
             <StatusIcon className={`w-5 h-5 ${status.color}`} />
             Alert Details
           </DialogTitle>
-          <DialogDescription>
-            {prettyText(alert.alertType)}
-          </DialogDescription>
+          <DialogDescription>{prettyText(alert.alertType)}</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
           {/* Severity and Status */}
           <div className="flex gap-4">
             <div className="flex-1">
-              <p className="text-sm font-medium text-muted-foreground mb-1">Severity</p>
-              <div className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${severity.color} ${severity.bgColor}`}>
+              <p className="text-sm font-medium text-muted-foreground mb-1">
+                Severity
+              </p>
+              <div
+                className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${severity.color} ${severity.bgColor}`}
+              >
                 {severity.label}
               </div>
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-muted-foreground mb-1">Status</p>
+              <p className="text-sm font-medium text-muted-foreground mb-1">
+                Status
+              </p>
               <div className="inline-flex items-center gap-2">
                 <StatusIcon className={`w-4 h-4 ${status.color}`} />
                 <span className="text-sm font-medium">{status.label}</span>
@@ -76,7 +92,9 @@ export function AlertDetailsDialog({
 
           {/* Message */}
           <div>
-            <p className="text-sm font-medium text-muted-foreground mb-1">Message</p>
+            <p className="text-sm font-medium text-muted-foreground mb-1">
+              Message
+            </p>
             <p className="text-sm bg-muted/50 rounded-md p-3">
               {alert.message}
             </p>
@@ -85,7 +103,9 @@ export function AlertDetailsDialog({
           {/* Metadata */}
           {alert.metadata && Object.keys(alert.metadata).length > 0 && (
             <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">Additional Details</p>
+              <p className="text-sm font-medium text-muted-foreground mb-1">
+                Additional Details
+              </p>
               <div className="bg-muted/50 rounded-md p-3">
                 <pre className="text-xs overflow-x-auto">
                   {JSON.stringify(alert.metadata, null, 2)}
@@ -155,13 +175,18 @@ export function AlertDetailsDialog({
               )}
               {alert.suppressedUntil && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Suppressed Until</p>
+                  <p className="text-xs text-muted-foreground">
+                    Suppressed Until
+                  </p>
                   <p className="text-sm">
-                    {new Date(alert.suppressedUntil).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
+                    {new Date(alert.suppressedUntil).toLocaleDateString(
+                      "en-US",
+                      {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      },
+                    )}
                   </p>
                 </div>
               )}

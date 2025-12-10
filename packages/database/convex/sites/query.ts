@@ -3,21 +3,23 @@ import { query } from "../_generated/server.js";
 import { isAuthenticated, isValidTenant } from "../helpers/validators.js";
 
 export const getBySlug = query({
-    args: {
-        slug: v.string(),
-    },
-    handler: async (ctx, args) => {
-        const identity = await isAuthenticated(ctx);
-        const site = await ctx.db
-            .query("sites")
-            .withIndex("by_slug", (q) => q.eq("slug", args.slug).eq("tenantId", identity.tenantId))
-            .unique();
+  args: {
+    slug: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await isAuthenticated(ctx);
+    const site = await ctx.db
+      .query("sites")
+      .withIndex("by_slug", (q) =>
+        q.eq("slug", args.slug).eq("tenantId", identity.tenantId),
+      )
+      .unique();
 
-        if (!site) throw new Error("Site not found");
-        await isValidTenant(identity.tenantId, site.tenantId);
+    if (!site) throw new Error("Site not found");
+    await isValidTenant(identity.tenantId, site.tenantId);
 
-        return site;
-    },
+    return site;
+  },
 });
 
 // export const getSiteWithIntegrationsView = query({

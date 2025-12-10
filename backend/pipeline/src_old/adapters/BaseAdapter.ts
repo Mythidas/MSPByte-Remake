@@ -1,26 +1,26 @@
-import { natsClient } from '../lib/nats.js';
-import QueueManager from '../queue/QueueManager.js';
-import { api } from '@workspace/database/convex/_generated/api.js';
-import { client } from '@workspace/shared/lib/convex.js';
-import type { Doc } from '@workspace/database/convex/_generated/dataModel.js';
-import Logger from '../lib/logger.js';
-import TracingManager from '../lib/tracing.js';
-import { APIResponse } from '@workspace/shared/types/api.js';
+import { natsClient } from "../lib/nats.js";
+import QueueManager from "../queue/QueueManager.js";
+import { api } from "@workspace/database/convex/_generated/api.js";
+import { client } from "@workspace/shared/lib/convex.js";
+import type { Doc } from "@workspace/database/convex/_generated/dataModel.js";
+import Logger from "../lib/logger.js";
+import TracingManager from "../lib/tracing.js";
+import { APIResponse } from "@workspace/shared/types/api.js";
 import {
   IntegrationType,
   EntityType,
-} from '@workspace/shared/types/pipeline/core.js';
+} from "@workspace/shared/types/pipeline/core.js";
 import {
   SyncEventPayload,
   DataFetchPayload,
   FetchedEventPayload,
-} from '@workspace/shared/types/pipeline/events.js';
-import { generateUUID } from '@workspace/shared/lib/utils.server.js';
+} from "@workspace/shared/types/pipeline/events.js";
+import { generateUUID } from "@workspace/shared/lib/utils.server.js";
 
 export type RawDataProps = {
   eventData: SyncEventPayload;
   tenantID: string;
-  dataSource: Doc<'data_sources'>;
+  dataSource: Doc<"data_sources">;
   cursor?: string;
   syncId: string;
   batchNumber: number;
@@ -37,7 +37,7 @@ export abstract class BaseAdapter {
 
   constructor(
     protected integrationType: IntegrationType,
-    protected supportedEntities: EntityType[]
+    protected supportedEntities: EntityType[],
   ) {}
 
   setQueueManager(queueManager: QueueManager): void {
@@ -50,7 +50,7 @@ export abstract class BaseAdapter {
     await natsClient.subscribe(pattern, this.handleJob.bind(this));
 
     Logger.log({
-      module: 'BaseAdapter',
+      module: "BaseAdapter",
       context: this.integrationType,
       message: `Adapter started, listening to ${pattern}`,
     });
@@ -64,14 +64,14 @@ export abstract class BaseAdapter {
       syncId: syncEvent.syncId,
       tenantId: tenantID,
       dataSourceId: dataSourceID,
-      stage: 'fetch',
+      stage: "fetch",
       metadata: {
         entityType,
         integration: this.integrationType,
       },
     });
 
-    Logger.startStage('fetch', {
+    Logger.startStage("fetch", {
       entityType,
       integration: this.integrationType,
     });
@@ -79,10 +79,10 @@ export abstract class BaseAdapter {
     // Validate this adapter supports the requested entity type
     if (!this.supportedEntities.includes(entityType)) {
       Logger.log({
-        module: 'BaseAdapter',
-        context: 'handleJob',
+        module: "BaseAdapter",
+        context: "handleJob",
         message: `Adapter ${this.integrationType} does not support entity type ${entityType}`,
-        level: 'error',
+        level: "error",
       });
       return;
     }
@@ -95,13 +95,13 @@ export abstract class BaseAdapter {
     const previousTotal = jobMetadata?.totalProcessed || 0;
 
     Logger.log({
-      module: 'BaseAdapter',
-      context: 'handleJob',
+      module: "BaseAdapter",
+      context: "handleJob",
       message: `Processing sync (batch ${batchNumber}, syncId: ${syncId})`,
       metadata: {
         entityType,
         batchNumber,
-        cursor: cursor ? 'present' : 'none',
+        cursor: cursor ? "present" : "none",
       },
     });
 
@@ -109,12 +109,12 @@ export abstract class BaseAdapter {
       // Fetch data source
       const dataSource = (await client.query(api.helpers.orm.get_s, {
         id: dataSourceID as any,
-        tableName: 'data_sources',
+        tableName: "data_sources",
         secret: process.env.CONVEX_API_KEY!,
-      })) as Doc<'data_sources'>;
+      })) as Doc<"data_sources">;
 
       if (!dataSource) {
-        throw new Error('Data source not found');
+        throw new Error("Data source not found");
       }
 
       // Call child class to get raw data
@@ -135,8 +135,8 @@ export abstract class BaseAdapter {
       const totalProcessed = previousTotal + data.length;
 
       Logger.log({
-        module: 'BaseAdapter',
-        context: 'handleJob',
+        module: "BaseAdapter",
+        context: "handleJob",
         message: `Fetched ${data.length} ${entityType} (batch ${batchNumber})`,
         metadata: {
           batchSize: data.length,
@@ -157,16 +157,16 @@ export abstract class BaseAdapter {
           syncId,
           batchNumber,
           isFinalBatch: !hasMore,
-        }
+        },
       };
 
-      await natsClient.publish('fetched', fetchedPayload);
+      await natsClient.publish("fetched", fetchedPayload);
 
       // Schedule next batch if needed
       if (hasMore && nextCursor) {
         Logger.log({
-          module: 'BaseAdapter',
-          context: 'handleJob',
+          module: "BaseAdapter",
+          context: "handleJob",
           message: `Scheduling next batch (batch ${batchNumber + 1})`,
         });
 
@@ -181,8 +181,8 @@ export abstract class BaseAdapter {
         });
       } else {
         Logger.log({
-          module: 'BaseAdapter',
-          context: 'handleJob',
+          module: "BaseAdapter",
+          context: "handleJob",
           message: `Sync complete for ${entityType}`,
           metadata: {
             totalProcessed,
@@ -191,16 +191,16 @@ export abstract class BaseAdapter {
         });
       }
 
-      Logger.endStage('fetch', {
+      Logger.endStage("fetch", {
         recordsFetched: data.length,
         totalProcessed,
       });
     } catch (error) {
       Logger.log({
-        module: 'BaseAdapter',
-        context: 'handleJob',
+        module: "BaseAdapter",
+        context: "handleJob",
         message: `Failed to fetch ${entityType}`,
-        level: 'error',
+        level: "error",
         error: error as Error,
       });
 
@@ -209,6 +209,6 @@ export abstract class BaseAdapter {
   }
 
   protected abstract getRawData(
-    props: RawDataProps
+    props: RawDataProps,
   ): Promise<APIResponse<RawDataResult>>;
 }

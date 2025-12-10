@@ -9,6 +9,7 @@
 **Goal**: Optimize database queries and indexes for performance
 
 **Key Optimizations**:
+
 1. Add missing composite indexes
 2. Optimize Linker (eliminate N+1 queries)
 3. Query batching and performance monitoring
@@ -93,23 +94,23 @@ defineTable("scheduled_jobs", {
 // Just deploy the schema changes
 
 // But verify no performance degradation during migration
-import { ConvexHttpClient } from 'convex/browser';
+import { ConvexHttpClient } from "convex/browser";
 
 async function verifyIndexes() {
   const client = new ConvexHttpClient(process.env.CONVEX_URL!);
 
-  console.log('Testing index performance...');
+  console.log("Testing index performance...");
 
   // Test alert queries
   const startAlerts = Date.now();
   const alerts = await client.query(api.helpers.orm.list_s, {
-    tableName: 'entity_alerts',
+    tableName: "entity_alerts",
     index: {
-      name: 'by_entity_type_status',
+      name: "by_entity_type_status",
       params: {
-        entityId: 'test_id',
-        alertType: 'mfa_not_enforced',
-        status: 'active',
+        entityId: "test_id",
+        alertType: "mfa_not_enforced",
+        status: "active",
       },
     },
   });
@@ -119,16 +120,16 @@ async function verifyIndexes() {
   // Test relationship queries
   const startRels = Date.now();
   const rels = await client.query(api.helpers.orm.list_s, {
-    tableName: 'entity_relationships',
+    tableName: "entity_relationships",
     index: {
-      name: 'by_data_source',
-      params: { dataSourceId: 'test_datasource' },
+      name: "by_data_source",
+      params: { dataSourceId: "test_datasource" },
     },
   });
   const relsTime = Date.now() - startRels;
   console.log(`Relationship query: ${relsTime}ms (should be <500ms)`);
 
-  console.log('Index verification complete');
+  console.log("Index verification complete");
 }
 ```
 
@@ -142,20 +143,22 @@ async function verifyIndexes() {
 
 ```typescript
 // BEFORE (Current implementation)
-for (const group of groups) { // 50 groups
+for (const group of groups) {
+  // 50 groups
   const { data: members } = await connector.getGroupMembers(group.externalId);
 
-  for (const member of members) { // 300 total members
+  for (const member of members) {
+    // 300 total members
     // Check if relationship exists - QUERY PER MEMBER!
     const existingRels = await client.query(api.helpers.orm.list_s, {
-      tableName: 'entity_relationships',
+      tableName: "entity_relationships",
       index: {
-        name: 'by_parent',
+        name: "by_parent",
         params: { parentEntityId: group._id },
       },
     });
 
-    const exists = existingRels.some(r => r.childEntityId === member._id);
+    const exists = existingRels.some((r) => r.childEntityId === member._id);
     if (!exists) {
       relationshipsToCreate.push({ parent: group._id, child: member._id });
     }
@@ -376,7 +379,7 @@ class QueryMetrics {
   }
 
   static getSlowQueries(threshold = 1000): QueryMetric[] {
-    return this.metrics.filter(m => m.duration > threshold);
+    return this.metrics.filter((m) => m.duration > threshold);
   }
 
   static getAverageByTable(): Map<string, number> {
@@ -404,17 +407,17 @@ class QueryMetrics {
     const slowQueries = this.getSlowQueries();
     const avgByTable = this.getAverageByTable();
 
-    let summary = '=== Query Performance Summary ===\n\n';
+    let summary = "=== Query Performance Summary ===\n\n";
     summary += `Total queries: ${this.metrics.length}\n`;
     summary += `Slow queries (>1s): ${slowQueries.length}\n\n`;
 
-    summary += 'Average duration by table:\n';
+    summary += "Average duration by table:\n";
     for (const [table, avg] of avgByTable.entries()) {
       summary += `  ${table}: ${avg.toFixed(2)}ms\n`;
     }
 
     if (slowQueries.length > 0) {
-      summary += '\nSlowest queries:\n';
+      summary += "\nSlowest queries:\n";
       const slowest = slowQueries
         .sort((a, b) => b.duration - a.duration)
         .slice(0, 10);
@@ -439,7 +442,7 @@ export async function timedQuery<T>(
   client: ConvexHttpClient,
   operation: string,
   tableName: string,
-  queryFn: () => Promise<T>
+  queryFn: () => Promise<T>,
 ): Promise<T> {
   const startTime = Date.now();
 
@@ -481,34 +484,36 @@ export async function timedQuery<T>(
 
 ```typescript
 async function benchmarkQueries() {
-  console.log('Running query benchmarks...\n');
+  console.log("Running query benchmarks...\n");
 
   // Test 1: Alert query with new index
-  console.log('Test 1: Alert query by entity + type + status');
+  console.log("Test 1: Alert query by entity + type + status");
   const start1 = Date.now();
   for (let i = 0; i < 100; i++) {
     await client.query(api.helpers.orm.list_s, {
-      tableName: 'entity_alerts',
+      tableName: "entity_alerts",
       index: {
-        name: 'by_entity_type_status',
+        name: "by_entity_type_status",
         params: {
           entityId: testEntityId,
-          alertType: 'mfa_not_enforced',
-          status: 'active',
+          alertType: "mfa_not_enforced",
+          status: "active",
         },
       },
     });
   }
   const time1 = Date.now() - start1;
-  console.log(`  100 queries: ${time1}ms (${(time1 / 100).toFixed(2)}ms avg)\n`);
+  console.log(
+    `  100 queries: ${time1}ms (${(time1 / 100).toFixed(2)}ms avg)\n`,
+  );
 
   // Test 2: Relationship bulk load
-  console.log('Test 2: Bulk load relationships');
+  console.log("Test 2: Bulk load relationships");
   const start2 = Date.now();
   const rels = await client.query(api.helpers.orm.list_s, {
-    tableName: 'entity_relationships',
+    tableName: "entity_relationships",
     index: {
-      name: 'by_data_source',
+      name: "by_data_source",
       params: { dataSourceId: testDataSourceId },
     },
   });
@@ -516,12 +521,12 @@ async function benchmarkQueries() {
   console.log(`  Loaded ${rels.length} relationships: ${time2}ms\n`);
 
   // Test 3: Alert history query
-  console.log('Test 3: Alert history with sorting');
+  console.log("Test 3: Alert history with sorting");
   const start3 = Date.now();
   const history = await client.query(api.helpers.orm.list_s, {
-    tableName: 'entity_alert_history',
+    tableName: "entity_alert_history",
     index: {
-      name: 'by_entity',
+      name: "by_entity",
       params: { entityId: testEntityId },
     },
   });
@@ -529,7 +534,7 @@ async function benchmarkQueries() {
   console.log(`  Loaded ${history.length} history records: ${time3}ms\n`);
 
   // Print summary
-  console.log('=== Performance Targets ===');
+  console.log("=== Performance Targets ===");
   console.log(`Alert query: ${(time1 / 100).toFixed(2)}ms (target: <10ms)`);
   console.log(`Bulk relationships: ${time2}ms (target: <500ms)`);
   console.log(`Alert history: ${time3}ms (target: <100ms)`);
