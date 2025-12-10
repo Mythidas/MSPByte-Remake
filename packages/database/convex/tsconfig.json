@@ -18,7 +18,10 @@
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "isolatedModules": true,
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "@workspace/shared/types/*": ["../../shared/src/types/*"],
+    }
   },
   "include": ["./**/*"],
   "exclude": ["./_generated"]

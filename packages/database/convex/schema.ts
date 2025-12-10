@@ -12,6 +12,14 @@ export const entityTypeValidator = v.union(
     v.literal("licenses")
 );
 
+export const integrationValidator = v.union(
+    v.literal("microsoft-365"),
+    v.literal("halopsa"),
+    v.literal("sophos-partner"),
+    v.literal("datto-rmm"),
+    v.literal("msp-agent")
+);
+
 export default defineSchema({
     // Core entities
     tenants: defineTable({
@@ -74,11 +82,11 @@ export default defineSchema({
             v.literal("inactive"),
             v.literal("archived")
         ),
-        psaIntegrationId: v.optional(v.id("integrations")),
+        psaIntegrationId: v.optional(integrationValidator),
         psaIntegrationName: v.optional(v.string()), // Denormalized for sorting/filtering
         psaCompanyId: v.optional(v.string()),
         psaParentCompanyId: v.optional(v.string()),
-        rmmIntegrationId: v.optional(v.id("integrations")),
+        rmmIntegrationId: v.optional(integrationValidator),
         rmmIntegrationName: v.optional(v.string()), // Denormalized for sorting/filtering
         rmmSiteId: v.optional(v.string()), // External RMM site UID
         metadata: v.optional(v.any()),
@@ -88,42 +96,11 @@ export default defineSchema({
     })
         .index("by_tenant", ["tenantId"])
         .index("by_status", ["status", "tenantId"])
-        .index("by_slug", ["slug", "tenantId"])
-        .index("by_psa_company", ["psaCompanyId", "tenantId"])
-        .index("by_integration", ["psaIntegrationId", "tenantId"])
-        .index("by_rmm_site", ["rmmSiteId", "tenantId"])
-        .index("by_rmm_integration", ["rmmIntegrationId", "tenantId"]),
-
-    integrations: defineTable({
-        // Uses slug as the document ID (like "halopsa", "sophos")
-        name: v.string(),
-        slug: v.string(),
-        description: v.string(),
-        category: v.string(), // e.g., "psa", "rmm", "security"
-        supportedTypes: v.array(
-            v.object({
-                type: entityTypeValidator,
-                isGlobal: v.boolean(),
-                priority: v.optional(v.number()), // Higher number = higher priority (default 5)
-                rateMinutes: v.optional(v.number()), // How often to sync in minutes (default 60)
-            })
-        ), // e.g., ["sites", "devices", "tickets"]
-        iconUrl: v.optional(v.string()),
-        color: v.optional(v.string()),
-        level: v.optional(v.string()), // tier/level of integration
-        productUrl: v.optional(v.string()),
-        configSchema: v.optional(v.any()), // JSON schema for configuration
-        isActive: v.optional(v.boolean()),
-
-        updatedAt: v.number(),
-    })
-        .index("by_slug", ["slug"])
-        .index("by_category", ["category"])
-        .index("by_is_active", ["isActive"]),
+        .index("by_slug", ["slug", "tenantId"]),
 
     data_sources: defineTable({
         tenantId: v.id("tenants"),
-        integrationId: v.id("integrations"),
+        integrationId: integrationValidator,
         siteId: v.optional(v.id("sites")), // null = global/tenant-level data source
         externalId: v.optional(v.string()), // ID in the external system
         isPrimary: v.boolean(),
@@ -178,39 +155,53 @@ export default defineSchema({
         .index("by_guid", ["guid", "tenantId"])
         .index("by_version", ["version", "tenantId"]),
 
-    scheduled_jobs: defineTable({
+    job_history: defineTable({
         tenantId: v.id("tenants"),
-        integrationId: v.id("integrations"),
-        integrationSlug: v.string(), // Slug for event routing (e.g., "autotask", "sophos-partner")
+        integrationId: integrationValidator,
         dataSourceId: v.id("data_sources"),
-        action: v.string(), // e.g., "sync.sites", "sync.devices"
-        payload: v.any(),
-        priority: v.optional(v.number()),
-        status: v.union(
-            v.literal("pending"),
-            v.literal("running"),
-            v.literal("completed"),
-            v.literal("failed"),
-            v.literal("broken")
-        ),
-        attempts: v.optional(v.number()),
-        attemptsMax: v.optional(v.number()),
-        nextRetryAt: v.optional(v.number()),
-        scheduledAt: v.number(),
-        startedAt: v.optional(v.number()),
-        error: v.optional(v.string()),
-        createdBy: v.string(),
+        action: v.string(), // e.g., "sync.identities", "sync.policies"
+
+        // Job execution status
+        status: v.union(v.literal("completed"), v.literal("failed")),
+        startedAt: v.number(),
+        completedAt: v.number(),
+        duration_ms: v.number(), // Total job duration
+
+        // Metrics for observability
+        metrics: v.object({
+            // Stage durations (milliseconds)
+            adapter_ms: v.optional(v.number()),
+            processor_ms: v.optional(v.number()),
+            linker_ms: v.optional(v.number()),
+            analyzer_ms: v.optional(v.number()),
+
+            // Convex function call counts
+            convex_queries: v.optional(v.number()),
+            convex_mutations: v.optional(v.number()),
+            convex_actions: v.optional(v.number()),
+
+            // External API calls
+            api_calls: v.optional(v.number()),
+
+            // Entity changes
+            entities_created: v.optional(v.number()),
+            entities_updated: v.optional(v.number()),
+            entities_deleted: v.optional(v.number()),
+            entities_unchanged: v.optional(v.number()),
+
+            // Error details (if failed)
+            error_message: v.optional(v.string()),
+            error_stack: v.optional(v.string()),
+            retry_count: v.optional(v.number()),
+        }),
 
         updatedAt: v.number(),
     })
         .index("by_tenant", ["tenantId"])
-        .index("by_integration", ["integrationId", "tenantId"])
-        .index("by_pending_due", ["status", "scheduledAt", "tenantId"])
-        .index("by_data_source", ["dataSourceId", "tenantId"])
-        .index("by_data_source_status", ["dataSourceId", "status", "tenantId"])
+        .index("by_data_source", ["dataSourceId", "completedAt"])
         .index("by_status", ["status", "tenantId"])
-        .index("by_scheduled_at", ["scheduledAt", "tenantId"])
-        .index("by_priority_and_scheduled_at", ["status", "priority", "scheduledAt"]),
+        .index("by_integration", ["integrationId", "tenantId"])
+        .index("by_completed_at", ["completedAt", "tenantId"]),
 
     // ============================================================================
     // LOGGING & MONITORING
@@ -290,7 +281,7 @@ export default defineSchema({
 
     entities: defineTable({
         tenantId: v.id("tenants"),
-        integrationId: v.id("integrations"),
+        integrationId: integrationValidator,
         dataSourceId: v.id("data_sources"),
         siteId: v.optional(v.id("sites")),
         entityType: entityTypeValidator, // "device", "ticket", "company", etc.
@@ -301,10 +292,10 @@ export default defineSchema({
             v.literal("high"),
             v.literal("critical"),
         ),
+        tags: v.optional(v.array(v.string())),
         externalId: v.string(), // ID in the external system
         dataHash: v.string(), // Hash for change detection
         rawData: v.any(), // Original data from integration
-        normalizedData: v.any(), // Normalized/mapped data
 
         // Pagination & deletion tracking
         deletedAt: v.optional(v.number()), // Soft delete timestamp (90-day retention)
@@ -349,7 +340,7 @@ export default defineSchema({
         tenantId: v.id("tenants"),
         entityId: v.id("entities"),
         dataSourceId: v.id("data_sources"),
-        integrationId: v.id("integrations"),
+        integrationId: integrationValidator,
         integrationSlug: v.string(),
         siteId: v.optional(v.id("sites")),
 
@@ -361,6 +352,7 @@ export default defineSchema({
             v.literal("critical")
         ),
         message: v.string(), // Human-readable alert description
+        fingerprint: v.string(), // Unique identifier for deduplication (e.g., "mfa-disabled:entityId")
         metadata: v.optional(v.any()), // Additional context (days inactive, license cost, etc.)
         status: v.union(
             v.literal("active"),
@@ -368,6 +360,7 @@ export default defineSchema({
             v.literal("suppressed")
         ),
 
+        lastSeenAt: v.optional(v.number()), // Last time this alert was detected (for deduplication)
         resolvedAt: v.optional(v.number()),
         suppressedBy: v.optional(v.id("users")),
         suppressedAt: v.optional(v.number()),
@@ -384,6 +377,7 @@ export default defineSchema({
         .index("by_severity", ["severity", "tenantId"])
         .index("by_status", ["status", "tenantId"])
         .index("by_entity_status", ["entityId", "status", "tenantId"])
+        .index("by_fingerprint", ["fingerprint", "tenantId"]) // For deduplication lookups
         // Phase 6: Composite indexes for performance
         .index("by_data_source_status_type", ["dataSourceId", "status", "alertType", "tenantId"])
         .index("by_tenant_status_severity", ["tenantId", "status", "severity"]),
@@ -394,7 +388,7 @@ export default defineSchema({
 
     data_source_to_site: defineTable({
         tenantId: v.id("tenants"),
-        integrationId: v.id("integrations"),
+        integrationId: integrationValidator,
         dataSourceId: v.id("data_sources"),
         siteId: v.id("sites"),
 

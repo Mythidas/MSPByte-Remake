@@ -1,127 +1,127 @@
-import IORedis from 'ioredis';
-import Logger from './logger.js';
+import Redis from "ioredis";
+import { Logger } from "./logger.js";
 
+/**
+ * Redis connection manager for pipeline infrastructure
+ * Used for:
+ * - BullMQ job queue backing
+ * - Distributed locks for sync coordination
+ * - Optional caching layer
+ */
 class RedisManager {
-  private static connection: IORedis | null = null;
-  private static isConnecting = false;
+    private client: Redis | null = null;
+    private isConnected = false;
 
-  static async getConnection(): Promise<IORedis> {
-    if (this.connection && this.connection.status === 'ready') {
-      return this.connection;
+    /**
+     * Get or create Redis client
+     */
+    getClient(): Redis {
+        if (!this.client) {
+            const redisHost = process.env.REDIS_HOST;
+            const redisPort = process.env.REDIS_PORT;
+            if (!redisHost || !redisPort) {
+                throw new Error("REDIS_HOST or REDIS_PORT environment variable is not set");
+            }
+
+            this.client = new Redis(`${redisHost}:${redisPort}`, {
+                maxRetriesPerRequest: null,
+                retryStrategy: (times: number) => {
+                    const delay = Math.min(times * 50, 2000);
+                    Logger.log({
+                        module: 'Redis',
+                        context: 'getClient',
+                        message: `Redis connection retry attempt ${times}`,
+                        level: "warn",
+                    });
+                    return delay;
+                },
+                reconnectOnError: (err: Error) => {
+                    Logger.log({
+                        module: 'Redis',
+                        context: 'getClient',
+                        message: `Redis reconnect on error: ${err.message}`,
+                        level: "error",
+                    });
+                    return true;
+                },
+            });
+
+            // Connection event handlers
+            this.client.on("connect", () => {
+                this.isConnected = true;
+                Logger.log({
+                    module: 'Redis',
+                    context: 'getClient',
+                    message: "Redis connected successfully",
+                    level: "info",
+                });
+            });
+
+            this.client.on("error", (err: Error) => {
+                Logger.log({
+                    module: 'Redis',
+                    context: 'getClient',
+                    message: `Redis error: ${err.message}`,
+                    level: "error",
+                });
+            });
+
+            this.client.on("close", () => {
+                this.isConnected = false;
+                Logger.log({
+                    module: 'Redis',
+                    context: 'getClient',
+                    message: "Redis connection closed",
+                    level: "warn",
+                });
+            });
+        }
+
+        return this.client;
     }
 
-    if (this.isConnecting) {
-      // Wait for existing connection attempt
-      await new Promise(resolve => setTimeout(resolve, 100));
-      return this.getConnection();
+    /**
+     * Check if Redis is connected and ready
+     */
+    isReady(): boolean {
+        return this.isConnected && this.client?.status === "ready";
     }
 
-    this.isConnecting = true;
-
-    try {
-      const config = {
-        host: process.env.REDIS_HOST || 'localhost',
-        port: parseInt(process.env.REDIS_PORT || '6379'),
-        password: process.env.REDIS_PASSWORD || undefined,
-        maxRetriesPerRequest: null, // Required for BullMQ
-        retryStrategy: (times: number) => {
-          const delay = Math.min(times * 50, 2000);
-          return delay;
-        },
-      };
-
-      this.connection = new IORedis(config);
-
-      this.connection.on('connect', () => {
-        Logger.log({
-          module: 'RedisManager',
-          context: 'connection',
-          message: 'Connected to Redis',
-        });
-      });
-
-      this.connection.on('error', (error) => {
-        Logger.log({
-          module: 'RedisManager',
-          context: 'connection',
-          message: `Redis error: ${error.message}`,
-          level: 'error',
-          error,
-        });
-      });
-
-      this.connection.on('close', () => {
-        Logger.log({
-          module: 'RedisManager',
-          context: 'connection',
-          message: 'Redis connection closed',
-        });
-      });
-
-      // Wait for connection
-      await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('Redis connection timeout'));
-        }, 5000);
-
-        this.connection!.once('ready', () => {
-          clearTimeout(timeout);
-          resolve();
-        });
-
-        this.connection!.once('error', (error) => {
-          clearTimeout(timeout);
-          reject(error);
-        });
-      });
-
-      this.isConnecting = false;
-      return this.connection;
-    } catch (error) {
-      this.isConnecting = false;
-      this.connection = null;
-      throw error;
+    /**
+     * Gracefully disconnect from Redis
+     */
+    async disconnect(): Promise<void> {
+        if (this.client) {
+            await this.client.quit();
+            this.client = null;
+            this.isConnected = false;
+            Logger.log({
+                module: 'Redis',
+                context: 'disconnect',
+                message: "Redis disconnected",
+                level: "info",
+            });
+        }
     }
-  }
 
-  static async disconnect(): Promise<void> {
-    if (this.connection) {
-      await this.connection.quit();
-      this.connection = null;
+    /**
+     * Get Redis health status
+     */
+    async healthCheck(): Promise<{ status: string; latency?: number }> {
+        if (!this.client || !this.isConnected) {
+            return { status: "disconnected" };
+        }
+
+        try {
+            const start = Date.now();
+            await this.client.ping();
+            const latency = Date.now() - start;
+            return { status: "healthy", latency };
+        } catch (error) {
+            return { status: "unhealthy" };
+        }
     }
-  }
-
-  static async ping(): Promise<boolean> {
-    try {
-      const conn = await this.getConnection();
-      const result = await conn.ping();
-      return result === 'PONG';
-    } catch (error) {
-      return false;
-    }
-  }
-
-  static async healthCheck(): Promise<{
-    healthy: boolean;
-    latency?: number;
-    error?: string;
-  }> {
-    try {
-      const start = Date.now();
-      const pong = await this.ping();
-      const latency = Date.now() - start;
-
-      return {
-        healthy: pong,
-        latency,
-      };
-    } catch (error) {
-      return {
-        healthy: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
-  }
 }
 
-export default RedisManager;
+// Singleton instance
+export const redis = new RedisManager();

@@ -1,24 +1,15 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server.js";
 import { isAuthenticated, isValidTenant } from "../helpers/validators.js";
+import { integrationValidator } from "../schema.js";
 
 export const getBySiteAndIntegration = query({
     args: {
         siteId: v.id("sites"),
-        integrationSlug: v.string(),
+        integrationId: integrationValidator,
     },
     handler: async (ctx, args) => {
         const identity = await isAuthenticated(ctx);
-
-        // Get integration by slug
-        const integration = await ctx.db
-            .query("integrations")
-            .withIndex("by_slug", (q) => q.eq("slug", args.integrationSlug))
-            .unique();
-
-        if (!integration) {
-            throw new Error("Integration not found");
-        }
 
         // Get direct data source for this site + integration
         const directDataSource = await ctx.db
@@ -26,7 +17,7 @@ export const getBySiteAndIntegration = query({
             .withIndex("by_site", (q) => q.eq("siteId", args.siteId).eq("tenantId", identity.tenantId))
             .filter((q) =>
                 q.and(
-                    q.eq(q.field("integrationId"), integration._id),
+                    q.eq(q.field("integrationId"), args.integrationId),
                 )
             )
             .first();
@@ -44,7 +35,7 @@ export const getBySiteAndIntegration = query({
 
         for (const link of dataSourceLinks) {
             const linkedDataSource = await ctx.db.get(link.dataSourceId);
-            if (linkedDataSource && linkedDataSource.integrationId === integration._id) {
+            if (linkedDataSource && linkedDataSource.integrationId === args.integrationId) {
                 await isValidTenant(identity.tenantId, linkedDataSource.tenantId);
                 return linkedDataSource;
             }

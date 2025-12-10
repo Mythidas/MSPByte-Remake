@@ -2,17 +2,19 @@ import { v } from "convex/values";
 import { mutation } from "../_generated/server.js";
 import { isAuthenticated, isValidSecret, isValidTenant } from "../helpers/validators.js";
 import { api } from "../_generated/api.js";
+import { integrationValidator } from "../schema.js";
+import { INTEGRATIONS } from "@workspace/shared/types/integrations/config.js";
 
 // Replaced by datasources/crud.ts::update
 // export const updateConfig = ...
 
 export const createPrimaryForIntegration = mutation({
     args: {
-        integrationId: v.id("integrations"),
+        integrationId: integrationValidator,
     },
     handler: async (ctx, args) => {
         const identity = await isAuthenticated(ctx);
-        const integration = await ctx.db.get(args.integrationId);
+        const integration = INTEGRATIONS[args.integrationId];
         if (!integration) throw new Error("Resource not found");
 
         const newDataSource = await ctx.db.insert("data_sources", {
@@ -31,13 +33,13 @@ export const createPrimaryForIntegration = mutation({
 
 export const createOrUpdate = mutation({
     args: {
-        integrationId: v.id("integrations"),
+        integrationId: integrationValidator,
         config: v.any(),
         credentialExpirationAt: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
         const identity = await isAuthenticated(ctx);
-        const integration = await ctx.db.get(args.integrationId);
+        const integration = INTEGRATIONS[args.integrationId];
         if (!integration) throw new Error("Integration not found");
 
         // Check if a primary data source already exists for this integration and tenant
@@ -73,12 +75,6 @@ export const createOrUpdate = mutation({
             });
         }
 
-        // Automatically schedule sync jobs for all supportedTypes
-        await ctx.runMutation(api.scheduledjobs.mutate.scheduleJobsByIntegration, {
-            integrationId: args.integrationId,
-            dataSourceId: dataSourceId,
-        });
-
         return await ctx.db.get(dataSourceId);
     },
 });
@@ -91,16 +87,14 @@ export const deleteAllData = mutation({
     handler: async (ctx, args) => {
         await isValidSecret(args.secret);
 
-        const [entities, relationships, jobs, alerts, mappings] = await Promise.all([
+        const [entities, relationships, alerts, mappings] = await Promise.all([
             ctx.db.query("entities").withIndex("by_data_source", (q) => q.eq("dataSourceId", args.id)).collect(),
             ctx.db.query("entity_relationships").withIndex("by_data_source_type", (q) => q.eq("dataSourceId", args.id)).collect(),
-            ctx.db.query("scheduled_jobs").withIndex("by_data_source", (q) => q.eq("dataSourceId", args.id)).collect(),
             ctx.db.query("entity_alerts").withIndex("by_data_source", (q) => q.eq("dataSourceId", args.id)).collect(),
             ctx.db.query("data_source_to_site").withIndex("by_data_source", (q) => q.eq("dataSourceId", args.id)).collect(),
         ]);
 
         await Promise.all([
-            ...jobs.map(async (row) => ctx.db.delete(row._id)),
             ...relationships.map(async (row) => ctx.db.delete(row._id)),
             ...entities.map(async (row) => ctx.db.delete(row._id)),
             ...alerts.map(async (row) => ctx.db.delete(row._id)),
@@ -114,7 +108,7 @@ export const deleteAllData = mutation({
 export const createSiteMapping = mutation({
     args: {
         siteId: v.id("sites"),
-        integrationId: v.id("integrations"),
+        integrationId: integrationValidator,
         externalId: v.string(),
         config: v.any(),
     },
@@ -124,7 +118,7 @@ export const createSiteMapping = mutation({
         if (!site) throw new Error("Site not found");
         await isValidTenant(identity.tenantId, site.tenantId);
 
-        const integration = await ctx.db.get(args.integrationId);
+        const integration = INTEGRATIONS[args.integrationId];
         if (!integration) throw new Error("Integration not found");
 
         // Check if a mapping already exists for this site + integration

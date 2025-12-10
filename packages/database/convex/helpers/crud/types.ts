@@ -35,11 +35,11 @@
  *
  * // Example 3: Logical operators (AND, OR, NOT)
  * const jobs = await client.query(api.helpers.dynamicCrud.dynamicList, {
- *   tableName: "scheduled_jobs",
+ *   tableName: "job_history",
  *   filters: {
  *     or: [
  *       { status: "failed" },
- *       { status: "pending", attempts: { gte: 3 } },
+ *       { duration_ms: { gte: 5000 } },
  *     ],
  *   },
  * });
@@ -111,8 +111,7 @@ export const TableName = v.union(
     v.literal("entities"),
     v.literal("agents"),
     v.literal("data_sources"),
-    v.literal("integrations"),
-    v.literal("scheduled_jobs"),
+    v.literal("job_history"),
     v.literal("sites"),
     v.literal("data_source_to_site"),
     v.literal("entity_alerts"),

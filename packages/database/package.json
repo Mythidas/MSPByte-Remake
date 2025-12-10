@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "convex": "^1.27.4",
-    "convex-helpers": "^0.1.104"
+    "convex-helpers": "^0.1.104",
+    "@workspace/shared": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.2.2"

@@ -7,10 +7,9 @@
     "moduleResolution": "bundler",
     "paths": {
       "@workspace/shared/*": ["../../packages/shared/src/*"],
-      "@workspace/services/*": ["../../backend/services/src/*"],
-      "@workspace/pipeline/*": ["../../backend/pipeline/src/*"]
+      "@workspace/pipeline/*": ["./src/*"]
     }
   },
-  "include": ["**/*.ts"],
-  "exclude": ["dist"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["dist", "node_modules", "src_old"]
 }

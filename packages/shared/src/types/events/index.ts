@@ -2,7 +2,7 @@ import {
   PipelineEventPayload,
   EventName as PipelineEventName,
   EventPayloadByName,
-} from "@workspace/shared/types/pipeline";
+} from "@workspace/shared/types/integrations";
 
 // Combined event system that includes both legacy and pipeline events
 export type Events = {
@@ -14,4 +14,4 @@ export type EventPayload<Name extends EventNames> = Events[Name];
 
 // Re-export pipeline event utilities
 export type { PipelineEventPayload, PipelineEventName };
-export { type EventPayloadByName } from "../pipeline";
+export { type EventPayloadByName } from "../integrations";

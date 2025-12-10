@@ -7,276 +7,222 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 dotenv.config({ path: join(__dirname, '../.env') });
 
-import QueueManager from './queue/QueueManager.js';
-import { natsClient } from './lib/nats.js';
-import Logger from './lib/logger.js';
+import { Logger } from "./lib/logger.js";
+import { Microsoft365Adapter } from "./adapters/Microsoft365Adapter.js";
+import { EntityProcessor } from "./processor/EntityProcessor.js";
+import { Microsoft365Linker } from "./linkers/Microsoft365Linker.js";
+import { AnalysisOrchestrator } from "./analyzers/AnalysisOrchestrator.js";
+import { MFAAnalyzer } from "./analyzers/MFAAnalyzer.js";
+import { SyncScheduler } from "./scheduler/SyncScheduler.js";
 
-// Phase 2: Adapters, Processors, Linkers
-import { Microsoft365Adapter } from './adapters/Microsoft365Adapter.js';
-import { IdentityProcessor } from './processors/IdentityProcessor.js';
-import { CompanyProcessor } from './processors/CompanyProcessor.js';
-import { EndpointProcessor } from './processors/EndpointProcessor.js';
-import { FirewallProcessor } from './processors/FirewallProcessor.js';
-import { GroupProcessor } from './processors/GroupProcessor.js';
-import { LicenseProcessor } from './processors/LicenseProcessor.js';
-import { PolicyProcessor } from './processors/PolicyProcessor.js';
-import { RoleProcessor } from './processors/RoleProcessor.js';
-import { Microsoft365Linker } from './linkers/Microsoft365Linker.js';
-
-// Phase 4: UnifiedAnalyzer
-import { UnifiedAnalyzer } from './analyzers/UnifiedAnalyzer.js';
-
-// Phase 5: AlertManager
-import { AlertManager } from './analyzers/AlertManager.js';
-
-// Phase 7: HTTP Server and JobScheduler
-import { startServer } from './server.js';
-import { JobScheduler } from './scheduler/JobScheduler.js';
+/**
+ * Pipeline Entry Point
+ *
+ * Initializes all pipeline components:
+ * 1. Adapters - Fetch data from external APIs
+ * 2. Processor - Create/update entities in database
+ * 3. Linkers - Create relationships between entities
+ * 4. Analyzers - Generate alerts and tags
+ * 5. Scheduler - Schedule initial sync jobs
+ *
+ * Pipeline flow:
+ * sync:{integration}:{type} → process:entity → link:{integration} → analyze:tenant
+ */
 
 async function main() {
-  Logger.log({
-    module: 'Main',
-    context: 'startup',
-    message: 'Starting MSPByte Pipeline (Fresh Architecture)',
-  });
-
-  try {
-    // Connect to NATS
-    await natsClient.connect();
     Logger.log({
-      module: 'Main',
-      context: 'startup',
-      message: 'NATS connected',
+        module: "Pipeline",
+        context: "main",
+        message: "Starting pipeline...",
+        level: "info",
     });
 
-    // Initialize Queue Manager
-    const queueManager = new QueueManager();
-    await queueManager.initialize();
+    // Validate required environment variables
+    const requiredEnvVars = [
+        "CONVEX_URL",
+        "CONVEX_API_KEY",
+        "REDIS_HOST",
+        "REDIS_PORT",
+    ];
 
-    // Phase 2: Initialize Adapters
-    Logger.log({
-      module: 'Main',
-      context: 'startup',
-      message: 'Initializing Phase 2 components (Adapters, Processors, Linkers)',
-    });
-
-    const microsoft365Adapter = new Microsoft365Adapter();
-    microsoft365Adapter.setQueueManager(queueManager);
-    await microsoft365Adapter.start();
-    Logger.log({
-      module: 'Main',
-      context: 'startup',
-      message: 'Microsoft365Adapter started',
-    });
-
-    // Phase 2: Initialize Processors
-    const identityProcessor = new IdentityProcessor();
-    await identityProcessor.start();
-
-    const companyProcessor = new CompanyProcessor();
-    await companyProcessor.start();
-
-    const endpointProcessor = new EndpointProcessor();
-    await endpointProcessor.start();
-
-    const firewallProcessor = new FirewallProcessor();
-    await firewallProcessor.start();
-
-    const groupProcessor = new GroupProcessor();
-    await groupProcessor.start();
-
-    const licenseProcessor = new LicenseProcessor();
-    await licenseProcessor.start();
-
-    const policyProcessor = new PolicyProcessor();
-    await policyProcessor.start();
-
-    const roleProcessor = new RoleProcessor();
-    await roleProcessor.start();
-
-    Logger.log({
-      module: 'Main',
-      context: 'startup',
-      message: 'All processors started (8 processors)',
-    });
-
-    // Phase 2: Initialize Linker
-    const microsoft365Linker = new Microsoft365Linker();
-    await microsoft365Linker.start();
-    Logger.log({
-      module: 'Main',
-      context: 'startup',
-      message: 'Microsoft365Linker started',
-    });
-
-    // Phase 4: Initialize UnifiedAnalyzer
-    const unifiedAnalyzer = new UnifiedAnalyzer();
-    await unifiedAnalyzer.initialize();
-    Logger.log({
-      module: 'Main',
-      context: 'startup',
-      message: 'UnifiedAnalyzer initialized',
-    });
-
-    // Phase 5: Initialize AlertManager
-    const alertManager = new AlertManager();
-    await alertManager.start();
-    Logger.log({
-      module: 'Main',
-      context: 'startup',
-      message: 'AlertManager initialized',
-    });
-
-    // Phase 7: Start HTTP Server
-    const port = parseInt(process.env.PORT || '3001', 10);
-    const server = await startServer({ port, queueManager });
-    Logger.log({
-      module: 'Main',
-      context: 'startup',
-      message: `HTTP server started on port ${port}`,
-      metadata: {
-        endpoints: {
-          health: `http://localhost:${port}/health`,
-          metrics: `http://localhost:${port}/metrics`,
-          api: `http://localhost:${port}/api`,
-        },
-      },
-    });
-
-    // Phase 7: Initialize JobScheduler
-    const jobScheduler = new JobScheduler(queueManager);
-    try {
-      await jobScheduler.initialize();
-      Logger.log({
-        module: 'Main',
-        context: 'startup',
-        message: 'JobScheduler initialized',
-        metadata: {
-          scheduledJobs: jobScheduler.getScheduledJobs().length,
-        },
-      });
-    } catch (error) {
-      Logger.log({
-        module: 'Main',
-        context: 'startup',
-        message: 'JobScheduler initialization failed (check CONVEX_URL and CONVEX_API_KEY)',
-        level: 'warn',
-        error: error as Error,
-      });
+    for (const envVar of requiredEnvVars) {
+        if (!process.env[envVar]) {
+            throw new Error(`Missing required environment variable: ${envVar}`);
+        }
     }
 
-    // Health check loop
-    setInterval(async () => {
-      const health = await queueManager.healthCheck();
+    const convexUrl = process.env.CONVEX_URL!;
 
-      if (!health.healthy) {
+    // ============================================================================
+    // STEP 1: Initialize Adapters (Fetch data from external APIs)
+    // ============================================================================
+    Logger.log({
+        module: "Pipeline",
+        context: "main",
+        message: "Initializing adapters...",
+        level: "info",
+    });
+
+    const microsoft365Adapter = new Microsoft365Adapter(convexUrl);
+
+    // Start workers for each entity type
+    microsoft365Adapter.startWorkerForType("identities");
+    microsoft365Adapter.startWorkerForType("groups");
+    microsoft365Adapter.startWorkerForType("licenses");
+    microsoft365Adapter.startWorkerForType("roles");
+    microsoft365Adapter.startWorkerForType("policies");
+
+    Logger.log({
+        module: "Pipeline",
+        context: "main",
+        message: "Adapters initialized",
+        level: "info",
+    });
+
+    // ============================================================================
+    // STEP 2: Initialize Processor (Create/update entities)
+    // ============================================================================
+    Logger.log({
+        module: "Pipeline",
+        context: "main",
+        message: "Initializing entity processor...",
+        level: "info",
+    });
+
+    const entityProcessor = new EntityProcessor(convexUrl);
+    entityProcessor.start();
+
+    Logger.log({
+        module: "Pipeline",
+        context: "main",
+        message: "Entity processor initialized",
+        level: "info",
+    });
+
+    // ============================================================================
+    // STEP 3: Initialize Linkers (Create relationships)
+    // ============================================================================
+    Logger.log({
+        module: "Pipeline",
+        context: "main",
+        message: "Initializing linkers...",
+        level: "info",
+    });
+
+    const microsoft365Linker = new Microsoft365Linker(convexUrl);
+    microsoft365Linker.start();
+
+    Logger.log({
+        module: "Pipeline",
+        context: "main",
+        message: "Linkers initialized",
+        level: "info",
+    });
+
+    // ============================================================================
+    // STEP 4: Initialize Analyzers (Generate alerts and tags)
+    // ============================================================================
+    Logger.log({
+        module: "Pipeline",
+        context: "main",
+        message: "Initializing analyzers...",
+        level: "info",
+    });
+
+    const analyzers = [
+        new MFAAnalyzer(),
+        // Add more analyzers here as they're implemented
+    ];
+
+    const analysisOrchestrator = new AnalysisOrchestrator(convexUrl, analyzers);
+    analysisOrchestrator.start();
+
+    Logger.log({
+        module: "Pipeline",
+        context: "main",
+        message: `Analysis orchestrator initialized with ${analyzers.length} analyzers`,
+        level: "info",
+    });
+
+    // ============================================================================
+    // STEP 5: Schedule Initial Sync Jobs
+    // ============================================================================
+    Logger.log({
+        module: "Pipeline",
+        context: "main",
+        message: "Scheduling initial sync jobs...",
+        level: "info",
+    });
+
+    const scheduler = new SyncScheduler(convexUrl);
+    await scheduler.scheduleAllDatasources();
+
+    Logger.log({
+        module: "Pipeline",
+        context: "main",
+        message: "Initial sync jobs scheduled",
+        level: "info",
+    });
+
+    // ============================================================================
+    // STEP 6: Setup Graceful Shutdown
+    // ============================================================================
+    const shutdown = async (signal: string) => {
         Logger.log({
-          module: 'Main',
-          context: 'healthCheck',
-          message: 'QueueManager unhealthy',
-          level: 'warn',
-          metadata: health,
+            module: "Pipeline",
+            context: "shutdown",
+            message: `Received ${signal}, shutting down gracefully...`,
+            level: "info",
         });
-      }
-    }, 30000); // Every 30 seconds
 
-    // Stats logging
-    setInterval(async () => {
-      const stats = await queueManager.getStats();
-      Logger.log({
-        module: 'Main',
-        context: 'stats',
-        message: 'Queue statistics',
-        metadata: stats,
-      });
-    }, 60000); // Every minute
+        try {
+            // Stop all workers
+            await Promise.all([
+                microsoft365Adapter.stop(),
+                entityProcessor.stop(),
+                microsoft365Linker.stop(),
+                analysisOrchestrator.stop(),
+            ]);
+
+            Logger.log({
+                module: "Pipeline",
+                context: "shutdown",
+                message: "Graceful shutdown complete",
+                level: "info",
+            });
+
+            process.exit(0);
+        } catch (error) {
+            Logger.log({
+                module: "Pipeline",
+                context: "shutdown",
+                message: `Error during shutdown: ${error}`,
+                level: "error",
+            });
+
+            process.exit(1);
+        }
+    };
+
+    // Listen for shutdown signals
+    process.on("SIGINT", () => shutdown("SIGINT"));
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
 
     Logger.log({
-      module: 'Main',
-      context: 'startup',
-      message: 'Pipeline started successfully',
-      metadata: {
-        phase: 'Phase 7 Complete - Production Ready (Full Pipeline + Monitoring + Scheduler)',
-        components: {
-          adapters: 1,
-          processors: 8,
-          linkers: 1,
-          analyzers: 1,
-          alertManagers: 1,
-          httpServer: 1,
-          jobScheduler: 1,
-        },
-        infrastructure: {
-          port,
-          queueConcurrency: parseInt(process.env.QUEUE_CONCURRENCY || '20', 10),
-          scheduledJobs: jobScheduler.getScheduledJobs().length,
-        },
-      },
+        module: "Pipeline",
+        context: "main",
+        message: "Pipeline started successfully. Press Ctrl+C to stop.",
+        level: "info",
     });
-
-    // Graceful shutdown
-    process.on('SIGTERM', async () => {
-      Logger.log({
-        module: 'Main',
-        context: 'shutdown',
-        message: 'Received SIGTERM, shutting down gracefully',
-      });
-
-      // Close HTTP server
-      await new Promise((resolve) => server.close(resolve));
-      // Stop job scheduler
-      await jobScheduler.stop();
-      // Close queue
-      await queueManager.shutdown();
-      // Close NATS
-      await natsClient.close();
-
-      Logger.log({
-        module: 'Main',
-        context: 'shutdown',
-        message: 'Shutdown complete',
-      });
-
-      process.exit(0);
-    });
-
-    process.on('SIGINT', async () => {
-      Logger.log({
-        module: 'Main',
-        context: 'shutdown',
-        message: 'Received SIGINT, shutting down gracefully',
-      });
-
-      // Close HTTP server
-      await new Promise((resolve) => server.close(resolve));
-      // Stop job scheduler
-      await jobScheduler.stop();
-      // Close queue
-      await queueManager.shutdown();
-      // Close NATS
-      await natsClient.close();
-
-      Logger.log({
-        module: 'Main',
-        context: 'shutdown',
-        message: 'Shutdown complete',
-      });
-
-      process.exit(0);
-    });
-  } catch (error) {
-    Logger.log({
-      module: 'Main',
-      context: 'startup',
-      message: 'Fatal error during startup',
-      level: 'error',
-      error: error as Error,
-    });
-    process.exit(1);
-  }
 }
 
 main().catch((error) => {
-  console.error('Fatal error:', error);
-  process.exit(1);
+    Logger.log({
+        module: "Pipeline",
+        context: "main",
+        message: `Fatal error: ${error}`,
+        level: "error",
+    });
+    console.error("Fatal error:", error);
+    process.exit(1);
 });

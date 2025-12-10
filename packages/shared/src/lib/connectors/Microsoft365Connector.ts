@@ -286,6 +286,34 @@ export default class Microsoft365Connector implements IConnector {
         }
     }
 
+    async getGroupMemberOf(groupId: string): Promise<APIResponse<any[]>> {
+        try {
+            const { data: client, error: clientError } = await this.getGraphClient();
+            if (clientError) return { error: clientError };
+
+            let allParentGroups: any[] = [];
+            let query = client.api(`/groups/${groupId}/memberOf`);
+            let response = await query.get();
+
+            allParentGroups = allParentGroups.concat(response.value);
+
+            while (response['@odata.nextLink']) {
+                response = await client.api(response['@odata.nextLink']).get();
+                allParentGroups = allParentGroups.concat(response.value);
+            }
+
+            return {
+                data: allParentGroups,
+            };
+        } catch (err) {
+            return Debug.error({
+                module: 'Microsoft365Connector',
+                context: 'getGroupMemberOf',
+                message: String(err),
+            });
+        }
+    }
+
     async getOrganization(): Promise<APIResponse<any>> {
         try {
             const { data: client, error: clientError } = await this.getGraphClient();

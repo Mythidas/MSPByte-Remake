@@ -1,5 +1,5 @@
 import type { Id } from "@workspace/database/convex/_generated/dataModel.js";
-import type { EntityType, IntegrationType } from "../pipeline/core.js";
+import type { EntityType, IntegrationType } from "../integrations/index.js";
 
 /**
  * Analysis Event - Emitted by workers after analyzing entities

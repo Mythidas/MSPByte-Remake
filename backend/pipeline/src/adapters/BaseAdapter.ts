@@ -1,254 +1,293 @@
-import { natsClient } from '../lib/nats.js';
-import QueueManager from '../queue/QueueManager.js';
-import { api } from '@workspace/database/convex/_generated/api.js';
-import { client } from '@workspace/shared/lib/convex.js';
-import type { Doc } from '@workspace/database/convex/_generated/dataModel.js';
-import Logger from '../lib/logger.js';
-import TracingManager from '../lib/tracing.js';
-import { APIResponse } from '@workspace/shared/types/api.js';
-import {
-  IntegrationType,
-  EntityType,
-} from '@workspace/shared/types/pipeline/core.js';
-import {
-  SyncEventPayload,
-  DataFetchPayload,
-  FetchedEventPayload,
-} from '@workspace/shared/types/pipeline/events.js';
-import { generateUUID } from '@workspace/shared/lib/utils.server.js';
+import { Job, Worker } from "bullmq";
+import { v4 as uuid } from "uuid";
+import { SyncJobData, QueueNames, queueManager } from "../lib/queue.js";
+import { MetricsCollector } from "../lib/metrics.js";
+import { Logger } from "../lib/logger.js";
+import { AdapterFetchResult, RawEntity } from "../types.js";
+import type { IntegrationId, EntityType } from "@workspace/shared/types/integrations";
+import { INTEGRATIONS } from "@workspace/shared/types/integrations/config.js";
 
-export type RawDataProps = {
-  eventData: SyncEventPayload;
-  tenantID: string;
-  dataSource: Doc<'data_sources'>;
-  cursor?: string;
-  syncId: string;
-  batchNumber: number;
-};
-
-export type RawDataResult = {
-  data: DataFetchPayload[];
-  nextCursor?: string;
-  hasMore: boolean;
-};
-
+/**
+ * BaseAdapter - Abstract base class for all integration adapters
+ *
+ * Responsibilities:
+ * 1. Subscribe to BullMQ sync:{integration}:{type} queue
+ * 2. Fetch data from external API (implemented by concrete adapters)
+ * 3. Handle pagination
+ * 4. Publish batches to process:entity queue
+ * 5. Track metrics (API calls, duration)
+ * 6. Self-schedule next sync based on integration config
+ */
 export abstract class BaseAdapter {
-  protected queueManager: QueueManager;
+    protected metrics: MetricsCollector;
+    protected integrationId: IntegrationId;
+    private workers: Map<EntityType, Worker<SyncJobData>> = new Map();
 
-  constructor(
-    protected integrationType: IntegrationType,
-    protected supportedEntities: EntityType[]
-  ) {}
-
-  setQueueManager(queueManager: QueueManager): void {
-    this.queueManager = queueManager;
-  }
-
-  async start(): Promise<void> {
-    // Subscribe to sync topics for this integration type
-    const pattern = `${this.integrationType}.sync.*`;
-    await natsClient.subscribe(pattern, this.handleJob.bind(this));
-
-    Logger.log({
-      module: 'BaseAdapter',
-      context: this.integrationType,
-      message: `Adapter started, listening to ${pattern}`,
-    });
-  }
-
-  private async handleJob(syncEvent: SyncEventPayload): Promise<void> {
-    const { entityType, job, tenantID, dataSourceID } = syncEvent;
-
-    // Start trace
-    TracingManager.startTrace({
-      syncId: syncEvent.syncId,
-      tenantId: tenantID,
-      dataSourceId: dataSourceID,
-      stage: 'fetch',
-      metadata: {
-        entityType,
-        integration: this.integrationType,
-      },
-    });
-
-    Logger.startStage('fetch', {
-      entityType,
-      integration: this.integrationType,
-    });
-
-    // Validate this adapter supports the requested entity type
-    if (!this.supportedEntities.includes(entityType)) {
-      Logger.log({
-        module: 'BaseAdapter',
-        context: 'handleJob',
-        message: `Adapter ${this.integrationType} does not support entity type ${entityType}`,
-        level: 'error',
-      });
-      return;
+    constructor(integrationId: IntegrationId) {
+        this.metrics = new MetricsCollector();
+        this.integrationId = integrationId;
     }
 
-    // Extract pagination metadata
-    const jobMetadata = syncEvent.metadata as any;
-    const cursor = jobMetadata?.cursor;
-    const syncId = syncEvent.syncId || generateUUID();
-    const batchNumber = (jobMetadata?.batchNumber || 0) + 1;
-    const previousTotal = jobMetadata?.totalProcessed || 0;
+    /**
+     * Start a worker for a specific entity type
+     * Subscribes to sync:{integration}:{type} queue
+     */
+    startWorkerForType(entityType: EntityType): void {
+        if (this.workers.has(entityType)) {
+            Logger.log({
+                module: "BaseAdapter",
+                context: "startWorkerForType",
+                message: `Worker already exists for ${this.integrationId}:${entityType}`,
+                level: "warn",
+            });
+            return;
+        }
 
-    Logger.log({
-      module: 'BaseAdapter',
-      context: 'handleJob',
-      message: `Processing sync (batch ${batchNumber}, syncId: ${syncId})`,
-      metadata: {
-        entityType,
-        batchNumber,
-        cursor: cursor ? 'present' : 'none',
-      },
-    });
+        const queueName = QueueNames.sync(this.integrationId, entityType);
 
-    try {
-      // Fetch data source
-      const dataSource = (await client.query(api.helpers.orm.get_s, {
-        id: dataSourceID as any,
-        tableName: 'data_sources',
-        secret: process.env.CONVEX_API_KEY!,
-      })) as Doc<'data_sources'>;
-
-      if (!dataSource) {
-        throw new Error('Data source not found');
-      }
-
-      // Update sync status (first batch only)
-      if (batchNumber === 1) {
-        await client.mutation(api.helpers.orm.update_s, {
-          tableName: 'data_sources',
-          data: [
+        const worker = queueManager.createWorker<SyncJobData>(
+            queueName,
+            this.handleSyncJob.bind(this),
             {
-              id: dataSource._id,
-              syncStatus: 'syncing',
-              lastSync: Date.now(),
-            },
-          ],
-          secret: process.env.CONVEX_API_KEY!,
-        });
-      }
+                concurrency: 50, // Allow parallel syncs across tenants
+            }
+        );
 
-      // Call child class to get raw data
-      const result = await this.getRawData({
-        eventData: syncEvent,
-        tenantID,
-        dataSource,
-        cursor,
-        syncId,
-        batchNumber,
-      });
-
-      if (result.error) {
-        throw new Error(result.error.message);
-      }
-
-      const { data, nextCursor, hasMore } = result.data!;
-      const totalProcessed = previousTotal + data.length;
-
-      Logger.log({
-        module: 'BaseAdapter',
-        context: 'handleJob',
-        message: `Fetched ${data.length} ${entityType} (batch ${batchNumber})`,
-        metadata: {
-          batchSize: data.length,
-          totalProcessed,
-          hasMore,
-        },
-      });
-
-      // Publish fetched data to processor
-      const fetchedPayload: FetchedEventPayload = {
-        tenantID,
-        dataSourceID,
-        integrationtype: this.integrationType,
-        entityType,
-        data,
-        syncId,
-        batchNumber,
-        isFinalBatch: !hasMore,
-      };
-
-      await natsClient.publish('fetched', fetchedPayload);
-
-      // Schedule next batch if needed
-      if (hasMore && nextCursor) {
-        Logger.log({
-          module: 'BaseAdapter',
-          context: 'handleJob',
-          message: `Scheduling next batch (batch ${batchNumber + 1})`,
-        });
-
-        await this.queueManager.scheduleNextBatch({
-          action: `${this.integrationType}.sync.${entityType}`,
-          tenantId: tenantID,
-          dataSourceId: dataSourceID,
-          syncId,
-          cursor: nextCursor,
-          batchNumber,
-          priority: 10, // High priority for in-progress syncs
-        });
-      } else {
-        // Update sync status (complete)
-        await client.mutation(api.helpers.orm.update_s, {
-          tableName: 'data_sources',
-          data: [
-            {
-              id: dataSource._id,
-              syncStatus: 'synced',
-              lastSync: Date.now(),
-            },
-          ],
-          secret: process.env.CONVEX_API_KEY!,
-        });
+        this.workers.set(entityType, worker);
 
         Logger.log({
-          module: 'BaseAdapter',
-          context: 'handleJob',
-          message: `Sync complete for ${entityType}`,
-          metadata: {
-            totalProcessed,
-            batches: batchNumber,
-          },
+            module: "BaseAdapter",
+            context: "startWorkerForType",
+            message: `${this.getAdapterName()} started worker for ${this.integrationId}:${entityType}`,
+            level: "info",
         });
-      }
-
-      Logger.endStage('fetch', {
-        recordsFetched: data.length,
-        totalProcessed,
-      });
-    } catch (error) {
-      Logger.log({
-        module: 'BaseAdapter',
-        context: 'handleJob',
-        message: `Failed to fetch ${entityType}`,
-        level: 'error',
-        error: error as Error,
-      });
-
-      // Update sync status (failed)
-      if (dataSourceID) {
-        await client.mutation(api.helpers.orm.update_s, {
-          tableName: 'data_sources',
-          data: [
-            {
-              id: dataSourceID as any,
-              syncStatus: 'failed',
-              lastSync: Date.now(),
-            },
-          ],
-          secret: process.env.CONVEX_API_KEY!,
-        });
-      }
-
-      throw error;
     }
-  }
 
-  protected abstract getRawData(
-    props: RawDataProps
-  ): Promise<APIResponse<RawDataResult>>;
+    /**
+     * Handle sync job from queue
+     */
+    private async handleSyncJob(job: Job<SyncJobData>): Promise<void> {
+        const { tenantId, integrationId, dataSourceId, entityType, batchNumber = 0, syncId } = job.data;
+
+        // Set pipeline start time on first batch
+        const startedAt = job.data.startedAt || (batchNumber === 0 ? Date.now() : undefined);
+
+        this.metrics.reset();
+        this.metrics.startStage("adapter");
+
+        Logger.log({
+            module: "BaseAdapter",
+            context: "handleSyncJob",
+            message: `Starting sync for ${integrationId}:${entityType} (batch ${batchNumber})`,
+            level: "info",
+        });
+
+        try {
+            // Fetch data from external API (implemented by concrete adapter)
+            this.metrics.trackApiCall();
+            const result = await this.fetchData(job.data);
+
+            Logger.log({
+                module: "BaseAdapter",
+                context: "handleSyncJob",
+                message: `Fetched ${result.entities.length} ${entityType} entities`,
+                level: "trace",
+            });
+
+            // Publish entities to processor queue
+            if (result.entities.length > 0) {
+                await this.publishToProcessor(
+                    tenantId,
+                    integrationId,
+                    dataSourceId,
+                    entityType,
+                    result.entities,
+                    syncId,
+                    startedAt
+                );
+            }
+
+            // Handle pagination
+            if (result.pagination?.hasMore) {
+                await this.scheduleNextBatch(job.data, result.pagination.cursor, batchNumber + 1, startedAt);
+
+                Logger.log({
+                    module: "BaseAdapter",
+                    context: "handleSyncJob",
+                    message: `Scheduled batch ${batchNumber + 1} with cursor`,
+                    level: "trace",
+                });
+            } else {
+                // Sync complete - schedule next sync based on integration config
+                await this.scheduleNextSync(integrationId, dataSourceId, entityType);
+
+                Logger.log({
+                    module: "BaseAdapter",
+                    context: "handleSyncJob",
+                    message: `Sync complete for ${integrationId}:${entityType}`,
+                    level: "info",
+                });
+            }
+
+            this.metrics.endStage("adapter");
+
+        } catch (error) {
+            this.metrics.trackError(error as Error, job.attemptsMade);
+            this.metrics.endStage("adapter");
+
+            Logger.log({
+                module: "BaseAdapter",
+                context: "handleSyncJob",
+                message: `Sync failed: ${error}`,
+                level: "error",
+            });
+
+            throw error; // Re-throw to trigger BullMQ retry
+        }
+    }
+
+    /**
+     * Fetch data from external API
+     * Must be implemented by concrete adapters
+     */
+    protected abstract fetchData(jobData: SyncJobData): Promise<AdapterFetchResult>;
+
+    /**
+     * Get adapter name for logging
+     */
+    protected abstract getAdapterName(): string;
+
+    /**
+     * Publish entities to processor queue
+     */
+    private async publishToProcessor(
+        tenantId: string,
+        integrationId: IntegrationId,
+        dataSourceId: string,
+        entityType: EntityType,
+        entities: RawEntity[],
+        syncId: string,
+        startedAt?: number
+    ): Promise<void> {
+        await queueManager.addJob(
+            QueueNames.process,
+            {
+                tenantId: tenantId as any,
+                integrationId,
+                dataSourceId: dataSourceId as any,
+                entityType,
+                entities,
+                syncId,
+                startedAt,
+                metrics: this.metrics.toJSON(), // Pass adapter metrics to processor
+            },
+            {
+                priority: 5,
+            }
+        );
+
+        Logger.log({
+            module: "BaseAdapter",
+            context: "publishToProcessor",
+            message: `Published ${entities.length} entities to processor with metrics`,
+            level: "trace",
+        });
+    }
+
+    /**
+     * Schedule next pagination batch
+     */
+    private async scheduleNextBatch(
+        currentJobData: SyncJobData,
+        cursor: string | undefined,
+        batchNumber: number,
+        startedAt?: number
+    ): Promise<void> {
+        const queueName = QueueNames.sync(this.integrationId, currentJobData.entityType);
+
+        await queueManager.addJob(
+            queueName,
+            {
+                ...currentJobData,
+                cursor,
+                batchNumber,
+                startedAt, // Pass startedAt to next batch
+            },
+            {
+                priority: 5,
+            }
+        );
+    }
+
+    /**
+     * Schedule next sync based on integration config
+     */
+    private async scheduleNextSync(
+        integrationId: IntegrationId,
+        dataSourceId: string,
+        entityType: EntityType
+    ): Promise<void> {
+        const integration = INTEGRATIONS[integrationId];
+        const typeConfig = integration.supportedTypes.find(t => t.type === entityType);
+
+        if (!typeConfig) {
+            Logger.log({
+                module: "BaseAdapter",
+                context: "scheduleNextSync",
+                message: `No config found for ${integrationId}:${entityType}`,
+                level: "warn",
+            });
+            return;
+        }
+
+        const rateMinutes = typeConfig.rateMinutes;
+        const delayMs = rateMinutes * 60 * 1000;
+        const queueName = QueueNames.sync(integrationId, entityType);
+
+        // Schedule next sync with delay
+        await queueManager.addJob(
+            queueName,
+            {
+                tenantId: "", // Will be filled by scheduler
+                integrationId,
+                dataSourceId: dataSourceId as any,
+                entityType,
+                syncId: uuid(), // New syncId for new sync
+            },
+            {
+                delay: delayMs,
+                priority: typeConfig.priority,
+            }
+        );
+
+        Logger.log({
+            module: "BaseAdapter",
+            context: "scheduleNextSync",
+            message: `Scheduled next sync in ${rateMinutes} minutes`,
+            level: "info",
+        });
+    }
+
+    /**
+     * Get current metrics
+     */
+    getMetrics(): any {
+        return this.metrics.getMetrics();
+    }
+
+    /**
+     * Stop all adapter workers
+     */
+    async stop(): Promise<void> {
+        for (const [entityType, worker] of this.workers.entries()) {
+            await worker.close();
+            Logger.log({
+                module: "BaseAdapter",
+                context: "stop",
+                message: `${this.getAdapterName()} stopped worker for ${entityType}`,
+                level: "info",
+            });
+        }
+        this.workers.clear();
+    }
 }

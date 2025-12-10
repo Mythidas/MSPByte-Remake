@@ -6,22 +6,9 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    "./types/*": {
-      "source": "./src/types/*.ts",
-      "import": "./dist/types/*.js",
-      "types": "./dist/types/*.d.ts"
-    },
-    "./lib/*": {
-      "source": "./src/lib/*.ts",
-      "import": "./dist/lib/*.js",
-      "types": "./dist/lib/*.d.ts"
-    },
-    "./config/*": {
-      "source": "./src/config/*.ts",
-      "import": "./dist/config/*.js",
-      "types": "./dist/config/*.d.ts"
-    },
-    "./package.json": "./package.json"
+    "./types/*": ["./src/types/*"],
+    "./lib/*": ["./src/lib/*"],
+    "./config/*": ["./src/config/*"]
   },
   "files": [
     "dist",

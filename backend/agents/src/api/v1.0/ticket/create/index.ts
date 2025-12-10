@@ -8,6 +8,7 @@ import { HaloPSAAsset } from "@workspace/shared/types/integrations/halopsa/asset
 import { api } from "@workspace/database/convex/_generated/api.js";
 import { client } from "@workspace/shared/lib/convex.js";
 import { Doc } from "@workspace/database/convex/_generated/dataModel.js";
+import { INTEGRATIONS } from "@workspace/shared/types/integrations/config.js";
 
 export default async function(fastify: FastifyInstance) {
     const CONVEX_API_KEY = process.env.CONVEX_API_KEY!;
@@ -66,19 +67,6 @@ export default async function(fastify: FastifyInstance) {
                         throw new Error("Resources not found");
                     }
 
-                    // Get PSA data source from agent integration config
-                    const agentIntegration = (await client.query(
-                        api.integrations.query_s.getBySlug,
-                        {
-                            secret: CONVEX_API_KEY,
-                            slug: "msp-agent",
-                        }
-                    )) as Doc<"integrations">;
-
-                    if (!agentIntegration) {
-                        throw new Error("MSP Agent integration not found");
-                    }
-
                     const agentSource = (await client.query(api.helpers.orm.get_s, {
                         tableName: "data_sources",
                         tenantId: siteRes.tenantId,
@@ -86,7 +74,7 @@ export default async function(fastify: FastifyInstance) {
                         index: {
                             name: "by_integration_primary",
                             params: {
-                                integrationId: agentIntegration._id,
+                                integrationId: "msp-agent",
                                 isPrimary: true,
                             },
                         },
@@ -115,11 +103,7 @@ export default async function(fastify: FastifyInstance) {
                     })) as Doc<"data_sources">;
 
                     // Fetch PSA integration to get the slug (psaType)
-                    const psaIntegrationRes = (await client.query(api.helpers.orm.get_s, {
-                        tableName: "integrations",
-                        id: psaIntegrationId as any,
-                        secret: CONVEX_API_KEY,
-                    })) as Doc<"integrations">;
+                    const psaIntegrationRes = INTEGRATIONS[psaIntegrationId];
 
                     return [agentRes, siteRes, dataSourceRes, psaIntegrationRes];
                 }
