@@ -8,21 +8,7 @@ import { MSGraphIdentity } from "@workspace/shared/types/integrations/microsoft-
 import { Microsoft365DataSourceConfig } from "@workspace/shared/types/integrations/microsoft-365/index.js";
 import { MSGraphRole } from "@workspace/shared/types/integrations/microsoft-365/roles.js";
 import { MSGraphConditionalAccessPolicy } from "@workspace/shared/types/integrations/microsoft-365/policies.js";
-
-export type MSGraphSubscribedSku = {
-  skuId: string;
-  skuPartNumber: string;
-  servicePlans: Array<{
-    servicePlanId: string;
-    servicePlanName: string;
-  }>;
-  prepaidUnits?: {
-    enabled: number;
-    suspended: number;
-    warning: number;
-  };
-  consumedUnits?: number;
-};
+import { MSGraphSubscribedSku } from "@workspace/shared/types/integrations/microsoft-365/licenses.js";
 
 export default class Microsoft365Connector implements IConnector {
   constructor(private config: Microsoft365DataSourceConfig) {}

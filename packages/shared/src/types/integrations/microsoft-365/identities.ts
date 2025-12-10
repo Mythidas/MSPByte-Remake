@@ -27,3 +27,5 @@ export type MSGraphIdentity = {
 
   proxyAddresses?: string[];
 };
+
+export type M365NormalIdentity = MSGraphIdentity;

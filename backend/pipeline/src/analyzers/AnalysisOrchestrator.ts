@@ -368,8 +368,8 @@ export class AnalysisOrchestrator {
   ): Map<Id<"entities">, EntityState> {
     const merged = new Map<Id<"entities">, EntityState>();
     const statePriority: Record<EntityState, number> = {
-      low: 0,
-      normal: 1,
+      normal: 0,
+      low: 1,
       warn: 2,
       high: 3,
       critical: 4,
@@ -379,7 +379,7 @@ export class AnalysisOrchestrator {
       for (const [entityId, state] of result.entityStates) {
         const existing = merged.get(entityId) || "normal";
         // Keep highest severity state
-        if (statePriority[state] > statePriority[existing]) {
+        if (statePriority[state] >= statePriority[existing]) {
           merged.set(entityId, state);
         }
       }

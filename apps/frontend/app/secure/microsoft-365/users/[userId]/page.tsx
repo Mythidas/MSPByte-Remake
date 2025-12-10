@@ -39,6 +39,10 @@ import { toast } from "sonner";
 import { prettyText } from "@workspace/shared/lib/utils";
 import { useApp } from "@/lib/hooks/useApp";
 import { AlertsTable } from "@/components/alerts/AlertsTable";
+import { M365NormalLicense } from "@workspace/shared/types/integrations/microsoft-365/licenses.js";
+import { M365NormalRole } from "@workspace/shared/types/integrations/microsoft-365/roles.js";
+import { M365NormalGroup } from "@workspace/shared/types/integrations/microsoft-365/groups.js";
+import { M365NormalIdentity } from "@workspace/shared/types/integrations/microsoft-365/identities.js";
 
 type UserEntity = Doc<"entities">;
 
@@ -136,7 +140,7 @@ export default function UserDetailPage() {
   ) as Doc<"entity_alerts">[] | undefined;
 
   // Fetch license entities by SKU IDs
-  const licenseSkuIds = user?.normalizedData?.licenses || [];
+  const licenseSkuIds = user?.rawData.assignedLicenses?.map((l: any) => l.skuId) || [];
   const licenses = useQuery(
     api.helpers.orm.list,
     licenseSkuIds.length > 0 && relationships?.length
@@ -201,13 +205,13 @@ export default function UserDetailPage() {
     );
   }
 
-  const userData = user.normalizedData;
-  const enabled = userData?.enabled ?? true;
+  const userData = user.rawData as M365NormalIdentity;
+  const enabled = userData?.accountEnabled ?? true;
   const state = user.state || "normal";
-  const tags = userData?.tags || [];
-  const userType = userData?.type || "member";
-  const lastLogin = userData?.last_login_at;
-  const aliases = userData?.aliases || [];
+  const tags = user.tags || [];
+  const userType = userData.userType || "Member";
+  const lastLogin = userData.signInActivity?.lastSignInDateTime || 0;
+  const aliases = userData?.proxyAddresses || [];
 
   const stateConfig = {
     low: { color: "bg-slate-500/50", icon: AlertCircle, text: "Low Risk" },
@@ -241,7 +245,7 @@ export default function UserDetailPage() {
             <div className="flex-1 space-y-3">
               <div className="flex items-center gap-3">
                 <CardTitle className="text-3xl">
-                  {userData?.name || "Unknown User"}
+                  {userData?.displayName || "Unknown User"}
                 </CardTitle>
                 {enabled ? (
                   <CheckCircle className="w-6 h-6 text-green-500" />
@@ -254,7 +258,7 @@ export default function UserDetailPage() {
                 <CardDescription className="text-base flex flex-col gap-2">
                   <span className="flex gap-2 items-center">
                     <Mail className="w-4 h-4" />
-                    {userData?.email || user.rawData?.userPrincipalName}
+                    {userData?.userPrincipalName || user.rawData?.userPrincipalName}
                   </span>
                   <span>Last Login: {new Date(lastLogin).toDateString()}</span>
                 </CardDescription>
@@ -398,7 +402,10 @@ export default function UserDetailPage() {
             <CardContent>
               {groups && groups.length > 0 ? (
                 <div className="grid gap-3">
-                  {groups.map((group) => (
+                  {groups.map((group) => {
+                    const data = group.rawData as M365NormalGroup;
+
+                    return (
                     <div
                       key={group._id}
                       className="flex items-start gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors"
@@ -408,15 +415,16 @@ export default function UserDetailPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-base">
-                          {group.normalizedData?.name || "Unknown Group"}
+                          {data.displayName || "Unknown Group"}
                         </p>
                         <p className="text-sm text-muted-foreground truncate">
-                          {group.normalizedData?.description ||
+                          {data.description ||
                             group.externalId}
                         </p>
                       </div>
                     </div>
-                  ))}
+                  )
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-12">
@@ -439,7 +447,10 @@ export default function UserDetailPage() {
             <CardContent>
               {roles && roles.length > 0 ? (
                 <div className="grid gap-3">
-                  {roles.map((role) => (
+                  {roles.map((role) => {
+                    const data = role.rawData as M365NormalRole;
+
+                    return (
                     <div
                       key={role._id}
                       className="flex items-start gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors"
@@ -449,14 +460,14 @@ export default function UserDetailPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-base">
-                          {role.normalizedData?.name || "Unknown Role"}
+                          {data.displayName || "Unknown Role"}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {role.normalizedData?.description ||
+                          {data.description ||
                             "No description available"}
                         </p>
                       </div>
-                      {role.normalizedData?.name
+                      {data.displayName
                         ?.toLowerCase()
                         .includes("admin") && (
                         <Badge variant="destructive" className="flex-shrink-0">
@@ -464,7 +475,8 @@ export default function UserDetailPage() {
                         </Badge>
                       )}
                     </div>
-                  ))}
+                  )
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-12">
@@ -487,7 +499,10 @@ export default function UserDetailPage() {
             <CardContent>
               {licenses && licenses.length > 0 ? (
                 <div className="grid gap-3">
-                  {licenses.map((license) => (
+                  {licenses.map((license) => {
+                    const data = license.rawData as M365NormalLicense;
+
+                    return (
                     <div
                       key={license._id}
                       className="flex items-start gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors"
@@ -497,23 +512,23 @@ export default function UserDetailPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-base">
-                          {license.normalizedData?.name ||
-                            license.normalizedData?.skuPartNumber ||
+                          {data.friendlyName ||
+                            data.skuPartNumber ||
                             "Unknown License"}
                         </p>
-                        {license.normalizedData?.skuPartNumber &&
-                          license.normalizedData?.name !==
-                            license.normalizedData?.skuPartNumber && (
+                        {data.skuPartNumber &&
+                          data.friendlyName !==
+                            data.skuPartNumber && (
                             <p className="text-sm text-muted-foreground">
-                              SKU: {license.normalizedData?.skuPartNumber}
+                              SKU: {data.skuPartNumber}
                             </p>
                           )}
-                        {license.normalizedData?.consumedUnits !== undefined &&
-                          license.normalizedData?.prepaidUnits !==
+                        {data.consumedUnits !== undefined &&
+                          data.prepaidUnits !==
                             undefined && (
                             <p className="text-xs text-muted-foreground mt-1">
-                              {license.normalizedData.consumedUnits} of{" "}
-                              {license.normalizedData.prepaidUnits} units
+                              {data.consumedUnits} of{" "}
+                              {data.prepaidUnits.enabled} units
                               consumed
                             </p>
                           )}
@@ -522,7 +537,8 @@ export default function UserDetailPage() {
                         Active
                       </Badge>
                     </div>
-                  ))}
+                  )
+                  })}
                 </div>
               ) : licenseSkuIds.length > 0 ? (
                 <div className="grid gap-3">

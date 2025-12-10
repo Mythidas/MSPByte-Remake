@@ -30,7 +30,7 @@ export const INTEGRATIONS: Record<string, Integration> = {
       {
         isGlobal: false,
         priority: 5,
-        rateMinutes: 30,
+        rateMinutes: 1,
         type: "identities",
       },
       {
@@ -74,7 +74,7 @@ export const INTEGRATIONS: Record<string, Integration> = {
       {
         isGlobal: true,
         priority: 5,
-        rateMinutes: 1,
+        rateMinutes: 1440,
         type: "companies",
       },
     ],

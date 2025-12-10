@@ -9,8 +9,9 @@ import Link from "next/link";
 import { prettyText } from "@workspace/shared/lib/utils";
 import { useApp } from "@/lib/hooks/useApp";
 import { useAuthReady } from "@/lib/hooks/useAuthReady";
+import { M365NormalGroup } from "@workspace/shared/types/integrations/microsoft-365/groups.js";
 
-type GroupEntity = Doc<"entities">;
+type GroupEntity = Omit<Doc<"entities">, 'rawData'> & { rawData: M365NormalGroup };
 
 export default function Microsoft365Groups() {
   // Get selected site from app state
@@ -51,55 +52,53 @@ export default function Microsoft365Groups() {
   // Define columns
   const columns: DataTableColumn<GroupEntity>[] = [
     {
-      key: "normalizedData.name",
+      key: "rawData.displayName",
       title: "Name",
       sortable: true,
       searchable: true,
-      cell: ({ row }) =>
-        row.normalizedData?.name || row.rawData?.displayName || "-",
+      cell: ({ row }) => row.rawData.displayName || "-",
       filter: {
         type: "text",
         operators: ["eq", "ne", "contains", "startsWith"],
         placeholder: "Filter by name...",
       },
     },
+    // {
+    //   key: "normalizedData.type",
+    //   title: "Type",
+    //   sortable: true,
+    //   cell: ({ row }) => {
+    //     const type = row.rawData.classification || "custom";
+    //     const typeColors = {
+    //       security: "bg-red-500/50",
+    //       distribution: "bg-blue-500/50",
+    //       modern: "bg-green-500/50",
+    //       custom: "bg-purple-500/50",
+    //     };
+    //     return (
+    //       <span
+    //         className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${typeColors[type as keyof typeof typeColors] || "bg-gray-500/50"}`}
+    //       >
+    //         {prettyText(type)}
+    //       </span>
+    //     );
+    //   },
+    //   filter: {
+    //     type: "select",
+    //     operators: ["eq", "ne", "in"],
+    //     options: [
+    //       { label: "Security", value: "security" },
+    //       { label: "Distribution", value: "distribution" },
+    //       { label: "Modern (M365)", value: "modern" },
+    //       { label: "Custom", value: "custom" },
+    //     ],
+    //   },
+    // },
     {
-      key: "normalizedData.type",
-      title: "Type",
-      sortable: true,
-      cell: ({ row }) => {
-        const type = row.normalizedData?.type || "custom";
-        const typeColors = {
-          security: "bg-red-500/50",
-          distribution: "bg-blue-500/50",
-          modern: "bg-green-500/50",
-          custom: "bg-purple-500/50",
-        };
-        return (
-          <span
-            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${typeColors[type as keyof typeof typeColors] || "bg-gray-500/50"}`}
-          >
-            {prettyText(type)}
-          </span>
-        );
-      },
-      filter: {
-        type: "select",
-        operators: ["eq", "ne", "in"],
-        options: [
-          { label: "Security", value: "security" },
-          { label: "Distribution", value: "distribution" },
-          { label: "Modern (M365)", value: "modern" },
-          { label: "Custom", value: "custom" },
-        ],
-      },
-    },
-    {
-      key: "normalizedData.description",
+      key: "rawData.description",
       title: "Description",
       cell: ({ row }) => {
-        const description =
-          row.normalizedData?.description || row.rawData?.description;
+        const description = row.rawData.description;
         if (!description)
           return <span className="text-muted-foreground">-</span>;
 
@@ -116,11 +115,11 @@ export default function Microsoft365Groups() {
       },
     },
     {
-      key: "normalizedData.created_at",
+      key: "rawData.createdDateTime",
       title: "Created",
       sortable: true,
       cell: ({ row }) => {
-        const createdAt = row.normalizedData?.created_at;
+        const createdAt = row.rawData.createdDateTime;
         if (!createdAt) return <span className="text-muted-foreground">-</span>;
 
         const date = new Date(createdAt);

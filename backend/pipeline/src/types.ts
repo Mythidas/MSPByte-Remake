@@ -26,6 +26,11 @@ export type Relationship = Doc<"entity_relationships">;
 export type EntityState = "low" | "normal" | "warn" | "high" | "critical";
 
 /**
+ * MFA coverage level for identity entities
+ */
+export type MFACoverage = "none" | "partial" | "full";
+
+/**
  * ============================================================================
  * ANALYSIS CONTEXT
  * ============================================================================
@@ -80,6 +85,7 @@ export type AlertSeverity = "low" | "medium" | "high" | "critical";
  */
 export type AlertType =
   | "mfa-not-enforced"
+  | "mfa-partial-enforced"
   | "policy-gap"
   | "license-waste"
   | "stale-user";

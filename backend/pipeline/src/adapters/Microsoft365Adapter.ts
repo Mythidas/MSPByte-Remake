@@ -305,18 +305,23 @@ export class Microsoft365Adapter extends BaseAdapter {
       await connector.getSecurityDefaultsEnabled();
 
     // Add security defaults as a pseudo-policy
-    const sdPolicy = {
+    const sdPolicy = securityDefaults ? {
       externalId: "security-defaults",
-      rawData: securityDefaults,
-    };
+      rawData: {
+        id: "security-defaults",
+        displayName: "Security Defaults",
+        state: "enabled",
+        createdDateTime: ""
+      },
+    } : undefined;
 
     const entities = [
       ...policies.map((rawData: any) => ({
         externalId: rawData.id,
         rawData,
       })),
-      sdPolicy,
     ];
+    if (sdPolicy) entities.push(sdPolicy);
 
     Logger.log({
       module: "Microsoft365Adapter",

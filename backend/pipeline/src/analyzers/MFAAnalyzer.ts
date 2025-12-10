@@ -1,5 +1,5 @@
 import { BaseAnalyzer } from "./BaseAnalyzer.js";
-import { AnalysisContext, AnalyzerResult, Entity } from "../types.js";
+import { AnalysisContext, AnalyzerResult, Entity, MFACoverage } from "../types.js";
 import { Logger } from "../lib/logger.js";
 import { MSGraphConditionalAccessPolicy } from "@workspace/shared/types/integrations/microsoft-365/policies.js";
 
@@ -8,20 +8,25 @@ import { MSGraphConditionalAccessPolicy } from "@workspace/shared/types/integrat
  *
  * For Microsoft 365:
  * - Checks conditional access policies for MFA requirements
- * - Checks security defaults (legacy MFA enforcement)
- * - Flags identities not covered by any MFA policy
+ * - Checks security defaults (protects admins only)
+ * - Distinguishes between no MFA, partial MFA, and full MFA
+ *
+ * Coverage Levels:
+ * - None: No MFA enforcement at all
+ * - Partial: MFA enforced but not comprehensive (security defaults for non-admins, or CA policies covering some apps only)
+ * - Full: Complete MFA coverage (security defaults for admins, or CA policies covering all apps)
  *
  * Alerts:
- * - Type: "mfa-not-enforced"
- * - Severity: "high" (critical for admin accounts)
+ * - Type: "mfa-not-enforced" (severity: "critical")
+ * - Type: "mfa-partial-enforced" (severity: "high")
  *
  * Tags:
- * - "mfa-enabled" or "mfa-disabled"
- * - "security-defaults-enabled" (if security defaults are on)
+ * - "MFA None", "MFA Partial", or "MFA Full"
  *
  * States:
- * - "high" for identities without MFA
- * - "critical" for admin identities without MFA
+ * - "critical" for identities with no MFA
+ * - "high" for identities with partial MFA
+ * - "normal" for identities with full MFA
  */
 export class MFAAnalyzer extends BaseAnalyzer {
   getName(): string {
@@ -64,46 +69,63 @@ export class MFAAnalyzer extends BaseAnalyzer {
 
     // Analyze each identity
     for (const identity of context.entities.identities) {
-      const hasMFA = this.checkIdentityMFA(
+      const { coverage, reason } = this.checkIdentityMFACoverage(
         identity,
         context,
         mfaPolicies,
         securityDefaultsEnabled,
       );
 
-      if (hasMFA) {
-        // Identity has MFA - tag as enabled
-        this.addTags(result, identity._id, ["mfa-enabled"]);
-        if (securityDefaultsEnabled) {
-          this.addTags(result, identity._id, ["security-defaults-enabled"]);
-        }
-      } else {
-        // Identity missing MFA - create alert
-        const isAdmin = this.isAdminUser(identity, context);
-        const severity = isAdmin ? "critical" : "high";
+      const isAdmin = this.isAdminUser(identity, context);
+      const displayName = this.getDisplayName(identity);
 
+      if (coverage === "none") {
+        // No MFA coverage - create critical alert
         const alert = this.createAlert(
           identity._id,
           "mfa-not-enforced",
-          severity,
+          "critical",
           isAdmin
-            ? `Admin user '${this.getDisplayName(identity)}' does not have MFA enforced`
-            : `User '${this.getDisplayName(identity)}' does not have MFA enforced`,
+            ? `Admin user '${displayName}' does not have MFA enforced`
+            : `User '${displayName}' does not have MFA enforced`,
           {
             userPrincipalName: identity.rawData.userPrincipalName,
             isAdmin,
             securityDefaultsEnabled,
             mfaPoliciesCount: mfaPolicies.length,
+            coverage,
           },
         );
         result.alerts.push(alert);
+        this.addTags(result, identity._id, ["MFA None"]);
+        this.setState(result, identity._id, "critical");
 
-        this.addTags(result, identity._id, ["mfa-disabled"]);
-        this.setState(
-          result,
+      } else if (coverage === "partial") {
+        // Partial MFA coverage - create high severity alert
+        const alert = this.createAlert(
           identity._id,
-          severity === "critical" ? "critical" : "high",
+          "mfa-partial-enforced",
+          "high",
+          isAdmin
+            ? `Admin user '${displayName}' has partial MFA coverage`
+            : `User '${displayName}' has partial MFA coverage`,
+          {
+            userPrincipalName: identity.rawData.userPrincipalName,
+            isAdmin,
+            securityDefaultsEnabled,
+            mfaPoliciesCount: mfaPolicies.length,
+            coverage,
+            reason,
+          },
         );
+        result.alerts.push(alert);
+        this.addTags(result, identity._id, ["MFA Partial"]);
+        this.setState(result, identity._id, "high");
+
+      } else {
+        // Full MFA coverage - reset state to normal
+        this.setState(result, identity._id, "normal");
+        this.addTags(result, identity._id, []);
       }
     }
 
@@ -158,27 +180,63 @@ export class MFAAnalyzer extends BaseAnalyzer {
   }
 
   /**
-   * Check if an identity has MFA enforced
+   * Check MFA coverage level for an identity
+   * Returns coverage level (none/partial/full) and reason for partial coverage
    */
-  private checkIdentityMFA(
+  private checkIdentityMFACoverage(
     identity: Entity,
     context: AnalysisContext,
     mfaPolicies: Entity[],
     securityDefaultsEnabled: boolean,
-  ): boolean {
-    // If security defaults are enabled, ALL users have MFA
-    if (securityDefaultsEnabled) {
-      return true;
-    }
+  ): { coverage: MFACoverage; reason?: string } {
+    const isAdmin = this.isAdminUser(identity, context);
 
-    // Check if user is covered by any MFA policy
-    for (const policy of mfaPolicies) {
-      if (this.doesPolicyApplyToUser(policy, identity, context)) {
-        return true;
+    // Security Defaults - only fully protect admins
+    if (securityDefaultsEnabled) {
+      if (isAdmin) {
+        return { coverage: "full" };
+      } else {
+        return {
+          coverage: "partial",
+          reason: "Security Defaults only enforce MFA for administrator accounts, not regular users",
+        };
       }
     }
 
-    return false;
+    // Check Conditional Access policies
+    let hasFullCoverage = false;
+    let hasPartialCoverage = false;
+    let partialReason = "";
+
+    for (const policy of mfaPolicies) {
+      const appliestoUser = this.doesPolicyApplyToUser(policy, identity, context);
+      if (!appliestoUser) {
+        continue;
+      }
+
+      // Check if policy covers ALL applications
+      const rawData = policy.rawData as MSGraphConditionalAccessPolicy;
+      const apps = rawData.conditions?.applications;
+      const includeApps = apps?.includeApplications || [];
+      const coversAllApps = includeApps.includes("All");
+
+      if (coversAllApps) {
+        hasFullCoverage = true;
+        break; // Found full coverage, no need to check more policies
+      } else {
+        hasPartialCoverage = true;
+        const appCount = includeApps.length;
+        partialReason = `MFA policy only covers ${appCount} specific application${appCount !== 1 ? "s" : ""}, not all applications`;
+      }
+    }
+
+    if (hasFullCoverage) {
+      return { coverage: "full" };
+    } else if (hasPartialCoverage) {
+      return { coverage: "partial", reason: partialReason };
+    } else {
+      return { coverage: "none" };
+    }
   }
 
   /**

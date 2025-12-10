@@ -8,8 +8,9 @@ import Loader from "@workspace/ui/components/Loader";
 import Link from "next/link";
 import { useApp } from "@/lib/hooks/useApp";
 import { useAuthReady } from "@/lib/hooks/useAuthReady";
+import { M365NormalRole } from "@workspace/shared/types/integrations/microsoft-365/roles.js";
 
-type RoleEntity = Doc<"entities">;
+type RoleEntity = Omit<Doc<"entities">, 'rawData'> & { rawData: M365NormalRole };
 
 export default function Microsoft365Roles() {
   // Get selected site from app state
@@ -49,12 +50,12 @@ export default function Microsoft365Roles() {
   // Define columns
   const columns: DataTableColumn<RoleEntity>[] = [
     {
-      key: "normalizedData.name",
+      key: "rawData.displayName",
       title: "Role Name",
       sortable: true,
       searchable: true,
       cell: ({ row }) =>
-        row.normalizedData?.name || row.rawData?.displayName || "-",
+        row.rawData.displayName || "-",
       filter: {
         type: "text",
         operators: ["eq", "ne", "contains", "startsWith"],
@@ -62,11 +63,10 @@ export default function Microsoft365Roles() {
       },
     },
     {
-      key: "normalizedData.description",
+      key: "rawData.description",
       title: "Description",
       cell: ({ row }) => {
-        const description =
-          row.normalizedData?.description || row.rawData?.description;
+        const description = row.rawData.description;
         if (!description)
           return <span className="text-muted-foreground">-</span>;
 
@@ -83,11 +83,11 @@ export default function Microsoft365Roles() {
       },
     },
     {
-      key: "normalizedData.status",
+      key: "rawData.deletedDateTime",
       title: "Status",
       sortable: true,
       cell: ({ row }) => {
-        const status = row.normalizedData?.status || "enabled";
+        const status = !row.rawData.deletedDateTime ? "enabled" : "disabled";
         return (
           <div className="flex items-center gap-2">
             {status === "enabled" ? (

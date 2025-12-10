@@ -14,8 +14,9 @@ import Loader from "@workspace/ui/components/Loader";
 import Link from "next/link";
 import { useApp } from "@/lib/hooks/useApp";
 import { useAuthReady } from "@/lib/hooks/useAuthReady";
+import { M365NormalPolicy } from "@workspace/shared/types/integrations/microsoft-365/policies.js";
 
-type PolicyEntity = Doc<"entities">;
+type PolicyEntity = Omit<Doc<"entities">, 'rawData'> & { rawData: M365NormalPolicy };
 
 export default function Microsoft365Policies() {
   // Get selected site from app state
@@ -55,12 +56,11 @@ export default function Microsoft365Policies() {
   // Define columns
   const columns: DataTableColumn<PolicyEntity>[] = [
     {
-      key: "normalizedData.name",
+      key: "rawData.displayName",
       title: "Policy Name",
       sortable: true,
       searchable: true,
-      cell: ({ row }) =>
-        row.normalizedData?.name || row.rawData?.displayName || "-",
+      cell: ({ row }) => row.rawData.displayName || "-",
       filter: {
         type: "text",
         operators: ["eq", "ne", "contains", "startsWith"],
@@ -68,32 +68,11 @@ export default function Microsoft365Policies() {
       },
     },
     {
-      key: "normalizedData.description",
-      title: "Description",
-      cell: ({ row }) => {
-        const description =
-          row.normalizedData?.description || row.rawData?.description;
-        if (!description)
-          return <span className="text-muted-foreground">-</span>;
-
-        return (
-          <span className="line-clamp-2 max-w-lg" title={description}>
-            {description}
-          </span>
-        );
-      },
-      filter: {
-        type: "text",
-        operators: ["contains", "startsWith"],
-        placeholder: "Filter by description...",
-      },
-    },
-    {
-      key: "normalizedData.status",
+      key: "rawData.state",
       title: "Status",
       sortable: true,
       cell: ({ row }) => {
-        const status = row.normalizedData?.status || "enabled";
+        const status = row.rawData.state || "enabled";
         const statusConfig = {
           enabled: {
             color: "bg-green-500/50",
@@ -134,11 +113,11 @@ export default function Microsoft365Policies() {
       },
     },
     {
-      key: "normalizedData.createdAt",
+      key: "rawData.createdDateTime",
       title: "Created",
       sortable: true,
       cell: ({ row }) => {
-        const createdAt = row.normalizedData?.createdAt;
+        const createdAt = row.rawData.createdDateTime;
         if (!createdAt) return <span className="text-muted-foreground">-</span>;
 
         const date = new Date(createdAt);

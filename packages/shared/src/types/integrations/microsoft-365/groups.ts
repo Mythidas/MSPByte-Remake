@@ -27,4 +27,7 @@ export type MSGraphGroup = {
   theme: string | null;
   visibility: string | null;
   onPremisesProvisioningErrors: any[];
+  securityIdentifier?: string;
 };
+
+export type M365NormalGroup = MSGraphGroup;

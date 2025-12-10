@@ -32,8 +32,11 @@ import {
   generateTimestampedFilename,
 } from "@/lib/utils/export";
 import { toast } from "sonner";
+import { M365NormalIdentity } from "@workspace/shared/types/integrations/microsoft-365/identities.js";
+import { M365NormalLicense } from "@workspace/shared/types/integrations/microsoft-365/licenses.js";
 
-type UserEntity = Doc<"entities">;
+type UserEntity = Omit<Doc<"entities">, 'rawData'> & { rawData: M365NormalIdentity };
+type LicenseEntity = Omit<Doc<"entities">, 'rawData'> & { rawData: M365NormalLicense };
 
 export default function Microsoft365Users() {
   // Track filtered data for exports
@@ -89,7 +92,7 @@ export default function Microsoft365Users() {
           },
         }
       : "skip",
-  ) as UserEntity[] | undefined;
+  ) as LicenseEntity[] | undefined;
 
   // Create license lookup map: SKU ID -> License Name
   const licenseLookup =
@@ -97,8 +100,8 @@ export default function Microsoft365Users() {
       (acc, license) => {
         const externalId = license.externalId;
         const name =
-          license.normalizedData?.name ||
-          license.normalizedData?.skuPartNumber ||
+          license.rawData.friendlyName ||
+          license.rawData.skuPartNumber ||
           externalId;
         if (externalId) {
           acc[externalId] = name;
@@ -111,12 +114,11 @@ export default function Microsoft365Users() {
   // Define columns
   const columns: DataTableColumn<UserEntity>[] = [
     {
-      key: "normalizedData.name",
+      key: "rawData.displayName",
       title: "Name",
       sortable: true,
       searchable: true,
-      cell: ({ row }) =>
-        row.normalizedData?.name || row.rawData?.displayName || "-",
+      cell: ({ row }) => row.rawData.displayName || "-",
       filter: {
         type: "text",
         operators: ["eq", "ne", "contains", "startsWith"],
@@ -124,12 +126,11 @@ export default function Microsoft365Users() {
       },
     },
     {
-      key: "normalizedData.email",
+      key: "rawData.userPrincipalName",
       title: "Email",
       sortable: true,
       searchable: true,
-      cell: ({ row }) =>
-        row.normalizedData?.email || row.rawData?.userPrincipalName || "-",
+      cell: ({ row }) => row.rawData.userPrincipalName || "-",
       filter: {
         type: "text",
         operators: ["eq", "ne", "contains", "endsWith"],
@@ -137,11 +138,11 @@ export default function Microsoft365Users() {
       },
     },
     {
-      key: "normalizedData.type",
+      key: "rawData.userType",
       title: "Type",
       sortable: true,
       cell: ({ row }) => {
-        const type = row.normalizedData?.type || "member";
+        const type = row.rawData.userType || "Member";
         const typeColors = {
           member: "bg-blue-500/50",
           guest: "bg-purple-500/50",
@@ -155,7 +156,7 @@ export default function Microsoft365Users() {
         );
       },
       exportValue: ({ row }) => {
-        const type = row.normalizedData?.type || "member";
+        const type = row.rawData.userType || "Member";
         return prettyText(type);
       },
       filter: {
@@ -168,11 +169,11 @@ export default function Microsoft365Users() {
       },
     },
     {
-      key: "normalizedData.enabled",
+      key: "rawData.accountEnabled",
       title: "Status",
       sortable: true,
       cell: ({ row }) => {
-        const enabled = row.normalizedData?.enabled;
+        const enabled = row.rawData.accountEnabled;
         return (
           <div className="flex items-center gap-2">
             {enabled ? (
@@ -190,7 +191,7 @@ export default function Microsoft365Users() {
         );
       },
       exportValue: ({ row }) => {
-        const enabled = row.normalizedData?.enabled;
+        const enabled = row.rawData.accountEnabled;
         return enabled ? "Enabled" : "Disabled";
       },
       filter: {
@@ -245,10 +246,10 @@ export default function Microsoft365Users() {
       },
     },
     {
-      key: "normalizedData.tags",
+      key: "tags",
       title: "Tags",
       cell: ({ row }) => {
-        const tags = row.normalizedData?.tags || [];
+        const tags = row.tags || [];
         if (!tags.length)
           return <span className="text-muted-foreground">-</span>;
 
@@ -271,7 +272,7 @@ export default function Microsoft365Users() {
         );
       },
       exportValue: ({ row }) => {
-        const tags = row.normalizedData?.tags || [];
+        const tags = row.tags || [];
         return tags.length > 0 ? tags.join(", ") : "-";
       },
       filter: {
@@ -287,16 +288,16 @@ export default function Microsoft365Users() {
       },
     },
     {
-      key: "normalizedData.licenses",
+      key: "rawData.assignedLicenses",
       title: "Licenses",
       cell: ({ row }) => {
-        const licenses = row.normalizedData?.licenses || [];
+        const licenses = row.rawData.assignedLicenses?.map((l) => l.skuId) || [];
         if (!licenses.length)
           return <span className="text-muted-foreground">None</span>;
         return <span>{licenses.length} license(s)</span>;
       },
       exportValue: ({ row }) => {
-        const licenseSkuIds = row.normalizedData?.licenses || [];
+        const licenseSkuIds = row.rawData.assignedLicenses?.map((l) => l.skuId) || [];
         if (!licenseSkuIds.length) return "None";
 
         // Map SKU IDs to license names using lookup
@@ -308,11 +309,11 @@ export default function Microsoft365Users() {
       },
     },
     {
-      key: "normalizedData.last_login_at",
+      key: "rawData.signInActivity.lastSignInDateTime",
       title: "Last Login",
       sortable: true,
       cell: ({ row }) => {
-        const lastLogin = row.normalizedData?.last_login_at;
+        const lastLogin = row.rawData.signInActivity?.lastSignInDateTime || row.rawData.signInActivity?.lastNonInteractiveSignInDateTime;
         const date = new Date(lastLogin || 0);
 
         if (date.getTime() <= 1)
@@ -325,7 +326,7 @@ export default function Microsoft365Users() {
         });
       },
       exportValue: ({ row }) => {
-        const lastLogin = row.normalizedData?.last_login_at;
+        const lastLogin = row.rawData.signInActivity?.lastSignInDateTime;
         const date = new Date(lastLogin || 0);
 
         if (date.getTime() <= 1) return "Never";

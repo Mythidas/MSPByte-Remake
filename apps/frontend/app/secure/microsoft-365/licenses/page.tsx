@@ -14,8 +14,9 @@ import Link from "next/link";
 import { useApp } from "@/lib/hooks/useApp";
 import { useAuthReady } from "@/lib/hooks/useAuthReady";
 import { prettyText } from "@workspace/shared/lib/utils";
+import { M365NormalLicense } from "@workspace/shared/types/integrations/microsoft-365/licenses.js";
 
-type LicenseEntity = Doc<"entities">;
+type LicenseEntity = Omit<Doc<"entities">, 'rawData'> & { rawData: M365NormalLicense };
 
 export default function Microsoft365Licenses() {
   // Get selected site from app state
@@ -55,12 +56,12 @@ export default function Microsoft365Licenses() {
   // Define columns
   const columns: DataTableColumn<LicenseEntity>[] = [
     {
-      key: "normalizedData.name",
+      key: "rawData.friendlyName",
       title: "License Name",
       sortable: true,
       searchable: true,
       cell: ({ row }) =>
-        row.normalizedData?.name || row.rawData?.skuPartNumber || "-",
+        row.rawData.friendlyName || row.rawData.skuPartNumber || "-",
       filter: {
         type: "text",
         operators: ["eq", "ne", "contains", "startsWith"],
@@ -68,11 +69,11 @@ export default function Microsoft365Licenses() {
       },
     },
     {
-      key: "normalizedData.skuPartNumber",
+      key: "rawData.skuPartNumber",
       title: "SKU",
       sortable: true,
       cell: ({ row }) => {
-        const sku = row.normalizedData?.skuPartNumber;
+        const sku = row.rawData.skuPartNumber;
         if (!sku) return <span className="text-muted-foreground">-</span>;
 
         return (
@@ -96,7 +97,7 @@ export default function Microsoft365Licenses() {
       title: "Total",
       sortable: true,
       cell: ({ row }) => {
-        const total = row.normalizedData?.totalUnits;
+        const total = row.rawData.prepaidUnits.enabled;
         if (total === undefined || total === null) {
           return <span className="text-muted-foreground">-</span>;
         }
@@ -109,11 +110,11 @@ export default function Microsoft365Licenses() {
     },
 
     {
-      key: "normalizedData.consumedUnits",
+      key: "rawData.consumedUnits",
       title: "Consumed",
       sortable: true,
       cell: ({ row }) => {
-        const consumed = row.normalizedData?.consumedUnits;
+        const consumed = row.rawData.consumedUnits;
         if (consumed === undefined || consumed === null) {
           return <span className="text-muted-foreground">-</span>;
         }
@@ -129,8 +130,8 @@ export default function Microsoft365Licenses() {
       title: "Utilization",
       sortable: false,
       cell: ({ row }) => {
-        const total = row.normalizedData?.totalUnits;
-        const consumed = row.normalizedData?.consumedUnits;
+        const total = row.rawData.prepaidUnits.enabled;
+        const consumed = row.rawData.consumedUnits;
 
         if (!total || consumed === undefined || consumed === null) {
           return <span className="text-muted-foreground">-</span>;
@@ -170,10 +171,10 @@ export default function Microsoft365Licenses() {
       },
     },
     {
-      key: "normalizedData.tags",
+      key: "tags",
       title: "Tags",
       cell: ({ row }) => {
-        const tags = row.normalizedData?.tags || [];
+        const tags = row.tags || [];
         if (!tags.length)
           return <span className="text-muted-foreground">-</span>;
 

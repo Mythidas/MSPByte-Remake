@@ -42,3 +42,5 @@ export type MSGraphConditionalAccessPolicy = {
     persistentBrowser?: any;
   };
 };
+
+export type M365NormalPolicy = MSGraphConditionalAccessPolicy;

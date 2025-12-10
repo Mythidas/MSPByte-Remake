@@ -92,8 +92,8 @@ export abstract class BaseAnalyzer {
    */
   private getStatePriority(state: EntityState): number {
     const priorities: Record<EntityState, number> = {
-      low: 0,
-      normal: 1,
+      normal: 0,
+      low: 1,
       warn: 2,
       high: 3,
       critical: 4,
