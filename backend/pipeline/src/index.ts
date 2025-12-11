@@ -32,7 +32,8 @@ import { StaleUserAnalyzer } from "./analyzers/StaleUserAnalyzer.js";
  */
 
 async function main() {
-	Logger.level = "trace";
+	Logger.level = (process.env.LOG_LEVEL as any) || "warn";
+
 	Logger.log({
 		module: "Pipeline",
 		context: "main",

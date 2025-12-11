@@ -44,11 +44,14 @@ export class StaleUserAnalyzer extends BaseAnalyzer {
 			if (lastLogin <= Date.now() - 1000 * 60 * 60 * 24 * 91) {
 				const isAdmin = isAdminUser(identity, context);
 				const hasLicense = (data.assignedLicenses?.length || 0) > 0;
+				const days = Math.floor(lastLogin / (1000 * 60 * 60 * 24));
 				const alert = this.createAlert(
 					identity._id,
 					"stale-user",
 					isAdmin ? "critical" : hasLicense ? "high" : "low",
-					`User '${data.displayName}' last logged in ${lastLogin / (1000 * 60 * 60 * 24)} days ago`,
+					days > 0
+						? `User '${data.displayName}' last logged in ${days} days ago`
+						: `User '${data.displayName}' has never logged in`,
 					{
 						userPrincipalName: identity.rawData.userPrincipalName,
 						isAdmin,

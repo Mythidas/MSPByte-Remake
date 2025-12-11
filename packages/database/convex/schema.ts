@@ -378,12 +378,8 @@ export default defineSchema({
 		.index("by_site_integration", ["siteId", "integrationId", "tenantId"])
 		.index("by_data_source", ["dataSourceId", "tenantId"])
 		.index("by_entity", ["entityId", "tenantId"])
-		.index("by_type", ["alertType", "tenantId"])
-		.index("by_severity", ["severity", "tenantId"])
-		.index("by_status", ["status", "tenantId"])
 		.index("by_entity_status", ["entityId", "status", "tenantId"])
 		.index("by_fingerprint", ["fingerprint", "tenantId"]) // For deduplication lookups
-		// Phase 6: Composite indexes for performance
 		.index("by_data_source_status_type", [
 			"dataSourceId",
 			"status",
