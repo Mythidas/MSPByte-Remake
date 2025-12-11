@@ -1,105 +1,130 @@
 import {
-  LayoutDashboard,
-  Building2,
-  Users,
-  Shield,
-  Plug,
-  UserCog,
-  UsersRound,
-  ShieldCheck,
-  Key,
-  Bell,
+	LayoutDashboard,
+	Building2,
+	Users,
+	Shield,
+	Plug,
+	UserCog,
+	UsersRound,
+	ShieldCheck,
+	Key,
+	Bell,
+	Server,
+	Ticket,
 } from "lucide-react";
 import { ModeNavConfig } from "@/lib/types/navigation";
 
 const defaultModeConfig: ModeNavConfig = {
-  modeSlug: "default",
-  items: [
-    {
-      label: "Dashboard",
-      href: "/secure/default",
-      isExact: true,
-      icon: LayoutDashboard,
-    },
-    {
-      label: "Sites",
-      href: "/secure/sites",
-      icon: Building2,
-    },
-    {
-      label: "Admin",
-      href: "#",
-      icon: Shield,
-      children: [
-        {
-          label: "Users",
-          href: "/secure/default/users",
-          icon: Users,
-        },
-        {
-          label: "Roles",
-          href: "/secure/default/roles",
-          icon: UserCog,
-        },
-        {
-          label: "Integrations",
-          href: "/secure/default/integrations",
-          icon: Plug,
-        },
-      ],
-    },
-  ],
+	modeSlug: "default",
+	items: [
+		{
+			label: "Dashboard",
+			href: "/secure/default",
+			isExact: true,
+			icon: LayoutDashboard,
+		},
+		{
+			label: "Sites",
+			href: "/secure/sites",
+			icon: Building2,
+		},
+		{
+			label: "Admin",
+			href: "#",
+			icon: Shield,
+			children: [
+				{
+					label: "Users",
+					href: "/secure/default/users",
+					icon: Users,
+				},
+				{
+					label: "Roles",
+					href: "/secure/default/roles",
+					icon: UserCog,
+				},
+				{
+					label: "Integrations",
+					href: "/secure/default/integrations",
+					icon: Plug,
+				},
+			],
+		},
+	],
 };
 
 const microsoft365ModeConfig: ModeNavConfig = {
-  modeSlug: "microsoft-365",
-  items: [
-    {
-      label: "Dashboard",
-      href: "/secure/microsoft-365",
-      isExact: true,
-      icon: LayoutDashboard,
-    },
-    {
-      label: "Users",
-      href: "/secure/microsoft-365/users",
-      icon: Users,
-    },
-    {
-      label: "Groups",
-      href: "/secure/microsoft-365/groups",
-      icon: UsersRound,
-    },
-    {
-      label: "Roles",
-      href: "/secure/microsoft-365/roles",
-      icon: UserCog,
-    },
-    {
-      label: "Policies",
-      href: "/secure/microsoft-365/policies",
-      icon: ShieldCheck,
-    },
-    {
-      label: "Licenses",
-      href: "/secure/microsoft-365/licenses",
-      icon: Key,
-    },
-    {
-      label: "Alerts",
-      href: "/secure/microsoft-365/alerts",
-      params: "view=active",
-      icon: Bell,
-    },
-  ],
+	modeSlug: "microsoft-365",
+	items: [
+		{
+			label: "Dashboard",
+			href: "/secure/microsoft-365",
+			isExact: true,
+			icon: LayoutDashboard,
+		},
+		{
+			label: "Users",
+			href: "/secure/microsoft-365/users",
+			icon: Users,
+		},
+		{
+			label: "Groups",
+			href: "/secure/microsoft-365/groups",
+			icon: UsersRound,
+		},
+		{
+			label: "Roles",
+			href: "/secure/microsoft-365/roles",
+			icon: UserCog,
+		},
+		{
+			label: "Policies",
+			href: "/secure/microsoft-365/policies",
+			icon: ShieldCheck,
+		},
+		{
+			label: "Licenses",
+			href: "/secure/microsoft-365/licenses",
+			icon: Key,
+		},
+		{
+			label: "Alerts",
+			href: "/secure/microsoft-365/alerts",
+			params: "view=active",
+			icon: Bell,
+		},
+	],
+};
+
+const mspAgentModeConfig: ModeNavConfig = {
+	modeSlug: "msp-agent",
+	items: [
+		{
+			label: "Dashboard",
+			href: "/secure/msp-agent",
+			isExact: true,
+			icon: LayoutDashboard,
+		},
+		{
+			label: "Agents",
+			href: "/secure/msp-agent/agents",
+			icon: Server,
+		},
+		{
+			label: "Tickets",
+			href: "/secure/msp-agent/tickets",
+			icon: Ticket,
+		},
+	],
 };
 
 export const navigationConfigs: Record<string, ModeNavConfig> = {
-  default: defaultModeConfig,
-  "microsoft-365": microsoft365ModeConfig,
+	default: defaultModeConfig,
+	"microsoft-365": microsoft365ModeConfig,
+	"msp-agent": mspAgentModeConfig,
 };
 
 export function getNavigationForMode(modeSlug: string | null): ModeNavConfig {
-  const slug = modeSlug || "default";
-  return navigationConfigs[slug] || defaultModeConfig;
+	const slug = modeSlug || "default";
+	return navigationConfigs[slug] || defaultModeConfig;
 }
