@@ -1,49 +1,49 @@
 {
-    "name": "mspbyte-mono",
-    "version": "0.0.1",
-    "private": true,
-    "workspaces": [
-        "packages/*",
-        "apps/*",
-        "backend/*"
-    ],
-    "scripts": {
-        "start": "turbo start",
-        "build": "turbo build",
-        "build:shared": "turbo build --filter=@workspace/shared",
-        "dev": "turbo dev",
-        "infra:up": "cd backend && docker-compose up -d && docker-compose ps",
-        "infra:down": "cd backend && docker-compose down",
-        "infra:clean": "cd backend && docker-compose down -v",
-        "dev:web": "bun run infra:up && turbo dev --filter=frontend --filter=@workspace/pipeline",
-        "dev:agent": "turbo dev --filter=mspagent --filter=@workspace/agents",
-        "lint": "turbo lint",
-        "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-        "gendb:schema": "bunx supabase gen types typescript --project-id lrgaygjiyukdhhdbszjk --schema public,views > ./packages/shared/src/types/database/import.ts"
-    },
-    "devDependencies": {
-        "@workspace/eslint-config": "workspace:*",
-        "@workspace/typescript-config": "workspace:*",
-        "esbuild-node-externals": "^1.18.0",
-        "prettier": "^3.6.2",
-        "tsc-alias": "^1.8.16",
-        "turbo": "^2.5.5",
-        "typescript": "5.7.3"
-    },
-    "dependencies": {
-        "@azure/identity": "^4.12.0",
-        "@fastify/autoload": "^6.3.1",
-        "@fastify/cors": "^11.1.0",
-        "@fastify/multipart": "^9.2.1",
-        "@microsoft/microsoft-graph-client": "^3.0.7",
-        "@supabase/supabase-js": "^2.57.4",
-        "chalk": "^5.6.2",
-        "convex": "^1.27.4",
-        "fastify": "^5.6.1",
-        "nats": "^2.29.3"
-    },
-    "packageManager": "bun@1.1.26",
-    "engines": {
-        "node": ">=20"
-    }
+	"name": "mspbyte-mono",
+	"version": "0.0.1",
+	"private": true,
+	"workspaces": [
+		"packages/*",
+		"apps/*",
+		"backend/*"
+	],
+	"scripts": {
+		"start": "turbo start",
+		"build": "turbo build",
+		"build:shared": "turbo build --filter=@workspace/shared",
+		"dev": "turbo dev",
+		"infra:up": "cd backend && docker-compose up -d && docker-compose ps",
+		"infra:down": "cd backend && docker-compose down",
+		"infra:clean": "cd backend && docker-compose down -v",
+		"dev:web": "turbo dev --filter=frontend",
+		"dev:agent": "turbo dev --filter=mspagent --filter=@workspace/agents",
+		"lint": "turbo lint",
+		"format": "prettier --write \"**/*.{ts,tsx,md}\"",
+		"gendb:schema": "bunx supabase gen types typescript --project-id lrgaygjiyukdhhdbszjk --schema public,views > ./packages/shared/src/types/database/import.ts"
+	},
+	"devDependencies": {
+		"@workspace/eslint-config": "workspace:*",
+		"@workspace/typescript-config": "workspace:*",
+		"esbuild-node-externals": "^1.18.0",
+		"prettier": "^3.6.2",
+		"tsc-alias": "^1.8.16",
+		"turbo": "^2.5.5",
+		"typescript": "5.7.3"
+	},
+	"dependencies": {
+		"@azure/identity": "^4.12.0",
+		"@fastify/autoload": "^6.3.1",
+		"@fastify/cors": "^11.1.0",
+		"@fastify/multipart": "^9.2.1",
+		"@microsoft/microsoft-graph-client": "^3.0.7",
+		"@supabase/supabase-js": "^2.57.4",
+		"chalk": "^5.6.2",
+		"convex": "^1.27.4",
+		"fastify": "^5.6.1",
+		"nats": "^2.29.3"
+	},
+	"packageManager": "bun@1.1.26",
+	"engines": {
+		"node": ">=20"
+	}
 }

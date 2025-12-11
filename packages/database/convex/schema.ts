@@ -239,10 +239,10 @@ export default defineSchema({
 		metadata: v.optional(v.any()),
 	})
 		.index("by_tenant", ["tenantId"])
-		.index("by_site", ["siteId"])
-		.index("by_agent", ["agentId"])
-		.index("by_billing_period", ["tenantId", "billingPeriod"])
-		.index("by_site_billing_period", ["siteId", "billingPeriod"]),
+		.index("by_site", ["siteId", "tenantId"])
+		.index("by_agent", ["agentId", "tenantId"])
+		.index("by_billing_period", ["billingPeriod", "tenantId"])
+		.index("by_site_billing_period", ["siteId", "billingPeriod", "tenantId"]),
 
 	api_logs: defineTable({
 		url: v.string(),
