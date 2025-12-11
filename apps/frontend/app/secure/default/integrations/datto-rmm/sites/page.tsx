@@ -78,7 +78,7 @@ export default function DattoRMMSites() {
 
 			return {
 				_id: site._id,
-				name: site.normalizedData?.name || site.rawData?.name,
+				name: site.rawData?.name,
 				externalId: site.externalId,
 				isLinked: !!linkedMSPSite,
 				linkedId: linkedMSPSite?._id,
