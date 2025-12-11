@@ -83,11 +83,9 @@ export default defineSchema({
 			v.literal("archived"),
 		),
 		psaIntegrationId: v.optional(integrationValidator),
-		psaIntegrationName: v.optional(v.string()), // Denormalized for sorting/filtering
 		psaCompanyId: v.optional(v.string()),
 		psaParentCompanyId: v.optional(v.string()),
 		rmmIntegrationId: v.optional(integrationValidator),
-		rmmIntegrationName: v.optional(v.string()), // Denormalized for sorting/filtering
 		rmmSiteId: v.optional(v.string()), // External RMM site UID
 		metadata: v.optional(v.any()),
 
