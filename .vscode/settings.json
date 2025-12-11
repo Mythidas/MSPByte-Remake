@@ -1,13 +1,12 @@
 {
-  //"typescript.preferences.importModuleSpecifier": "non-relative",
-  "typescript.suggest.autoImports": true,
-  "typescript.suggest.includeAutomaticOptionalChainCompletions": true,
-  "typescript.preferences.includePackageJsonAutoImports": "on",
-  "typescript.preferences.importModuleSpecifierEnding": "js",
-  "typescript.suggest.includeCompletionsForModuleExports": true,
-  "typescript.suggest.includeCompletionsWithInsertText": true,
-  "typescript.preferences.useLabelDetailsInCompletionEntries": true,
-  "typescript.suggest.completeFunctionCalls": false,
-  "typescript.suggest.includeCompletionsForImportStatements": true,
-  "typescript.preferences.includeCompletionsForDirectoryImports": false
+	//"typescript.preferences.importModuleSpecifier": "non-relative",
+	"typescript.suggest.autoImports": true,
+	"typescript.suggest.includeAutomaticOptionalChainCompletions": true,
+	"typescript.preferences.includePackageJsonAutoImports": "on",
+	"typescript.suggest.includeCompletionsForModuleExports": true,
+	"typescript.suggest.includeCompletionsWithInsertText": true,
+	"typescript.preferences.useLabelDetailsInCompletionEntries": true,
+	"typescript.suggest.completeFunctionCalls": false,
+	"typescript.suggest.includeCompletionsForImportStatements": true,
+	"typescript.preferences.includeCompletionsForDirectoryImports": false
 }
