@@ -2,7 +2,7 @@ import { EntityType, IntegrationId } from "./index.js";
 
 export type Integration = {
 	name: string;
-	slug: string;
+	slug: IntegrationId;
 	description: string;
 	category: string;
 	is_active: boolean;
@@ -18,7 +18,7 @@ export type Integration = {
 	product_url?: string;
 };
 
-export const INTEGRATIONS: Record<string, Integration> = {
+export const INTEGRATIONS: Record<IntegrationId, Integration> = {
 	"microsoft-365": {
 		name: "Microsoft 365",
 		slug: "microsoft-365",
@@ -83,5 +83,29 @@ export const INTEGRATIONS: Record<string, Integration> = {
 		icon_url:
 			"https://usehalo.com/wp-content/uploads/2025/02/HALO_Icon_PSA_PNG1K.png",
 		product_url: "https://usehalo.com/halopsa/",
+	},
+	"datto-rmm": {
+		name: "Datto RMM",
+		slug: "datto-rmm",
+		description: "",
+		category: "RMM",
+		is_active: true,
+		supportedTypes: [],
+	},
+	"sophos-partner": {
+		name: "Sophos Partner",
+		slug: "sophos-partner",
+		description: "",
+		category: "Security",
+		is_active: true,
+		supportedTypes: [],
+	},
+	"msp-agent": {
+		name: "MSP Agent",
+		slug: "msp-agent",
+		description: "",
+		category: "PSA Addon",
+		is_active: true,
+		supportedTypes: [],
 	},
 };
