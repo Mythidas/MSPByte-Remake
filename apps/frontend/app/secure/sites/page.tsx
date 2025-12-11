@@ -14,7 +14,7 @@ import Loader from "@workspace/ui/components/Loader";
 import { prettyText } from "@workspace/shared/lib/utils";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { INTEGRATIONS } from "@workspace/shared/types/integrations/config.js";
+import { INTEGRATIONS } from "@workspace/shared/types/integrations/config";
 
 type Site = Doc<"sites"> & {
 	psaIntegrationName?: string;
