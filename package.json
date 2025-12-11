@@ -37,6 +37,7 @@
         "@fastify/multipart": "^9.2.1",
         "@microsoft/microsoft-graph-client": "^3.0.7",
         "@supabase/supabase-js": "^2.57.4",
+        "chalk": "^5.6.2",
         "convex": "^1.27.4",
         "fastify": "^5.6.1",
         "nats": "^2.29.3"
