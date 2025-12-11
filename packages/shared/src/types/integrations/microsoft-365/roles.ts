@@ -12,4 +12,4 @@ export type M365NormalRole = {
   description: string;
   members: string[];
   deletedDateTime: string;
-}
+};

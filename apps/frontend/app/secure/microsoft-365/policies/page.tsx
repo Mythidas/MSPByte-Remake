@@ -16,7 +16,9 @@ import { useApp } from "@/lib/hooks/useApp";
 import { useAuthReady } from "@/lib/hooks/useAuthReady";
 import { M365NormalPolicy } from "@workspace/shared/types/integrations/microsoft-365/policies.js";
 
-type PolicyEntity = Omit<Doc<"entities">, 'rawData'> & { rawData: M365NormalPolicy };
+type PolicyEntity = Omit<Doc<"entities">, "rawData"> & {
+  rawData: M365NormalPolicy;
+};
 
 export default function Microsoft365Policies() {
   // Get selected site from app state

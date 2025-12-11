@@ -11,7 +11,9 @@ import { useApp } from "@/lib/hooks/useApp";
 import { useAuthReady } from "@/lib/hooks/useAuthReady";
 import { M365NormalGroup } from "@workspace/shared/types/integrations/microsoft-365/groups.js";
 
-type GroupEntity = Omit<Doc<"entities">, 'rawData'> & { rawData: M365NormalGroup };
+type GroupEntity = Omit<Doc<"entities">, "rawData"> & {
+  rawData: M365NormalGroup;
+};
 
 export default function Microsoft365Groups() {
   // Get selected site from app state

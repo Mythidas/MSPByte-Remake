@@ -140,7 +140,8 @@ export default function UserDetailPage() {
   ) as Doc<"entity_alerts">[] | undefined;
 
   // Fetch license entities by SKU IDs
-  const licenseSkuIds = user?.rawData.assignedLicenses?.map((l: any) => l.skuId) || [];
+  const licenseSkuIds =
+    user?.rawData.assignedLicenses?.map((l: any) => l.skuId) || [];
   const licenses = useQuery(
     api.helpers.orm.list,
     licenseSkuIds.length > 0 && relationships?.length
@@ -258,7 +259,8 @@ export default function UserDetailPage() {
                 <CardDescription className="text-base flex flex-col gap-2">
                   <span className="flex gap-2 items-center">
                     <Mail className="w-4 h-4" />
-                    {userData?.userPrincipalName || user.rawData?.userPrincipalName}
+                    {userData?.userPrincipalName ||
+                      user.rawData?.userPrincipalName}
                   </span>
                   <span>Last Login: {new Date(lastLogin).toDateString()}</span>
                 </CardDescription>
@@ -406,24 +408,23 @@ export default function UserDetailPage() {
                     const data = group.rawData as M365NormalGroup;
 
                     return (
-                    <div
-                      key={group._id}
-                      className="flex items-start gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors"
-                    >
-                      <div className="flex-shrink-0 mt-1">
-                        <Users className="w-5 h-5 text-muted-foreground" />
+                      <div
+                        key={group._id}
+                        className="flex items-start gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                      >
+                        <div className="flex-shrink-0 mt-1">
+                          <Users className="w-5 h-5 text-muted-foreground" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-base">
+                            {data.displayName || "Unknown Group"}
+                          </p>
+                          <p className="text-sm text-muted-foreground truncate">
+                            {data.description || group.externalId}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-base">
-                          {data.displayName || "Unknown Group"}
-                        </p>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {data.description ||
-                            group.externalId}
-                        </p>
-                      </div>
-                    </div>
-                  )
+                    );
                   })}
                 </div>
               ) : (
@@ -451,31 +452,31 @@ export default function UserDetailPage() {
                     const data = role.rawData as M365NormalRole;
 
                     return (
-                    <div
-                      key={role._id}
-                      className="flex items-start gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors"
-                    >
-                      <div className="flex-shrink-0 mt-1">
-                        <Shield className="w-5 h-5 text-orange-500" />
+                      <div
+                        key={role._id}
+                        className="flex items-start gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                      >
+                        <div className="flex-shrink-0 mt-1">
+                          <Shield className="w-5 h-5 text-orange-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-base">
+                            {data.displayName || "Unknown Role"}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {data.description || "No description available"}
+                          </p>
+                        </div>
+                        {data.displayName?.toLowerCase().includes("admin") && (
+                          <Badge
+                            variant="destructive"
+                            className="flex-shrink-0"
+                          >
+                            Admin
+                          </Badge>
+                        )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-base">
-                          {data.displayName || "Unknown Role"}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {data.description ||
-                            "No description available"}
-                        </p>
-                      </div>
-                      {data.displayName
-                        ?.toLowerCase()
-                        .includes("admin") && (
-                        <Badge variant="destructive" className="flex-shrink-0">
-                          Admin
-                        </Badge>
-                      )}
-                    </div>
-                  )
+                    );
                   })}
                 </div>
               ) : (
@@ -503,41 +504,38 @@ export default function UserDetailPage() {
                     const data = license.rawData as M365NormalLicense;
 
                     return (
-                    <div
-                      key={license._id}
-                      className="flex items-start gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors"
-                    >
-                      <div className="flex-shrink-0 mt-1">
-                        <CreditCard className="w-5 h-5 text-blue-500" />
+                      <div
+                        key={license._id}
+                        className="flex items-start gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                      >
+                        <div className="flex-shrink-0 mt-1">
+                          <CreditCard className="w-5 h-5 text-blue-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-base">
+                            {data.friendlyName ||
+                              data.skuPartNumber ||
+                              "Unknown License"}
+                          </p>
+                          {data.skuPartNumber &&
+                            data.friendlyName !== data.skuPartNumber && (
+                              <p className="text-sm text-muted-foreground">
+                                SKU: {data.skuPartNumber}
+                              </p>
+                            )}
+                          {data.consumedUnits !== undefined &&
+                            data.prepaidUnits !== undefined && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {data.consumedUnits} of{" "}
+                                {data.prepaidUnits.enabled} units consumed
+                              </p>
+                            )}
+                        </div>
+                        <Badge variant="outline" className="flex-shrink-0">
+                          Active
+                        </Badge>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-base">
-                          {data.friendlyName ||
-                            data.skuPartNumber ||
-                            "Unknown License"}
-                        </p>
-                        {data.skuPartNumber &&
-                          data.friendlyName !==
-                            data.skuPartNumber && (
-                            <p className="text-sm text-muted-foreground">
-                              SKU: {data.skuPartNumber}
-                            </p>
-                          )}
-                        {data.consumedUnits !== undefined &&
-                          data.prepaidUnits !==
-                            undefined && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {data.consumedUnits} of{" "}
-                              {data.prepaidUnits.enabled} units
-                              consumed
-                            </p>
-                          )}
-                      </div>
-                      <Badge variant="outline" className="flex-shrink-0">
-                        Active
-                      </Badge>
-                    </div>
-                  )
+                    );
                   })}
                 </div>
               ) : licenseSkuIds.length > 0 ? (

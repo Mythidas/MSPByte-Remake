@@ -16,7 +16,9 @@ import { useAuthReady } from "@/lib/hooks/useAuthReady";
 import { prettyText } from "@workspace/shared/lib/utils";
 import { M365NormalLicense } from "@workspace/shared/types/integrations/microsoft-365/licenses.js";
 
-type LicenseEntity = Omit<Doc<"entities">, 'rawData'> & { rawData: M365NormalLicense };
+type LicenseEntity = Omit<Doc<"entities">, "rawData"> & {
+  rawData: M365NormalLicense;
+};
 
 export default function Microsoft365Licenses() {
   // Get selected site from app state

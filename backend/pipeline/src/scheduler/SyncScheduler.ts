@@ -81,7 +81,9 @@ export class SyncScheduler {
    * Clear waiting and delayed jobs from all sync queues
    * This prevents duplicate jobs when pipeline restarts
    */
-  private async clearStaleJobs(datasources: Doc<"data_sources">[]): Promise<void> {
+  private async clearStaleJobs(
+    datasources: Doc<"data_sources">[],
+  ): Promise<void> {
     Logger.log({
       module: "SyncScheduler",
       context: "clearStaleJobs",
@@ -92,10 +94,14 @@ export class SyncScheduler {
     // Collect all unique queue names from datasources
     const queueNames = new Set<string>();
     for (const datasource of datasources) {
-      const integration = INTEGRATIONS[datasource.integrationId as IntegrationId];
+      const integration =
+        INTEGRATIONS[datasource.integrationId as IntegrationId];
       if (integration) {
         for (const typeConfig of integration.supportedTypes) {
-          const queueName = QueueNames.sync(datasource.integrationId, typeConfig.type);
+          const queueName = QueueNames.sync(
+            datasource.integrationId,
+            typeConfig.type,
+          );
           queueNames.add(queueName);
         }
       }

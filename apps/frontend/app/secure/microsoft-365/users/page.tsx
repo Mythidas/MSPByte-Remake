@@ -35,8 +35,12 @@ import { toast } from "sonner";
 import { M365NormalIdentity } from "@workspace/shared/types/integrations/microsoft-365/identities.js";
 import { M365NormalLicense } from "@workspace/shared/types/integrations/microsoft-365/licenses.js";
 
-type UserEntity = Omit<Doc<"entities">, 'rawData'> & { rawData: M365NormalIdentity };
-type LicenseEntity = Omit<Doc<"entities">, 'rawData'> & { rawData: M365NormalLicense };
+type UserEntity = Omit<Doc<"entities">, "rawData"> & {
+  rawData: M365NormalIdentity;
+};
+type LicenseEntity = Omit<Doc<"entities">, "rawData"> & {
+  rawData: M365NormalLicense;
+};
 
 export default function Microsoft365Users() {
   // Track filtered data for exports
@@ -291,13 +295,15 @@ export default function Microsoft365Users() {
       key: "rawData.assignedLicenses",
       title: "Licenses",
       cell: ({ row }) => {
-        const licenses = row.rawData.assignedLicenses?.map((l) => l.skuId) || [];
+        const licenses =
+          row.rawData.assignedLicenses?.map((l) => l.skuId) || [];
         if (!licenses.length)
           return <span className="text-muted-foreground">None</span>;
         return <span>{licenses.length} license(s)</span>;
       },
       exportValue: ({ row }) => {
-        const licenseSkuIds = row.rawData.assignedLicenses?.map((l) => l.skuId) || [];
+        const licenseSkuIds =
+          row.rawData.assignedLicenses?.map((l) => l.skuId) || [];
         if (!licenseSkuIds.length) return "None";
 
         // Map SKU IDs to license names using lookup
@@ -313,7 +319,9 @@ export default function Microsoft365Users() {
       title: "Last Login",
       sortable: true,
       cell: ({ row }) => {
-        const lastLogin = row.rawData.signInActivity?.lastSignInDateTime || row.rawData.signInActivity?.lastNonInteractiveSignInDateTime;
+        const lastLogin =
+          row.rawData.signInActivity?.lastSignInDateTime ||
+          row.rawData.signInActivity?.lastNonInteractiveSignInDateTime;
         const date = new Date(lastLogin || 0);
 
         if (date.getTime() <= 1)

@@ -177,7 +177,7 @@ export abstract class BaseLinker {
         dataSourceId,
         syncId,
         startedAt,
-        siteId
+        siteId,
       );
     } catch (error) {
       this.metrics.trackError(error as Error, job.attemptsMade);

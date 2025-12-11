@@ -46,7 +46,7 @@ export async function encryptSensitiveConfig(config: HaloPSAConfig) {
       clientSecret: await Encryption.encrypt(
         config.clientSecret,
         process.env.NEXT_ENCRYPTION_KEY!,
-      )
+      ),
     };
 
     return { data: processed, error: null };

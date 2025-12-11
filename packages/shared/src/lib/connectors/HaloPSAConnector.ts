@@ -250,39 +250,39 @@ export default class HaloPSAConnector {
 
   private async getToken(): Promise<APIResponse<string>> {
     try {
-    const response = await fetch(`${this.config.url}/auth/token`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        grant_type: "client_credentials",
-        client_id: this.config.clientId,
-        client_secret:
-          (await Encryption.decrypt(
-            this.config.clientSecret,
-            this.encryptionKey,
-          )) || "",
-        scope: "all",
-      }),
-    });
+      const response = await fetch(`${this.config.url}/auth/token`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          grant_type: "client_credentials",
+          client_id: this.config.clientId,
+          client_secret:
+            (await Encryption.decrypt(
+              this.config.clientSecret,
+              this.encryptionKey,
+            )) || "",
+          scope: "all",
+        }),
+      });
 
-    if (!response.ok) {
+      if (!response.ok) {
+        return Debug.error({
+          module: "HaloPSAConnector",
+          context: "getToken",
+          message: `HTTP ${response.status}: ${response.statusText}`,
+        });
+      }
+
+      const data: { access_token: string } = await response.json();
+      return { data: data.access_token };
+    } catch (err) {
       return Debug.error({
         module: "HaloPSAConnector",
         context: "getToken",
-        message: `HTTP ${response.status}: ${response.statusText}`,
+        message: `Failed to get token: ${err}`,
       });
     }
-
-    const data: { access_token: string } = await response.json();
-    return { data: data.access_token };
-  } catch (err) {
-          return Debug.error({
-            module: "HaloPSAConnector",
-            context: "getToken",
-            message: `Failed to get token: ${err}`,
-          });
-  }
   }
 }

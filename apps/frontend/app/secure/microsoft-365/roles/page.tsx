@@ -10,7 +10,9 @@ import { useApp } from "@/lib/hooks/useApp";
 import { useAuthReady } from "@/lib/hooks/useAuthReady";
 import { M365NormalRole } from "@workspace/shared/types/integrations/microsoft-365/roles.js";
 
-type RoleEntity = Omit<Doc<"entities">, 'rawData'> & { rawData: M365NormalRole };
+type RoleEntity = Omit<Doc<"entities">, "rawData"> & {
+  rawData: M365NormalRole;
+};
 
 export default function Microsoft365Roles() {
   // Get selected site from app state
@@ -54,8 +56,7 @@ export default function Microsoft365Roles() {
       title: "Role Name",
       sortable: true,
       searchable: true,
-      cell: ({ row }) =>
-        row.rawData.displayName || "-",
+      cell: ({ row }) => row.rawData.displayName || "-",
       filter: {
         type: "text",
         operators: ["eq", "ne", "contains", "startsWith"],

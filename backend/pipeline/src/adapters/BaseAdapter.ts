@@ -115,7 +115,7 @@ export abstract class BaseAdapter {
           result.entities,
           syncId,
           startedAt,
-          result.entities[0].siteId
+          result.entities[0].siteId,
         );
       }
 
@@ -191,7 +191,7 @@ export abstract class BaseAdapter {
     entities: RawEntity[],
     syncId: string,
     startedAt?: number,
-    siteId?: string
+    siteId?: string,
   ): Promise<void> {
     await queueManager.addJob(
       QueueNames.process,

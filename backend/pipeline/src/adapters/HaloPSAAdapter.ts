@@ -71,9 +71,7 @@ export class HaloPSAAdapter extends BaseAdapter {
       case "companies":
         return await this.handleCompanySync(connector);
       default:
-        throw new Error(
-          `Unsupported entity type for HaloPSA: ${entityType}`,
-        );
+        throw new Error(`Unsupported entity type for HaloPSA: ${entityType}`);
     }
   }
 
@@ -91,8 +89,8 @@ export class HaloPSAAdapter extends BaseAdapter {
 
     // Enrich each group with members and memberOf data
     const entities = sites.map((s) => ({
-        externalId: s.id.toString(),
-        rawData: s
+      externalId: s.id.toString(),
+      rawData: s,
     }));
 
     Logger.log({
