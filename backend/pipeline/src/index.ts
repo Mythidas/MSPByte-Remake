@@ -47,6 +47,7 @@ async function main() {
 		"CONVEX_API_KEY",
 		"REDIS_HOST",
 		"REDIS_PORT",
+		"REDIS_PASSWORD",
 	];
 
 	for (const envVar of requiredEnvVars) {
