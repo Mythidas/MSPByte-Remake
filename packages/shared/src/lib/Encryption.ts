@@ -8,7 +8,7 @@ export default class Encryption {
     const cipher = crypto.createCipheriv(
       ALGORITHM,
       Buffer.from(key, "hex"),
-      iv
+      iv,
     );
 
     const encrypted = Buffer.concat([
@@ -35,7 +35,7 @@ export default class Encryption {
     const decipher = crypto.createDecipheriv(
       ALGORITHM,
       Buffer.from(key, "hex"),
-      iv
+      iv,
     );
     decipher.setAuthTag(tag);
 

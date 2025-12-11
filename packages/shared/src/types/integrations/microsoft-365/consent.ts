@@ -1,5 +1,5 @@
 export type M365ConsentState = {
-  action: 'initial';
+  action: "initial";
   tenantId: string; // MSPByte tenant ID
   dataSourceId: string; // Data source ID to update
   name: string; // User-provided connection name

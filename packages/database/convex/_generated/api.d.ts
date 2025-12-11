@@ -8,6 +8,11 @@
  * @module
  */
 
+import type {
+  ApiFromModules,
+  FilterApi,
+  FunctionReference,
+} from "convex/server";
 import type * as agents_mutate_s from "../agents/mutate_s.js";
 import type * as datasources_mutate from "../datasources/mutate.js";
 import type * as datasources_query from "../datasources/query.js";
@@ -23,13 +28,9 @@ import type * as helpers_crud_update from "../helpers/crud/update.js";
 import type * as helpers_orm from "../helpers/orm.js";
 import type * as helpers_shortcuts from "../helpers/shortcuts.js";
 import type * as helpers_validators from "../helpers/validators.js";
-import type * as integrations_query from "../integrations/query.js";
-import type * as integrations_query_s from "../integrations/query_s.js";
 import type * as landing_query from "../landing/query.js";
 import type * as migrations_mutate from "../migrations/mutate.js";
 import type * as roles_query from "../roles/query.js";
-import type * as scheduledjobs_mutate from "../scheduledjobs/mutate.js";
-import type * as scheduledjobs_query from "../scheduledjobs/query.js";
 import type * as sites_mutate from "../sites/mutate.js";
 import type * as sites_query from "../sites/query.js";
 import type * as tenants_query from "../tenants/query.js";
@@ -40,12 +41,14 @@ import type * as types_normalized from "../types/normalized.js";
 import type * as users_mutate from "../users/mutate.js";
 import type * as users_query from "../users/query.js";
 
-import type {
-  ApiFromModules,
-  FilterApi,
-  FunctionReference,
-} from "convex/server";
-
+/**
+ * A utility for referencing Convex functions in your app's API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = api.myModule.myFunction;
+ * ```
+ */
 declare const fullApi: ApiFromModules<{
   "agents/mutate_s": typeof agents_mutate_s;
   "datasources/mutate": typeof datasources_mutate;
@@ -62,13 +65,9 @@ declare const fullApi: ApiFromModules<{
   "helpers/orm": typeof helpers_orm;
   "helpers/shortcuts": typeof helpers_shortcuts;
   "helpers/validators": typeof helpers_validators;
-  "integrations/query": typeof integrations_query;
-  "integrations/query_s": typeof integrations_query_s;
   "landing/query": typeof landing_query;
   "migrations/mutate": typeof migrations_mutate;
   "roles/query": typeof roles_query;
-  "scheduledjobs/mutate": typeof scheduledjobs_mutate;
-  "scheduledjobs/query": typeof scheduledjobs_query;
   "sites/mutate": typeof sites_mutate;
   "sites/query": typeof sites_query;
   "tenants/query": typeof tenants_query;
@@ -79,31 +78,11 @@ declare const fullApi: ApiFromModules<{
   "users/mutate": typeof users_mutate;
   "users/query": typeof users_query;
 }>;
-
-/**
- * A utility for referencing Convex functions in your app's public API.
- *
- * Usage:
- * ```js
- * const myFunctionReference = api.myModule.myFunction;
- * ```
- */
 export declare const api: FilterApi<
   typeof fullApi,
   FunctionReference<any, "public">
 >;
-
-/**
- * A utility for referencing Convex functions in your app's internal API.
- *
- * Usage:
- * ```js
- * const myFunctionReference = internal.myModule.myFunction;
- * ```
- */
 export declare const internal: FilterApi<
   typeof fullApi,
   FunctionReference<any, "internal">
 >;
-
-export declare const components: {};

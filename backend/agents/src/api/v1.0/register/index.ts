@@ -39,7 +39,7 @@ export default async function (fastify: FastifyInstance) {
               "Site, Hostname, Platform and Version are required for registration",
           },
         },
-        400
+        400,
       );
     }
 
@@ -58,7 +58,7 @@ export default async function (fastify: FastifyInstance) {
             message: "Invalid site_uid provided",
           },
         },
-        400
+        400,
       );
     }
 
@@ -124,7 +124,7 @@ export default async function (fastify: FastifyInstance) {
             message: "Failed to create agent",
           },
         },
-        500
+        500,
       );
     }
 
@@ -135,7 +135,7 @@ export default async function (fastify: FastifyInstance) {
           guid: calculatedGuid,
         },
       },
-      200
+      200,
     );
   });
 }

@@ -50,7 +50,7 @@ export async function chooseImageDialog(): Promise<APIResponse<string>> {
 
 export async function logToFile(
   level: "INFO" | "WARN" | "ERROR",
-  message: string
+  message: string,
 ): Promise<APIResponse<undefined>> {
   try {
     await invoke("log_to_file", {
@@ -95,7 +95,7 @@ export async function readFileText(path: string): Promise<APIResponse<string>> {
 }
 
 export async function readFileBase64(
-  path: string
+  path: string,
 ): Promise<APIResponse<string>> {
   try {
     const content = await invoke<string>("read_file_base64", {
@@ -115,7 +115,7 @@ export async function readFileBase64(
 }
 
 export async function readFileBinary(
-  path: string
+  path: string,
 ): Promise<APIResponse<number[]>> {
   try {
     const content = await invoke<number[]>("read_file_binary", {

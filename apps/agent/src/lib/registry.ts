@@ -4,7 +4,7 @@ import { APIResponse } from "@workspace/shared/types/api.ts";
 
 export async function getRegistryValue(
   path: string,
-  key: string
+  key: string,
 ): Promise<APIResponse<string>> {
   try {
     const result = await invoke<string>("read_registry_value", {

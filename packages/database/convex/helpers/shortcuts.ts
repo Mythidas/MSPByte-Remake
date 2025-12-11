@@ -4,7 +4,7 @@ import { v, Validator } from "convex/values";
  * Make a required validator optional and nullable.
  */
 export function nullable<T>(
-  type: Validator<T, "required", any>
+  type: Validator<T, "required", any>,
 ): Validator<T | null | undefined, "optional", any> {
   return v.optional(v.union(type, v.null()));
 }

@@ -1,92 +1,110 @@
-import {
-    BaseAdapter,
-    RawDataProps,
-    RawDataResult
-} from "@workspace/pipeline/adapters/BaseAdapter.js";
-import type { Doc } from "@workspace/database/convex/_generated/dataModel.js";
-import Debug from "@workspace/shared/lib/Debug.js";
-import Encryption from "@workspace/shared/lib/Encryption.js";
-import { APIResponse } from "@workspace/shared/types/api.js";
-import HaloPSAConnector from "@workspace/shared/lib/connectors/HaloPSAConnector.js";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "@workspace/database/convex/_generated/api.js";
+import { BaseAdapter } from "./BaseAdapter.js";
+import { SyncJobData } from "../lib/queue.js";
+import { AdapterFetchResult } from "../types.js";
+import { Logger } from "../lib/logger.js";
 import { HaloPSAConfig } from "@workspace/shared/types/integrations/halopsa/index.js";
+import HaloPSAConnector from "@workspace/shared/lib/connectors/HaloPSAConnector.js";
 
+/**
+ * HaloPSAAdapter
+ *
+ * Supported entity types:
+ * - companies
+ */
 export class HaloPSAAdapter extends BaseAdapter {
-    constructor() {
-        super("halopsa", ["companies"]);
+  private convex: ConvexHttpClient;
+  private secret: string;
+
+  constructor(convexUrl: string) {
+    super("halopsa");
+
+    this.convex = new ConvexHttpClient(convexUrl);
+
+    // Validate CONVEX_API_KEY is set
+    this.secret = process.env.CONVEX_API_KEY || "";
+    if (!this.secret) {
+      throw new Error(
+        "CONVEX_API_KEY environment variable is required for HaloPSAAdapter",
+      );
+    }
+  }
+
+  protected getAdapterName(): string {
+    return "HaloPSAAdapter";
+  }
+
+  /**
+   * Fetch data from Microsoft Graph API using connector
+   */
+  protected async fetchData(jobData: SyncJobData): Promise<AdapterFetchResult> {
+    const { dataSourceId, entityType } = jobData;
+
+    // Get data source config
+    this.metrics.trackQuery();
+    const dataSource = (await this.convex.query(api.helpers.orm.get_s, {
+      tableName: "data_sources",
+      id: dataSourceId,
+      secret: this.secret,
+    })) as any;
+
+    if (!dataSource) {
+      throw new Error(`Data source not found: ${dataSourceId}`);
     }
 
-    protected async getRawData({
-        eventData,
-        dataSource,
-        tenantID,
-    }: RawDataProps) {
-        if (!dataSource) {
-            return Debug.error({
-                module: "HaloPSAAdapter",
-                context: "getRawData",
-                message: `HaloPSA doesn't have any global sync methods. Missing data_source.`,
-            });
-        }
+    const config = dataSource.config as HaloPSAConfig;
 
-        Debug.log({
-            module: "HaloPSAAdapter",
-            context: "getRawData",
-            message: `Fetching data for tenant ${tenantID}, dataSource ${dataSource._id || "N/A"}`,
-        });
+    // Create connector
+    const connector = new HaloPSAConnector(config, process.env.ENCRYPTION_KEY!);
 
-        switch (eventData.entityType) {
-            case "companies": {
-                return await this.handleCompanySync(dataSource);
-            }
-        }
-
-        return Debug.error({
-            module: "HaloPSAAdapter",
-            context: "getRawData",
-            message: `Stage not supported: ${eventData.stage}`,
-        });
+    // Health check
+    const healthy = await connector.checkHealth();
+    if (!healthy) {
+      throw new Error(
+        `Connector health check failed for data source ${dataSourceId}`,
+      );
     }
 
-    private async handleCompanySync(
-        dataSource: Doc<"data_sources">
-    ): Promise<APIResponse<RawDataResult>> {
-        const connector = new HaloPSAConnector(
-            dataSource.config as HaloPSAConfig,
-            process.env.SECRET_KEY!
-        );
-        const health = await connector.checkHealth();
-        if (!health) {
-            return Debug.error({
-                module: "HaloPSAAdapter",
-                context: "handleCompanySync",
-                message: `Connector failed health check: ${dataSource._id}`,
-            });
-        }
-
-        const { data: companies, error } = await connector.getSites();
-        if (error) {
-            return { error };
-        }
-
-        return {
-            data: {
-                data: companies.map((rawData) => {
-                    const dataHash = Encryption.sha256(
-                        JSON.stringify({
-                            ...rawData,
-                            lastActivityDate: undefined,
-                            lastTrackedModifiedDateTime: undefined,
-                        })
-                    );
-
-                    return {
-                        externalID: String(rawData.id),
-
-                        dataHash,
-                        rawData,
-                    };
-                }), hasMore: false
-            }
-        };
+    // Route to entity-specific handler
+    switch (entityType) {
+      case "companies":
+        return await this.handleCompanySync(connector);
+      default:
+        throw new Error(`Unsupported entity type for HaloPSA: ${entityType}`);
     }
+  }
+
+  /**
+   * Handle group sync with members and memberOf data
+   */
+  private async handleCompanySync(
+    connector: HaloPSAConnector,
+  ): Promise<AdapterFetchResult> {
+    const { data: sites, error } = await connector.getSites();
+
+    if (error) {
+      throw new Error(`Failed to fetch companies: ${error.message}`);
+    }
+
+    // Enrich each group with members and memberOf data
+    const entities = sites.map((s) => ({
+      externalId: s.id.toString(),
+      rawData: s,
+    }));
+
+    Logger.log({
+      module: "HaloPSAAdapter",
+      context: "handleCompanySync",
+      message: `Fetched ${entities.length} companies`,
+      level: "trace",
+    });
+
+    return {
+      entities,
+      pagination: {
+        hasMore: false,
+      },
+    };
+  }
 }

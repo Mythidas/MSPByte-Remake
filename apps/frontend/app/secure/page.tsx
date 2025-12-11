@@ -4,11 +4,11 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function SecurePage() {
-    const router = useRouter();
+  const router = useRouter();
 
-    useEffect(() => {
-        router.replace('/secure/default');
-    }, [router]);
+  useEffect(() => {
+    router.replace("/secure/default");
+  }, [router]);
 
-    return null;
+  return null;
 }

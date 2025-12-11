@@ -23,7 +23,7 @@ export interface AgentLogResult {
 export async function logAgentApiCall(
   context: AgentLogContext,
   result: AgentLogResult,
-  performanceTracker: PerformanceTracker
+  performanceTracker: PerformanceTracker,
 ): Promise<void> {
   if (result.statusCode === 200) {
     return;

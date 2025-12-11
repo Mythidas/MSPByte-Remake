@@ -5,7 +5,7 @@ import { Building2, AlertCircle } from "lucide-react";
 import Loader from "@workspace/ui/components/Loader";
 import { useQuery } from "convex/react";
 import { api, Doc } from "@/lib/api";
-import { useAlertsForSite } from "@/hooks/useAlertsForSite";
+import { useAlertsForSite } from "@/lib/hooks/useAlertsForSite";
 import { AlertsTable } from "@/components/alerts/AlertsTable";
 import {
   Breadcrumb,
@@ -20,7 +20,9 @@ export default function SiteAlertsPage() {
   const slug = params["slug"]?.toString() || "";
 
   // Fetch site by slug
-  const site = useQuery(api.sites.query.getBySlug, { slug }) as Doc<"sites"> | undefined;
+  const site = useQuery(api.sites.query.getBySlug, { slug }) as
+    | Doc<"sites">
+    | undefined;
 
   // Fetch alerts for this site (across all integrations)
   const alerts = useAlertsForSite(site?._id ?? null);

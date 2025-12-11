@@ -101,6 +101,7 @@ export default function MyPage() {
 ### Filter Configuration
 
 #### Text Filter
+
 ```tsx
 filter: {
   type: "text",
@@ -110,6 +111,7 @@ filter: {
 ```
 
 #### Select Filter
+
 ```tsx
 filter: {
   type: "select",
@@ -122,6 +124,7 @@ filter: {
 ```
 
 #### Number Filter
+
 ```tsx
 filter: {
   type: "number",
@@ -131,6 +134,7 @@ filter: {
 ```
 
 #### Boolean Filter
+
 ```tsx
 filter: {
   type: "boolean",
@@ -139,6 +143,7 @@ filter: {
 ```
 
 #### Date Filter
+
 ```tsx
 filter: {
   type: "date",
@@ -155,15 +160,17 @@ const views: TableView[] = [
   {
     id: "active",
     label: "Active Sites",
-    filters: [
-      { field: "status", operator: "eq", value: "active" },
-    ],
+    filters: [{ field: "status", operator: "eq", value: "active" }],
   },
   {
     id: "recent",
     label: "Recently Updated",
     filters: [
-      { field: "updatedAt", operator: "gte", value: Date.now() - 7 * 24 * 60 * 60 * 1000 },
+      {
+        field: "updatedAt",
+        operator: "gte",
+        value: Date.now() - 7 * 24 * 60 * 60 * 1000,
+      },
     ],
   },
 ];
@@ -207,7 +214,7 @@ const data = useQuery(api.myTable.list, { filters });
   columns={columns}
   controlledFilters={filters}
   onFiltersChange={setFilters}
-/>
+/>;
 ```
 
 ### Custom Row Click Handler
@@ -248,6 +255,7 @@ The table automatically syncs state to URL parameters:
 - `view` - Active view ID
 
 Example URL:
+
 ```
 /sites?page=2&size=50&search=acme&filters=status:eq:"active";name:contains:"test"&view=active
 ```
@@ -291,7 +299,11 @@ The DataTable is composed of several sub-components that can be used independent
 For advanced customization, use the underlying hooks:
 
 ```tsx
-import { useDataTable, useDataTableFilters, useDataTableURL } from "@/components/DataTable";
+import {
+  useDataTable,
+  useDataTableFilters,
+  useDataTableURL,
+} from "@/components/DataTable";
 
 const { table, filters, addFilter, removeFilter } = useDataTable({
   data,
@@ -303,6 +315,7 @@ const { table, filters, addFilter, removeFilter } = useDataTable({
 ## Example: Sites Page
 
 See `/app/secure/sites/page.tsx` for a complete working example showing:
+
 - Status badges with custom rendering
 - Date formatting
 - Multiple filter types

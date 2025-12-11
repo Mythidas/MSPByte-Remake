@@ -24,7 +24,7 @@ export const insert = mutation({
   },
   handler: async <T extends keyof DataModel>(
     ctx: any,
-    args: InsertArgs<T>
+    args: InsertArgs<T>,
   ): Promise<InsertResult<T>> => {
     const identity = await isAuthenticated(ctx);
     const { tableName, data } = args;
@@ -51,10 +51,10 @@ export const insert = mutation({
             throw new Error(
               `Insert failed at index ${index} in table "${String(tableName)}": ${
                 error instanceof Error ? error.message : String(error)
-              }`
+              }`,
             );
           }
-        })
+        }),
       );
 
       return ids;
@@ -63,7 +63,7 @@ export const insert = mutation({
       throw new Error(
         `Batch insert failed for table "${String(tableName)}" (attempted ${data.length} records): ${
           error instanceof Error ? error.message : String(error)
-        }`
+        }`,
       );
     }
   },
@@ -90,7 +90,7 @@ export const insert_s = mutation({
   },
   handler: async <T extends keyof DataModel>(
     ctx: any,
-    args: InsertArgs<T> & { tenantId: Id<"tenants">; secret: string }
+    args: InsertArgs<T> & { tenantId: Id<"tenants">; secret: string },
   ): Promise<InsertResult<T>> => {
     await isValidSecret(args.secret);
     const { tableName, data, tenantId } = args;
@@ -113,10 +113,10 @@ export const insert_s = mutation({
             throw new Error(
               `Insert failed at index ${index} in table "${String(tableName)}": ${
                 error instanceof Error ? error.message : String(error)
-              }`
+              }`,
             );
           }
-        })
+        }),
       );
 
       return ids;
@@ -125,7 +125,7 @@ export const insert_s = mutation({
       throw new Error(
         `Batch insert failed for table "${String(tableName)}" (attempted ${data.length} records): ${
           error instanceof Error ? error.message : String(error)
-        }`
+        }`,
       );
     }
   },

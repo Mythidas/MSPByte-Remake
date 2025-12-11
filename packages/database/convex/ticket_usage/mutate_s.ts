@@ -26,7 +26,7 @@ export const logTicketUsage = mutation({
 
     // Format billing period as YYYY-MM
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, "0");
     const billingPeriod = `${year}-${month}`;
 
     await ctx.db.insert("ticket_usage", {

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Button } from "@workspace/ui/components/button";
 import { Card } from "@workspace/ui/components/card";
 import { ArrowRight, LayoutDashboard } from "lucide-react";
-import { useAuthReady } from "@/hooks/useAuthReady";
+import { useAuthReady } from "@/lib/hooks/useAuthReady";
 
 export default function Home() {
   const { isAuthenticated, isLoading } = useAuthReady();
@@ -46,17 +46,14 @@ export default function Home() {
             Welcome to MSPByte
           </h1>
           <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
-            Your comprehensive managed service provider platform. Monitor, manage, and secure your infrastructure all in one place.
+            Your comprehensive managed service provider platform. Monitor,
+            manage, and secure your infrastructure all in one place.
           </p>
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             {!isLoading && !isAuthenticated && (
-              <Button
-                asChild
-                size="lg"
-                className="text-lg px-8 py-6 gap-2"
-              >
+              <Button asChild size="lg" className="text-lg px-8 py-6 gap-2">
                 <Link href="/auth/login">
                   Get Started
                   <ArrowRight className="size-5" />
@@ -65,11 +62,7 @@ export default function Home() {
             )}
 
             {!isLoading && isAuthenticated && (
-              <Button
-                asChild
-                size="lg"
-                className="text-lg px-8 py-6 gap-2"
-              >
+              <Button asChild size="lg" className="text-lg px-8 py-6 gap-2">
                 <Link href="/secure">
                   <LayoutDashboard className="size-5" />
                   Go to Dashboard
@@ -78,11 +71,7 @@ export default function Home() {
             )}
 
             {isLoading && (
-              <Button
-                size="lg"
-                disabled
-                className="text-lg px-8 py-6"
-              >
+              <Button size="lg" disabled className="text-lg px-8 py-6">
                 Loading...
               </Button>
             )}
