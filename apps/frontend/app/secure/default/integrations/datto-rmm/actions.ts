@@ -7,69 +7,72 @@ import { api } from "@/lib/api";
 import type { Doc, Id } from "@workspace/database/convex/_generated/dataModel";
 
 export async function testConnection(config: DattoRMMConfig) {
-  try {
-    // Decrypt API credentials
-    const apiKey = config.apiKey.includes(":")
-      ? await Encryption.decrypt(config.apiKey, process.env.ENCRYPTION_KEY!)
-      : config.apiKey;
+	try {
+		// Decrypt API credentials
+		const apiKey = config.apiKey.includes(":")
+			? await Encryption.decrypt(
+					config.apiKey,
+					process.env.NEXT_ENCRYPTION_KEY!,
+				)
+			: config.apiKey;
 
-    const apiSecretKey = config.apiSecretKey.includes(":")
-      ? await Encryption.decrypt(
-          config.apiSecretKey,
-          process.env.ENCRYPTION_KEY!,
-        )
-      : config.apiSecretKey;
+		const apiSecretKey = config.apiSecretKey.includes(":")
+			? await Encryption.decrypt(
+					config.apiSecretKey,
+					process.env.NEXT_ENCRYPTION_KEY!,
+				)
+			: config.apiSecretKey;
 
-    if (!apiKey || !apiSecretKey) {
-      return { data: false, error: "Failed to decrypt API credentials" };
-    }
+		if (!apiKey || !apiSecretKey) {
+			return { data: false, error: "Failed to decrypt API credentials" };
+		}
 
-    const response = await fetch(`${config.url}/auth/oauth/token`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Authorization:
-          "Basic " + Buffer.from("public-client:public").toString("base64"),
-      },
-      body: new URLSearchParams({
-        grant_type: "password",
-        username: apiKey,
-        password: apiSecretKey,
-      }),
-    });
+		const response = await fetch(`${config.url}/auth/oauth/token`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/x-www-form-urlencoded",
+				Authorization:
+					"Basic " + Buffer.from("public-client:public").toString("base64"),
+			},
+			body: new URLSearchParams({
+				grant_type: "password",
+				username: apiKey,
+				password: apiSecretKey,
+			}),
+		});
 
-    if (!response.ok) {
-      return {
-        data: false,
-        error: `HTTP ${response.status}: ${response.statusText}`,
-      };
-    }
+		if (!response.ok) {
+			return {
+				data: false,
+				error: `HTTP ${response.status}: ${response.statusText}`,
+			};
+		}
 
-    return { data: true };
-  } catch (error: unknown) {
-    return {
-      data: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
+		return { data: true };
+	} catch (error: unknown) {
+		return {
+			data: false,
+			error: error instanceof Error ? error.message : "Unknown error",
+		};
+	}
 }
 
 export async function encryptSensitiveConfig(config: DattoRMMConfig) {
-  try {
-    config.apiSecretKey = await Encryption.encrypt(
-      config.apiSecretKey,
-      process.env.NEXT_ENCRYPTION_KEY!,
-    );
-    return { data: config, error: null };
-  } catch (error: unknown) {
-    return {
-      data: null,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Failed to encrypt configuration",
-    };
-  }
+	try {
+		config.apiSecretKey = await Encryption.encrypt(
+			config.apiSecretKey,
+			process.env.NEXT_ENCRYPTION_KEY!,
+		);
+		return { data: config, error: null };
+	} catch (error: unknown) {
+		return {
+			data: null,
+			error:
+				error instanceof Error
+					? error.message
+					: "Failed to encrypt configuration",
+		};
+	}
 }
 
 /**
@@ -77,142 +80,142 @@ export async function encryptSensitiveConfig(config: DattoRMMConfig) {
  * This is called by the UI after linkToRMMSite mutation succeeds
  */
 export async function pushSiteVariable(
-  dataSourceId: Id<"data_sources">,
-  siteId: Id<"sites">,
-  rmmSiteId: string,
+	dataSourceId: Id<"data_sources">,
+	siteId: Id<"sites">,
+	rmmSiteId: string,
 ) {
-  try {
-    // Fetch data source config
-    const dataSource = (await client.query(api.helpers.orm.get_s, {
-      tableName: "data_sources",
-      id: dataSourceId,
-      secret: process.env.CONVEX_API_KEY!,
-    })) as Doc<"data_sources">;
+	try {
+		// Fetch data source config
+		const dataSource = (await client.query(api.helpers.orm.get_s, {
+			tableName: "data_sources",
+			id: dataSourceId,
+			secret: process.env.CONVEX_API_KEY!,
+		})) as Doc<"data_sources">;
 
-    if (!dataSource) {
-      return { data: false, error: "Data source not found" };
-    }
+		if (!dataSource) {
+			return { data: false, error: "Data source not found" };
+		}
 
-    const config = dataSource.config as DattoRMMConfig;
-    const variableName = config.siteVariableName || "MSPSiteCode";
+		const config = dataSource.config as DattoRMMConfig;
+		const variableName = config.siteVariableName || "MSPSiteCode";
 
-    // Decrypt API credentials
-    const apiKey = config.apiKey;
-    const apiSecretKey = config.apiSecretKey.includes(":")
-      ? await Encryption.decrypt(
-          config.apiSecretKey,
-          process.env.ENCRYPTION_KEY!,
-        )
-      : config.apiSecretKey;
+		// Decrypt API credentials
+		const apiKey = config.apiKey;
+		const apiSecretKey = config.apiSecretKey.includes(":")
+			? await Encryption.decrypt(
+					config.apiSecretKey,
+					process.env.NEXT_ENCRYPTION_KEY!,
+				)
+			: config.apiSecretKey;
 
-    if (!apiKey || !apiSecretKey) {
-      return { data: false, error: "Failed to decrypt API credentials" };
-    }
+		if (!apiKey || !apiSecretKey) {
+			return { data: false, error: "Failed to decrypt API credentials" };
+		}
 
-    // Get OAuth token
-    const tokenResponse = await fetch(`${config.url}/auth/oauth/token`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Authorization:
-          "Basic " + Buffer.from("public-client:public").toString("base64"),
-      },
-      body: new URLSearchParams({
-        grant_type: "password",
-        username: apiKey,
-        password: apiSecretKey,
-      }),
-    });
+		// Get OAuth token
+		const tokenResponse = await fetch(`${config.url}/auth/oauth/token`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/x-www-form-urlencoded",
+				Authorization:
+					"Basic " + Buffer.from("public-client:public").toString("base64"),
+			},
+			body: new URLSearchParams({
+				grant_type: "password",
+				username: apiKey,
+				password: apiSecretKey,
+			}),
+		});
 
-    if (!tokenResponse.ok) {
-      return {
-        data: false,
-        error: `Failed to get token: HTTP ${tokenResponse.status}: ${tokenResponse.statusText}`,
-      };
-    }
+		if (!tokenResponse.ok) {
+			return {
+				data: false,
+				error: `Failed to get token: HTTP ${tokenResponse.status}: ${tokenResponse.statusText}`,
+			};
+		}
 
-    const tokenData: { access_token: string } = await tokenResponse.json();
-    const token = tokenData.access_token;
+		const tokenData: { access_token: string } = await tokenResponse.json();
+		const token = tokenData.access_token;
 
-    // First, get all variables to find the variableId
-    const variablesResponse = await fetch(
-      `${config.url}/api/v2/site/${rmmSiteId}/variables`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      },
-    );
+		// First, get all variables to find the variableId
+		const variablesResponse = await fetch(
+			`${config.url}/api/v2/site/${rmmSiteId}/variables`,
+			{
+				method: "GET",
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"Content-Type": "application/json",
+				},
+			},
+		);
 
-    let variableId: string | null = null;
+		let variableId: string | null = null;
 
-    if (variablesResponse.ok) {
-      const data = await variablesResponse.json();
-      const variables = data.variables;
-      const matchingVariable = variables.find(
-        (v: any) => v.name === variableName,
-      );
-      if (matchingVariable) {
-        variableId = matchingVariable.id;
-      }
-    } else if (variablesResponse.status !== 404) {
-      return {
-        data: false,
-        error: `Failed to fetch variables: HTTP ${variablesResponse.status}: ${variablesResponse.statusText}`,
-      };
-    }
+		if (variablesResponse.ok) {
+			const data = await variablesResponse.json();
+			const variables = data.variables;
+			const matchingVariable = variables.find(
+				(v: any) => v.name === variableName,
+			);
+			if (matchingVariable) {
+				variableId = matchingVariable.id;
+			}
+		} else if (variablesResponse.status !== 404) {
+			return {
+				data: false,
+				error: `Failed to fetch variables: HTTP ${variablesResponse.status}: ${variablesResponse.statusText}`,
+			};
+		}
 
-    // Push site variable to Datto RMM
-    let response;
-    if (variableId) {
-      // Update existing variable using variableId
-      response = await fetch(
-        `${config.url}/api/v2/site/${rmmSiteId}/variable/${variableId}`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: variableName,
-            value: siteId,
-          }),
-        },
-      );
-    } else {
-      // Create new variable (no variableId in path)
-      response = await fetch(
-        `${config.url}/api/v2/site/${rmmSiteId}/variable`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: variableName,
-            value: siteId,
-          }),
-        },
-      );
-    }
+		// Push site variable to Datto RMM
+		let response;
+		if (variableId) {
+			// Update existing variable using variableId
+			response = await fetch(
+				`${config.url}/api/v2/site/${rmmSiteId}/variable/${variableId}`,
+				{
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${token}`,
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						name: variableName,
+						value: siteId,
+					}),
+				},
+			);
+		} else {
+			// Create new variable (no variableId in path)
+			response = await fetch(
+				`${config.url}/api/v2/site/${rmmSiteId}/variable`,
+				{
+					method: "PUT",
+					headers: {
+						Authorization: `Bearer ${token}`,
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						name: variableName,
+						value: siteId,
+					}),
+				},
+			);
+		}
 
-    if (!response.ok) {
-      return {
-        data: false,
-        error: `HTTP ${response.status}: ${response.statusText}`,
-      };
-    }
+		if (!response.ok) {
+			return {
+				data: false,
+				error: `HTTP ${response.status}: ${response.statusText}`,
+			};
+		}
 
-    return { data: true, error: null };
-  } catch (error: unknown) {
-    return {
-      data: false,
-      error:
-        error instanceof Error ? error.message : "Failed to push site variable",
-    };
-  }
+		return { data: true, error: null };
+	} catch (error: unknown) {
+		return {
+			data: false,
+			error:
+				error instanceof Error ? error.message : "Failed to push site variable",
+		};
+	}
 }
