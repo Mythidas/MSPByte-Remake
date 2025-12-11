@@ -323,6 +323,7 @@ export default defineSchema({
 		metadata: v.optional(v.any()),
 
 		lastSeenAt: v.number(),
+		deletedAt: v.optional(v.number()),
 		updatedAt: v.number(),
 	})
 		.index("by_tenant", ["tenantId"])
