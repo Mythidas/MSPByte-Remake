@@ -3,6 +3,7 @@
 import { ConvexHttpClient } from "convex/browser";
 import HaloPSAConnector from "@workspace/shared/lib/connectors/HaloPSAConnector";
 import { api } from "@/lib/api";
+import type { Doc, Id } from "@workspace/database/convex/_generated/dataModel";
 import crypto from "crypto";
 import { randomUUID } from "crypto";
 
@@ -12,10 +13,58 @@ function calculateDataHash(data: any): string {
 	return crypto.createHash("sha256").update(JSON.stringify(data)).digest("hex");
 }
 
+/**
+ * Toggle hide status for a HaloPSA company entity
+ * Uses tags array to store "cust_hidden" tag
+ */
+export async function toggleHideStatus(
+	entityId: Id<"entities">,
+	isHidden: boolean
+) {
+	try {
+		// Get current entity
+		const entity = (await convex.query(api.helpers.orm.get_s, {
+			tableName: "entities",
+			id: entityId,
+			secret: process.env.NEXT_PUBLIC_CONVEX_SECRET!,
+		})) as Doc<"entities"> | null;
+
+		if (!entity) {
+			return { success: false, error: "Entity not found" };
+		}
+
+		// Update tags array - add or remove "cust_hidden"
+		const currentTags = entity.tags || [];
+		const newTags = isHidden
+			? [...currentTags.filter((t) => t !== "cust_hidden"), "cust_hidden"]
+			: currentTags.filter((t) => t !== "cust_hidden");
+
+		await convex.mutation(api.helpers.orm.update_s, {
+			tableName: "entities",
+			secret: process.env.NEXT_PUBLIC_CONVEX_SECRET!,
+			data: [
+				{
+					id: entityId,
+					updates: {
+						tags: newTags,
+					},
+				},
+			],
+		});
+
+		return { success: true };
+	} catch (error: any) {
+		return {
+			success: false,
+			error: error.message || "Failed to toggle hide status",
+		};
+	}
+}
+
 export async function syncHaloPSASites() {
 	try {
 		// 1. Get HaloPSA data source
-		const dataSource = await convex.query(api.helpers.orm.get_s, {
+		const dataSource = (await convex.query(api.helpers.orm.get_s, {
 			tableName: "data_sources",
 			secret: process.env.NEXT_PUBLIC_CONVEX_SECRET!,
 			index: {
@@ -23,7 +72,7 @@ export async function syncHaloPSASites() {
 				params: { integrationId: "halopsa" },
 			},
 			filters: { isPrimary: true },
-		});
+		})) as Doc<"data_sources"> | null;
 
 		if (!dataSource) {
 			throw new Error("HaloPSA data source not found");
@@ -40,8 +89,14 @@ export async function syncHaloPSASites() {
 			throw new Error(error?.message || "Failed to fetch sites");
 		}
 
+		for (const site of sites) {
+			if (site.id === 389) {
+				console.log(site);
+			}
+		}
+
 		// 3. Get existing entities
-		const existing = await convex.query(api.helpers.orm.list_s, {
+		const existing = (await convex.query(api.helpers.orm.list_s, {
 			tableName: "entities",
 			secret: process.env.NEXT_PUBLIC_CONVEX_SECRET!,
 			index: {
@@ -51,7 +106,7 @@ export async function syncHaloPSASites() {
 					entityType: "companies",
 				},
 			},
-		});
+		})) as Doc<"entities">[];
 
 		// 4. Calculate changes
 		const syncId = randomUUID();
@@ -107,6 +162,10 @@ export async function syncHaloPSASites() {
 
 		// 5. Execute mutations
 		if (toCreate.length > 0) {
+			if (!dataSource.tenantId) {
+				throw new Error("Data source missing tenantId");
+			}
+
 			await convex.mutation(api.helpers.orm.insert_s, {
 				tableName: "entities",
 				tenantId: dataSource.tenantId,

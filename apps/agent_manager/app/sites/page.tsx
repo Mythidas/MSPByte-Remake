@@ -1,17 +1,19 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import {
   DataTable,
   DataTableColumn,
   TableView,
+  RowAction,
 } from "@/components/DataTable";
 import { api } from "@/lib/api";
 import type { Doc } from "@workspace/database/convex/_generated/dataModel";
 import Loader from "@workspace/ui/components/Loader";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Unlink } from "lucide-react";
 import Link from "next/link";
 import { prettyText } from "@workspace/shared/lib/utils";
+import { toast } from "sonner";
 
 type Site = Doc<"sites">;
 
@@ -21,6 +23,9 @@ export default function SitesPage() {
     secret: process.env.NEXT_PUBLIC_CONVEX_SECRET!,
     tableName: "sites",
   }) as Site[] | undefined;
+
+  // Mutation hook for unlinking PSA mapping
+  const unlinkFromPSA = useMutation(api.sites.mutate.unlinkFromPSACompany);
 
   // Define columns
   const columns: DataTableColumn<Site>[] = [
@@ -132,6 +137,37 @@ export default function SitesPage() {
     },
   ];
 
+  // Define row actions
+  const rowActions: RowAction<Site>[] = [
+    {
+      label: "Clear PSA Mapping",
+      icon: <Unlink className="h-4 w-4" />,
+      variant: "outline",
+      disabled: (rows) => rows.every(site => !site.psaCompanyId),
+      onClick: async (rows) => {
+        const sitesWithPSA = rows.filter(site => site.psaCompanyId);
+
+        if (sitesWithPSA.length === 0) {
+          toast.error("No sites with PSA mapping selected");
+          return;
+        }
+
+        if (!confirm(`Are you sure you want to clear PSA mapping for ${sitesWithPSA.length} site(s)? They will need to be remapped in HaloPSA.`)) {
+          return;
+        }
+
+        try {
+          for (const site of sitesWithPSA) {
+            await unlinkFromPSA({ siteId: site._id });
+          }
+          toast.success(`Cleared PSA mapping for ${sitesWithPSA.length} site(s)`);
+        } catch (error: any) {
+          toast.error("Failed to clear PSA mapping: " + error.message);
+        }
+      },
+    },
+  ];
+
   return (
     <div className="flex flex-col size-full gap-2 mx-auto">
       <div>
@@ -153,7 +189,8 @@ export default function SitesPage() {
             data={sites}
             columns={columns}
             views={views}
-            enableRowSelection={false}
+            rowActions={rowActions}
+            enableRowSelection={true}
             enableGlobalSearch={true}
             enableFilters={true}
             enablePagination={true}

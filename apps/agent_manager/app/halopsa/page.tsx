@@ -20,12 +20,16 @@ import { INTEGRATIONS } from "@workspace/shared/types/integrations/config";
 import Link from "next/link";
 import { Button } from "@workspace/ui/components/button";
 import { cn } from "@workspace/ui/lib/utils";
-import { syncHaloPSASites } from "./actions";
+import { syncHaloPSASites, toggleHideStatus } from "./actions";
+import { pushSiteVariable as pushDattoVariable } from "../dattormm/actions";
+import { ConvexHttpClient } from "convex/browser";
+
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export default function HaloPSAPage() {
 	const integration = INTEGRATIONS["halopsa"];
 
-	// Fetch Microsoft 365 data source for companies using *_s variant
+	// Fetch HaloPSA data source for companies using *_s variant
 	const dataSource = useQuery(api.helpers.orm.get_s, {
 		secret: process.env.NEXT_PUBLIC_CONVEX_SECRET!,
 		tableName: "data_sources",
@@ -73,6 +77,9 @@ export default function HaloPSAPage() {
 	const [linkFilter, setLinkFilter] = useState<"all" | "linked" | "unlinked">(
 		"all"
 	);
+	const [hideFilter, setHideFilter] = useState<"visible" | "all" | "hidden">(
+		"visible"
+	);
 	const [isSyncing, setIsSyncing] = useState(false);
 
 	// Mutation hooks
@@ -92,6 +99,9 @@ export default function HaloPSAPage() {
 					site.psaCompanyId === company.externalId
 			);
 
+			// Extract hidden status from tags array
+			const isHidden = company.tags?.includes("cust_hidden") || false;
+
 			return {
 				_id: company._id,
 				name: company.normalizedData?.name || company.rawData?.name,
@@ -103,6 +113,7 @@ export default function HaloPSAPage() {
 				linkedId: linkedSite?._id,
 				linkedSlug: linkedSite?.slug,
 				linkedName: linkedSite?.name,
+				isHidden,
 			};
 		});
 	}, [companies, allSites, integration]);
@@ -110,6 +121,10 @@ export default function HaloPSAPage() {
 	// Filter companies
 	const filteredCompanies = useMemo(() => {
 		return transformedCompanies.filter((company) => {
+			// Hide filter (applied first for performance)
+			if (hideFilter === "visible" && company.isHidden) return false;
+			if (hideFilter === "hidden" && !company.isHidden) return false;
+
 			// Link status filter
 			if (linkFilter === "linked" && !company.isLinked) return false;
 			if (linkFilter === "unlinked" && company.isLinked) return false;
@@ -126,7 +141,7 @@ export default function HaloPSAPage() {
 
 			return true;
 		});
-	}, [transformedCompanies, linkFilter, searchQuery]);
+	}, [transformedCompanies, linkFilter, searchQuery, hideFilter]);
 
 	// Get available sites (not already linked to HaloPSA)
 	const availableSites = useMemo(() => {
@@ -143,6 +158,8 @@ export default function HaloPSAPage() {
 
 	const linkedCount = transformedCompanies.filter((c) => c.isLinked).length;
 	const unlinkedCount = transformedCompanies.filter((c) => !c.isLinked).length;
+	const hiddenCount = transformedCompanies.filter((c) => c.isHidden).length;
+	const visibleCount = transformedCompanies.filter((c) => !c.isHidden).length;
 
 	// Early return after all hooks
 	if (!dataSource) {
@@ -150,7 +167,7 @@ export default function HaloPSAPage() {
 			<div className="flex flex-col gap-4 items-center justify-center size-full">
 				<AlertCircle className="w-12 h-12 text-muted-foreground" />
 				<p className="text-muted-foreground">
-					Please configure the Microsoft 365 integration first
+					Please configure the HaloPSA integration first
 				</p>
 			</div>
 		);
@@ -175,6 +192,48 @@ export default function HaloPSAPage() {
 				companyExternalParentId: company.rawData?.parent_id,
 			});
 			toast.success(`Linked ${company.rawData?.name} to site`);
+
+			// Cross-integration: Check if site has DattoRMM mapping and auto-push variable
+			try {
+				const linkedSite = (await convex.query(api.helpers.orm.get_s, {
+					tableName: "sites",
+					id: siteId as any,
+					secret: process.env.NEXT_PUBLIC_CONVEX_SECRET!,
+				})) as any;
+
+				if (
+					linkedSite?.rmmIntegrationId === "datto-rmm" &&
+					linkedSite?.rmmSiteId
+				) {
+					// Get DattoRMM data source
+					const dattoDataSource = (await convex.query(api.helpers.orm.get_s, {
+						tableName: "data_sources",
+						index: {
+							name: "by_integration",
+							params: { integrationId: "datto-rmm" },
+						},
+						filters: { isPrimary: true },
+						secret: process.env.NEXT_PUBLIC_CONVEX_SECRET!,
+					})) as any;
+
+					if (dattoDataSource) {
+						const pushResult = await pushDattoVariable(
+							dattoDataSource._id,
+							linkedSite._id,
+							linkedSite.rmmSiteId
+						);
+
+						if (pushResult.success) {
+							toast.success("Also pushed site variable to DattoRMM");
+						} else {
+							toast.warning("Failed to push to DattoRMM: " + pushResult.error);
+						}
+					}
+				}
+			} catch (dattoError: any) {
+				console.error("DattoRMM auto-push error:", dattoError);
+				// Don't fail the main operation, just log
+			}
 		} catch (error: any) {
 			toast.error("Failed to link: " + error.message);
 		}
@@ -211,7 +270,7 @@ export default function HaloPSAPage() {
 		try {
 			await createSite({
 				name: siteName,
-				integrationId: "microsoft-365",
+				integrationId: "halopsa",
 				companyExternalId: company.externalId,
 				companyExternalParentId: company.rawData?.parent_id,
 			});
@@ -238,6 +297,21 @@ export default function HaloPSAPage() {
 			toast.error(`Sync failed: ${error.message}`);
 		} finally {
 			setIsSyncing(false);
+		}
+	};
+
+	const handleToggleHide = async (entityId: string, isHidden: boolean) => {
+		try {
+			const result = await toggleHideStatus(entityId as any, !isHidden);
+			if (result.success) {
+				toast.success(
+					isHidden ? "Company is now visible" : "Company is now hidden"
+				);
+			} else {
+				toast.error("Failed to toggle hide status: " + result.error);
+			}
+		} catch (error: any) {
+			toast.error("Failed to toggle hide status: " + error.message);
 		}
 	};
 
@@ -286,9 +360,7 @@ export default function HaloPSAPage() {
 					disabled={isSyncing}
 					className="gap-2"
 				>
-					<RefreshCw
-						className={cn("w-4 h-4", isSyncing && "animate-spin")}
-					/>
+					<RefreshCw className={cn("w-4 h-4", isSyncing && "animate-spin")} />
 					{isSyncing ? "Syncing..." : "Sync from HaloPSA"}
 				</Button>
 			</div>
@@ -318,6 +390,23 @@ export default function HaloPSAPage() {
 								<SelectItem value="unlinked">Unlinked Only</SelectItem>
 							</SelectContent>
 						</Select>
+						<Select
+							value={hideFilter}
+							onValueChange={(value: any) => setHideFilter(value)}
+						>
+							<SelectTrigger className="w-40 bg-input border-border">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="visible">
+									Visible ({visibleCount})
+								</SelectItem>
+								<SelectItem value="all">
+									All ({transformedCompanies.length})
+								</SelectItem>
+								<SelectItem value="hidden">Hidden ({hiddenCount})</SelectItem>
+							</SelectContent>
+						</Select>
 					</div>
 
 					{/* Company List */}
@@ -343,6 +432,10 @@ export default function HaloPSAPage() {
 										company={company}
 										isSelected={selectedCompanyId === company._id}
 										onClick={() => setSelectedCompanyId(company._id)}
+										onToggleHide={(e) => {
+											e.stopPropagation();
+											handleToggleHide(company._id, company.isHidden);
+										}}
 									/>
 								))}
 							</div>
@@ -366,6 +459,15 @@ export default function HaloPSAPage() {
 						onLink={handleLink}
 						onUnlink={handleUnlink}
 						onCreate={handleCreate}
+						onToggleHide={
+							selectedCompany
+								? () =>
+										handleToggleHide(
+											selectedCompany._id,
+											selectedCompany.isHidden
+										)
+								: undefined
+						}
 					/>
 				</div>
 			</div>
